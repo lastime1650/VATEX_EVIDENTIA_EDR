@@ -1,0 +1,62 @@
+;
+; VATEX_EVIDENTIA_EDR.inf
+;
+
+[Version]
+Signature   = "$WINDOWS NT$"
+Class       = System ; TODO: specify appropriate Class
+ClassGuid   = {4d36e97d-e325-11ce-bfc1-08002be10318} ; TODO: specify appropriate ClassGuid
+Provider    = %ManufacturerName%
+CatalogFile = VATEX_EVIDENTIA_EDR.cat
+DriverVer   = ; TODO: set DriverVer in stampinf property pages
+PnpLockdown = 1
+
+[DestinationDirs]
+DefaultDestDir = 13
+
+[SourceDisksNames]
+1 = %DiskName%,,,""
+
+[SourceDisksFiles]
+VATEX_EVIDENTIA_EDR.sys = 1,,
+
+;*****************************************
+; Install Section
+;*****************************************
+
+[Manufacturer]
+%ManufacturerName% = Standard,NT$ARCH$.10.0...16299 ; %13% support introduced in build 16299
+
+[Standard.NT$ARCH$.10.0...16299]
+%VATEX_EVIDENTIA_EDR.DeviceDesc% = VATEX_EVIDENTIA_EDR_Device, Root\VATEX_EVIDENTIA_EDR ; TODO: edit hw-id
+
+[VATEX_EVIDENTIA_EDR_Device.NT]
+CopyFiles = File_Copy
+
+[File_Copy]
+VATEX_EVIDENTIA_EDR.sys
+
+;-------------- Service installation
+[VATEX_EVIDENTIA_EDR_Device.NT.Services]
+AddService = VATEX_EVIDENTIA_EDR,%SPSVCINST_ASSOCSERVICE%, VATEX_EVIDENTIA_EDR_Service_Inst
+
+; -------------- VATEX_EVIDENTIA_EDR driver install sections
+[VATEX_EVIDENTIA_EDR_Service_Inst]
+DisplayName    = %VATEX_EVIDENTIA_EDR.SVCDESC%
+ServiceType    = 1               ; SERVICE_KERNEL_DRIVER
+StartType      = 3               ; SERVICE_DEMAND_START
+ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %13%\VATEX_EVIDENTIA_EDR.sys
+
+[VATEX_EVIDENTIA_EDR_Device.NT.Wdf]
+KmdfService = VATEX_EVIDENTIA_EDR, VATEX_EVIDENTIA_EDR_wdfsect
+
+[VATEX_EVIDENTIA_EDR_wdfsect]
+KmdfLibraryVersion = $KMDFVERSION$
+
+[Strings]
+SPSVCINST_ASSOCSERVICE = 0x00000002
+ManufacturerName = "<Your manufacturer name>" ;TODO: Replace with your manufacturer name
+DiskName = "VATEX_EVIDENTIA_EDR Installation Disk"
+VATEX_EVIDENTIA_EDR.DeviceDesc = "VATEX_EVIDENTIA_EDR Device"
+VATEX_EVIDENTIA_EDR.SVCDESC = "VATEX_EVIDENTIA_EDR Service"

@@ -1,0 +1,118 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Driver Files">
+      <UniqueIdentifier>{8E41214B-6785-4CFE-B992-037D68949A14}</UniqueIdentifier>
+      <Extensions>inf;inv;inx;mof;mc;</Extensions>
+    </Filter>
+    <Filter Include="util">
+      <UniqueIdentifier>{33cab649-1524-4c9a-b9ab-f40d1436e772}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="AGENT">
+      <UniqueIdentifier>{b120ca51-c7ac-479a-8860-82a2acf79d3e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="util\Hash">
+      <UniqueIdentifier>{1e8a5d93-8044-4d79-8d80-a1f1623164d6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="util\Process">
+      <UniqueIdentifier>{a48748dc-867b-4011-86fa-bfd43023a168}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="util\Accounts">
+      <UniqueIdentifier>{213a4c24-e912-425a-9cbd-4ada2e2f8e54}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="AGENT\NotifyRoutines">
+      <UniqueIdentifier>{00de5449-f1b0-460c-a8be-f08d410b8966}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="AGENT\ObregisterCallbacks">
+      <UniqueIdentifier>{f960ada6-792a-4733-b4da-c7b9a2c2b552}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="UnLoad">
+      <UniqueIdentifier>{13f31e30-ff74-4bcc-b57c-8e2a253d5aea}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="util\API">
+      <UniqueIdentifier>{c3d8da95-514e-4153-aae6-56117e505db4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="AGENT\EventLog">
+      <UniqueIdentifier>{d625f7ff-be94-43ae-9165-e7dc8cea5735}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="util\DEFINES">
+      <UniqueIdentifier>{654294fe-595e-4a17-a876-3a4460a9bed6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="AGENT\EventLog\Log_to_UserMode">
+      <UniqueIdentifier>{1ef674f4-e353-440d-86a4-5282d3921668}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="AGENT\EventLog\APC">
+      <UniqueIdentifier>{9daa0498-5731-4dd4-a122-5a5a60dcdfb0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="AGENT\IOCTL">
+      <UniqueIdentifier>{ce6b7888-7af5-4e09-b94b-972ebacab24d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="AGENT\IOCTL\IOCTL_PROCESSING">
+      <UniqueIdentifier>{dff78876-3653-45a8-bff3-e64da364f674}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="AGENT\IOCTL\IOCTL_PROCESSING\INITIALIZE">
+      <UniqueIdentifier>{9ad6d9fc-672d-4ad6-ae55-f1b479582576}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="AGENT\IOCTL\IOCTL_PROCESSING\FILE_BINARY">
+      <UniqueIdentifier>{82eaf2e0-4f35-48db-a912-7f65563e3f10}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="AGENT\IOCTL\IOCTL_PROCESSING\RESPONSE">
+      <UniqueIdentifier>{811ad0a5-62a0-4dcf-b3bd-eefa1d9d9a6e}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <Inf Include="VATEX_EVIDENTIA_EDR.inf">
+      <Filter>Driver Files</Filter>
+    </Inf>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="util.hpp">
+      <Filter>util</Filter>
+    </ClCompile>
+    <ClCompile Include="DriverUnload.cpp">
+      <Filter>UnLoad</Filter>
+    </ClCompile>
+    <ClCompile Include="APC.cpp">
+      <Filter>AGENT\EventLog\APC</Filter>
+    </ClCompile>
+    <ClCompile Include="util.cpp">
+      <Filter>util</Filter>
+    </ClCompile>
+    <ClCompile Include="IOCTL.cpp">
+      <Filter>AGENT\IOCTL</Filter>
+    </ClCompile>
+    <ClCompile Include="ProcessUtil.cpp">
+      <Filter>util\Process</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="DriverUnload.hpp">
+      <Filter>UnLoad</Filter>
+    </ClInclude>
+    <ClInclude Include="API.hpp">
+      <Filter>util\API</Filter>
+    </ClInclude>
+    <ClInclude Include="EventLog.hpp">
+      <Filter>AGENT\EventLog</Filter>
+    </ClInclude>
+    <ClInclude Include="DEFINES.hpp">
+      <Filter>util\DEFINES</Filter>
+    </ClInclude>
+    <ClInclude Include="LogSender.hpp">
+      <Filter>AGENT\EventLog\Log_to_UserMode</Filter>
+    </ClInclude>
+    <ClInclude Include="APC.hpp">
+      <Filter>AGENT\EventLog\APC</Filter>
+    </ClInclude>
+    <ClInclude Include="IOCTL.hpp">
+      <Filter>AGENT\IOCTL</Filter>
+    </ClInclude>
+    <ClInclude Include="ioctl_codes.hpp">
+      <Filter>AGENT\IOCTL</Filter>
+    </ClInclude>
+    <ClInclude Include="ProcessUtil.hpp">
+      <Filter>util\Process</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
