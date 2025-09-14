@@ -2,22 +2,44 @@
 #include "IOCTL.hpp"
 #include "DriverUnload.hpp"
 
-NTSTATUS DriverEntry(PDRIVER_OBJECT driverobject, PUNICODE_STRING registerpath)
+#include "NotifyRoutine.hpp"
+#include "LogSender.hpp"
+#include "Network.hpp"
+
+extern "C" NTSTATUS DriverEntry(PDRIVER_OBJECT driverobject, PUNICODE_STRING registerpath)
 {
+	UNREFERENCED_PARAMETER(registerpath);
 	NTSTATUS status = STATUS_UNSUCCESSFUL;
 
-	// 초기화
+	// 버전 체크
+	status = EDR::Util::SysVersion::VersionCheck();
+	if (!NT_SUCCESS(status))
+		return status;
 
+	// 초기화
+	// 1. LogSender
+	EDR::LogSender::INITIALIZE();
 
 	// 언로드 설정
 	driverobject->DriverUnload = EDR::UnLoad::DRIVER_UNLOAD;
 
 	// IOCTL 등록
-	status = EDR::IOCTL::INITIALIZE(driverobject);
+	PDEVICE_OBJECT pDevice = NULL;
+	status = EDR::IOCTL::INITIALIZE(driverobject,&pDevice);
 	if (!NT_SUCCESS(status))
 		return status;
 
 	// 이벤트 루틴 설정
+
+	// 1. NotifyRoutine
+	status = EDR::NotifyRoutines::Load_NotifyRoutines();
+	if (!NT_SUCCESS(status))
+		return status;
+
+	// 2. Network
+	status = EDR::WFP_Filter::Load_WFP_Filter(pDevice);
+	if (!NT_SUCCESS(status))
+		return status;
 
 	return status;
 }

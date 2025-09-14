@@ -73,6 +73,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
+    <Inf2CatUseLocalTime>true</Inf2CatUseLocalTime>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
@@ -89,6 +90,10 @@
     <DriverSign>
       <FileDigestAlgorithm>sha256</FileDigestAlgorithm>
     </DriverSign>
+    <Link>
+      <AdditionalDependencies>$(DDK_LIB_PATH)netio.lib;$(DDK_LIB_PATH)ndis.lib;$(DDK_LIB_PATH)wdm.lib;$(DDK_LIB_PATH)fwpkclnt.lib;$(DDK_LIB_PATH)wdmsec.lib;$(DDK_LIB_PATH)ksecdd.lib;$(DDK_LIB_PATH)cng.lib;$(DDK_LIB_PATH)fltMgr.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalOptions>/integritycheck %(AdditionalOptions)</AdditionalOptions>
+    </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
     <DriverSign>
@@ -107,24 +112,43 @@
     <FilesToPackage Include="$(TargetPath)" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Account.cpp" />
     <ClCompile Include="APC.cpp" />
     <ClCompile Include="DriverUnload.cpp" />
+    <ClCompile Include="EventLog.cpp" />
+    <ClCompile Include="FileJob.cpp" />
+    <ClCompile Include="HASH.cpp" />
     <ClCompile Include="IOCTL.cpp" />
+    <ClCompile Include="LogSender.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Network.cpp" />
+    <ClCompile Include="NotifyRoutine.cpp" />
+    <ClCompile Include="NotifyRoutine_ImageLoad.cpp" />
+    <ClCompile Include="NotifyRoutine_ProcessCreation.cpp" />
     <ClCompile Include="ProcessUtil.cpp" />
+    <ClCompile Include="String_.cpp" />
+    <ClCompile Include="User.cpp" />
     <ClCompile Include="util.cpp" />
-    <ClCompile Include="util.hpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Account.hpp" />
     <ClInclude Include="APC.hpp" />
     <ClInclude Include="API.hpp" />
-    <ClInclude Include="DEFINES.hpp" />
     <ClInclude Include="DriverUnload.hpp" />
     <ClInclude Include="EventLog.hpp" />
+    <ClInclude Include="FileJob.hpp" />
+    <ClInclude Include="HASH.hpp" />
     <ClInclude Include="IOCTL.hpp" />
     <ClInclude Include="ioctl_codes.hpp" />
     <ClInclude Include="LogSender.hpp" />
+    <ClInclude Include="Network.hpp" />
+    <ClInclude Include="NotifyRoutine.hpp" />
+    <ClInclude Include="NotifyRoutine_ImageLoad.hpp" />
+    <ClInclude Include="NotifyRoutine_ProcessCreation.hpp" />
     <ClInclude Include="ProcessUtil.hpp" />
+    <ClInclude Include="String_.hpp" />
+    <ClInclude Include="User.hpp" />
+    <ClInclude Include="util.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -1,3 +1,4 @@
+#pragma warning (disable : 4996)
 #include "APC.hpp"
 
 
@@ -31,7 +32,7 @@ namespace EDR
 			return TRUE;
 		}
 
-		BOOLEAN ApcToUser(ULONG64 cmd, PVOID UserAllocatedData)// APC 큐기반 유저모드에게 비동기적 데이터 전송
+		BOOLEAN ApcToUser(ULONG64 cmd, PVOID UserAllocatedData, ULONG64 DataSize)// APC 큐기반 유저모드에게 비동기적 데이터 전송
 		{
 			if (!resource::USER_Thread || !resource::is_working_apc)
 				return FALSE;
@@ -50,15 +51,16 @@ namespace EDR
 				NULL,
 				(PKNORMAL_ROUTINE)resource::USER_APC_HANDLER, // USER ADDRESS CALLBACK ! 
 				UserMode,
-				NULL // 유저모드 APC 콜백함수에 전달할 것 ( NornalContext )  -> NULL
+				(PVOID)cmd // 유저모드 APC 콜백함수에 전달할 것 ( NornalContext )  -> Type
 			);
 
 			if (!KeInsertQueueApc(
 				Response_APC,
-				(PVOID)cmd,// 그대로 삽입 ( Argument 1)
-				UserAllocatedData, // 크기는 cmd에 정해진 구조체로 캐스팅하도록 설계됨 ( Argument 2 )
-				0)
-				) {
+				UserAllocatedData, // Data 주소 ( Argument 1 )
+				(PVOID)DataSize, // Data 사이즈 ( Argument 2 )
+				0
+			)
+			) {
 				ExFreePoolWithTag(Response_APC, APC_ALLOC_TAG);
 				return FALSE;
 			}

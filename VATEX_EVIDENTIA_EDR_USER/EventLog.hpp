@@ -5,9 +5,9 @@
 
 namespace EDR
 {
+	
 	namespace EventLog
 	{
-
 		namespace Enum
 		{
 			enum EventLog_Enum
@@ -18,7 +18,6 @@ namespace EDR
 				Network,
 
 				Filesystem,
-
 				ImageLoad
 
 			};
@@ -34,7 +33,6 @@ namespace EDR
 				HANDLE ProcessId;
 				ULONG64 NanoTimestamp;
 				CHAR Version[256];
-
 			};
 
 			// Process_Create
@@ -45,7 +43,6 @@ namespace EDR
 				struct
 				{
 					HANDLE Parent_ProcessId;
-					
 
 					/*
 						[POST]
@@ -55,46 +52,59 @@ namespace EDR
 					{
 						CHAR SID[256];
 
-						
+
 						ULONG64 Self_Process_exe_size;
 						CHAR Self_Process_exe_SHA256[65];
 						CHAR Self_Process_exe_path[4096];
-						
+
 						ULONG64 Parent_Process_exe_size;
 						CHAR Parent_Process_exe_SHA256[65];
 						CHAR Parent_Process_exe_path[4096];
-						
-					}post;
 
+					}post;
 				}body;
-				
 			};
 
 			// Process_Terminate
 			struct EventLog_Process_Terminate
 			{
 				struct EventLog_Header header;
+
+				CHAR ImagePathAnsi[4096];
+
+				struct
+				{
+					ULONG64 Parent_Process_exe_size;
+					CHAR Parent_Process_exe_SHA256[65];
+				}post;
 			};
 
 			// ImageLoad
-			struct EventLog_ImageLoad
+			struct EventLog_Process_ImageLoad
 			{
 				struct EventLog_Header header;
 
 				struct
 				{
-					CHAR ImagePathAnsi[4096];
 
+					/*
+						[POST]
+							비동기 후속 작업 요구
+					*/
 					struct
 					{
-						ULONG64 Parent_Process_exe_size;
-						CHAR Parent_Process_exe_SHA256[65];
+						CHAR SID[256];
+
+						CHAR ImagePath[4096];
+						CHAR ImageSHA256[65];
+						SIZE_T ImageSize;
+
 					}post;
 
 				}body;
+
 			};
 
-			// Network
 			// Network
 			struct EventLog_Process_Network
 			{
@@ -103,6 +113,10 @@ namespace EDR
 				struct
 				{
 
+					/*
+						[POST]
+							비동기 후속 작업 요구
+					*/
 					ULONG32 ProtocolNumber;
 					BOOLEAN is_INBOUND;
 					ULONG32 PacketSize;
@@ -121,14 +135,6 @@ namespace EDR
 			};
 
 			// Filesystem
-			enum Filesystem_enum
-			{
-				create =1,
-				remove,
-				rename,
-				read,
-				write
-			};
 			struct EventLog_Process_Filesystem
 			{
 				struct EventLog_Header header;
@@ -142,67 +148,26 @@ namespace EDR
 					*/
 					struct
 					{
+						CHAR SID[256];
 
 					}post;
-					enum Filesystem_enum Action;
-					CHAR FilePath[4096];
-					ULONG64 FileSize;
-
-
-				}body;
-
-			};
-
-			// Registry
-			struct EventLog_Process_Registry
-			{
-				struct EventLog_Header header;
-
-				struct
-				{
-
-					/*
-						[POST]
-							비동기 후속 작업 요구
-					*/
-
-
-				}body;
-
-			};
-
-			// ProcessAccess
-			// ObRegisterCallback으로 해당 프로세스가 다른 프로세스에 영향이 가는지 확인
-			
-			struct EventLog_Process_ProcessAccess
-			{
-				struct EventLog_Header header;
-
-				struct
-				{
-
-					
-					HANDLE SourceProcessId;
-					HANDLE TargetProcessId;
-
 
 				}body;
 
 			};
 
 		}
-		namespace function
-		{
-			BOOLEAN Make_Header(
-				Enum::EventLog_Enum type,
-				HANDLE ProcessId,
-				ULONG64 NanoTimestamp,
 
-				_Inout_ Struct::EventLog_Header* out_header
-			);
+		namespace HandlerLog
+		{
+			struct HandlerLog_s
+			{
+				Enum::EventLog_Enum type;
+				unsigned char* logData;
+			};
 		}
 	}
-	
+
 }
 
 

@@ -19,7 +19,7 @@ namespace EDR
 			extern PDEVICE_OBJECT ioctl_device;
 		}
 
-		NTSTATUS INITIALIZE(PDRIVER_OBJECT DriverObject);
+		NTSTATUS INITIALIZE(PDRIVER_OBJECT DriverObject, PDEVICE_OBJECT* out);
 		VOID CleanUp_IOCTL();
 
 		namespace Dispatch
@@ -30,11 +30,18 @@ namespace EDR
 
 		namespace IOCTL_PROCESSING
 		{
+			extern BOOLEAN is_complete_init;
 			namespace resource
 			{
 				
 				extern HANDLE User_AGENT_ProcessId;
 				extern HANDLE User_AGENT_Process_Handle;
+
+				namespace function
+				{
+					VOID Set_User_AGENT_INFO(HANDLE AGENT_pid, HANDLE AGENT_handle);
+					VOID Get_User_AGENT_INFO(HANDLE* User_AGENT_ProcessId, HANDLE* User_AGENT_Process_Handle);
+				}
 			}
 
 			// IOCTL_INIT

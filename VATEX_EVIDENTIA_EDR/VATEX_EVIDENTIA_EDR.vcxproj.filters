@@ -20,29 +20,11 @@
     <Filter Include="util\Accounts">
       <UniqueIdentifier>{213a4c24-e912-425a-9cbd-4ada2e2f8e54}</UniqueIdentifier>
     </Filter>
-    <Filter Include="AGENT\NotifyRoutines">
-      <UniqueIdentifier>{00de5449-f1b0-460c-a8be-f08d410b8966}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="AGENT\ObregisterCallbacks">
-      <UniqueIdentifier>{f960ada6-792a-4733-b4da-c7b9a2c2b552}</UniqueIdentifier>
-    </Filter>
     <Filter Include="UnLoad">
       <UniqueIdentifier>{13f31e30-ff74-4bcc-b57c-8e2a253d5aea}</UniqueIdentifier>
     </Filter>
     <Filter Include="util\API">
       <UniqueIdentifier>{c3d8da95-514e-4153-aae6-56117e505db4}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="AGENT\EventLog">
-      <UniqueIdentifier>{d625f7ff-be94-43ae-9165-e7dc8cea5735}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="util\DEFINES">
-      <UniqueIdentifier>{654294fe-595e-4a17-a876-3a4460a9bed6}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="AGENT\EventLog\Log_to_UserMode">
-      <UniqueIdentifier>{1ef674f4-e353-440d-86a4-5282d3921668}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="AGENT\EventLog\APC">
-      <UniqueIdentifier>{9daa0498-5731-4dd4-a122-5a5a60dcdfb0}</UniqueIdentifier>
     </Filter>
     <Filter Include="AGENT\IOCTL">
       <UniqueIdentifier>{ce6b7888-7af5-4e09-b94b-972ebacab24d}</UniqueIdentifier>
@@ -59,6 +41,48 @@
     <Filter Include="AGENT\IOCTL\IOCTL_PROCESSING\RESPONSE">
       <UniqueIdentifier>{811ad0a5-62a0-4dcf-b3bd-eefa1d9d9a6e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="AGENT\APC">
+      <UniqueIdentifier>{9daa0498-5731-4dd4-a122-5a5a60dcdfb0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="AGENT\LogSender">
+      <UniqueIdentifier>{766dda4a-935f-454c-af12-39f0d4896290}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="AGENT\LogSender\EventLog">
+      <UniqueIdentifier>{d625f7ff-be94-43ae-9165-e7dc8cea5735}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="util\File">
+      <UniqueIdentifier>{1657f8d4-3163-457b-837e-a82eb08ea1dc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="util\String">
+      <UniqueIdentifier>{872c9644-1106-448a-b707-769e6996fdb9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="AGENT\Event">
+      <UniqueIdentifier>{aa816cf2-3d7a-4620-80d0-d051b71c55f9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="AGENT\Event\NotifyRoutines">
+      <UniqueIdentifier>{00de5449-f1b0-460c-a8be-f08d410b8966}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="AGENT\Event\NotifyRoutines\PsSetCreateProcessNotifyRoutineEx">
+      <UniqueIdentifier>{94037d63-52e6-4741-87b1-7b2f3f7a37f3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="AGENT\Event\NotifyRoutines\PsSetLoadImageNotifyRoutine">
+      <UniqueIdentifier>{c47635b3-5ea5-41fc-adde-57a42b62bc5d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="AGENT\Event\MiniFilter">
+      <UniqueIdentifier>{e07f3f15-f022-48d6-99a1-a503e6c74483}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="AGENT\Event\WFP_Network">
+      <UniqueIdentifier>{70842cde-4aad-4e72-9b41-694e498b61fb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="AGENT\Event\Registry">
+      <UniqueIdentifier>{0e66c60e-141b-4bd4-8713-5cf62cce1f5a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="AGENT\Event\ObregisterCallbacks">
+      <UniqueIdentifier>{f960ada6-792a-4733-b4da-c7b9a2c2b552}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="util\UserSpace">
+      <UniqueIdentifier>{6c855ce4-37b7-45f1-b8d1-5296d8c60bba}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Inf Include="VATEX_EVIDENTIA_EDR.inf">
@@ -67,14 +91,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="util.hpp">
-      <Filter>util</Filter>
-    </ClCompile>
     <ClCompile Include="DriverUnload.cpp">
       <Filter>UnLoad</Filter>
-    </ClCompile>
-    <ClCompile Include="APC.cpp">
-      <Filter>AGENT\EventLog\APC</Filter>
     </ClCompile>
     <ClCompile Include="util.cpp">
       <Filter>util</Filter>
@@ -85,6 +103,42 @@
     <ClCompile Include="ProcessUtil.cpp">
       <Filter>util\Process</Filter>
     </ClCompile>
+    <ClCompile Include="NotifyRoutine_ProcessCreation.cpp">
+      <Filter>AGENT\Event\NotifyRoutines\PsSetCreateProcessNotifyRoutineEx</Filter>
+    </ClCompile>
+    <ClCompile Include="EventLog.cpp">
+      <Filter>AGENT\LogSender\EventLog</Filter>
+    </ClCompile>
+    <ClCompile Include="Account.cpp">
+      <Filter>util\Accounts</Filter>
+    </ClCompile>
+    <ClCompile Include="HASH.cpp">
+      <Filter>util\Hash</Filter>
+    </ClCompile>
+    <ClCompile Include="FileJob.cpp">
+      <Filter>util\File</Filter>
+    </ClCompile>
+    <ClCompile Include="String_.cpp">
+      <Filter>util\String</Filter>
+    </ClCompile>
+    <ClCompile Include="NotifyRoutine.cpp">
+      <Filter>AGENT\Event\NotifyRoutines</Filter>
+    </ClCompile>
+    <ClCompile Include="NotifyRoutine_ImageLoad.cpp">
+      <Filter>AGENT\Event\NotifyRoutines\PsSetLoadImageNotifyRoutine</Filter>
+    </ClCompile>
+    <ClCompile Include="LogSender.cpp">
+      <Filter>AGENT\LogSender</Filter>
+    </ClCompile>
+    <ClCompile Include="User.cpp">
+      <Filter>util\UserSpace</Filter>
+    </ClCompile>
+    <ClCompile Include="APC.cpp">
+      <Filter>AGENT\APC</Filter>
+    </ClCompile>
+    <ClCompile Include="Network.cpp">
+      <Filter>AGENT\Event\WFP_Network</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DriverUnload.hpp">
@@ -94,16 +148,7 @@
       <Filter>util\API</Filter>
     </ClInclude>
     <ClInclude Include="EventLog.hpp">
-      <Filter>AGENT\EventLog</Filter>
-    </ClInclude>
-    <ClInclude Include="DEFINES.hpp">
-      <Filter>util\DEFINES</Filter>
-    </ClInclude>
-    <ClInclude Include="LogSender.hpp">
-      <Filter>AGENT\EventLog\Log_to_UserMode</Filter>
-    </ClInclude>
-    <ClInclude Include="APC.hpp">
-      <Filter>AGENT\EventLog\APC</Filter>
+      <Filter>AGENT\LogSender\EventLog</Filter>
     </ClInclude>
     <ClInclude Include="IOCTL.hpp">
       <Filter>AGENT\IOCTL</Filter>
@@ -113,6 +158,42 @@
     </ClInclude>
     <ClInclude Include="ProcessUtil.hpp">
       <Filter>util\Process</Filter>
+    </ClInclude>
+    <ClInclude Include="NotifyRoutine_ProcessCreation.hpp">
+      <Filter>AGENT\Event\NotifyRoutines\PsSetCreateProcessNotifyRoutineEx</Filter>
+    </ClInclude>
+    <ClInclude Include="NotifyRoutine_ImageLoad.hpp">
+      <Filter>AGENT\Event\NotifyRoutines\PsSetLoadImageNotifyRoutine</Filter>
+    </ClInclude>
+    <ClInclude Include="Account.hpp">
+      <Filter>util\Accounts</Filter>
+    </ClInclude>
+    <ClInclude Include="HASH.hpp">
+      <Filter>util\Hash</Filter>
+    </ClInclude>
+    <ClInclude Include="FileJob.hpp">
+      <Filter>util\File</Filter>
+    </ClInclude>
+    <ClInclude Include="String_.hpp">
+      <Filter>util\String</Filter>
+    </ClInclude>
+    <ClInclude Include="NotifyRoutine.hpp">
+      <Filter>AGENT\Event\NotifyRoutines</Filter>
+    </ClInclude>
+    <ClInclude Include="LogSender.hpp">
+      <Filter>AGENT\LogSender</Filter>
+    </ClInclude>
+    <ClInclude Include="User.hpp">
+      <Filter>util\UserSpace</Filter>
+    </ClInclude>
+    <ClInclude Include="util.hpp">
+      <Filter>util</Filter>
+    </ClInclude>
+    <ClInclude Include="APC.hpp">
+      <Filter>AGENT\APC</Filter>
+    </ClInclude>
+    <ClInclude Include="Network.hpp">
+      <Filter>AGENT\Event\WFP_Network</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

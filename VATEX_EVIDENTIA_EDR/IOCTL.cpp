@@ -11,7 +11,7 @@ namespace EDR
 			PDEVICE_OBJECT ioctl_device;
 		}
 
-		NTSTATUS INITIALIZE(PDRIVER_OBJECT DriverObject)
+		NTSTATUS INITIALIZE(PDRIVER_OBJECT DriverObject, PDEVICE_OBJECT* out)
 		{
 			if (!DriverObject)
 				return NULL;
@@ -53,6 +53,8 @@ namespace EDR
 			// Final STEP) 디바이스 활성화
 			resource::ioctl_device->Flags &= ~DO_DEVICE_INITIALIZING;
 
+			if (out)
+				*out = resource::ioctl_device;
 
 			return status; 
 		}
@@ -83,7 +85,7 @@ namespace EDR
 				PIO_STACK_LOCATION irpSp = IoGetCurrentIrpStackLocation(Irp); // Request Information
 
 				ULONG_PTR IoStatusInformation = 0;
-
+				debug_break();
 				switch (irpSp->Parameters.DeviceIoControl.IoControlCode)
 				{
 					case IOCTL_INIT:
@@ -120,6 +122,20 @@ namespace EDR
 			{
 				HANDLE User_AGENT_ProcessId = 0;
 				HANDLE User_AGENT_Process_Handle = NULL;
+
+				namespace function
+				{
+					VOID Set_User_AGENT_INFO(HANDLE AGENT_pid, HANDLE AGENT_handle)
+					{
+						InterlockedExchangePointer(&User_AGENT_ProcessId, AGENT_pid);
+						InterlockedExchangePointer(&User_AGENT_Process_Handle, AGENT_handle);
+					}
+					VOID Get_User_AGENT_INFO(HANDLE* AGENT_pid, HANDLE* AGENT_handle)
+					{
+						*AGENT_pid = (HANDLE)InterlockedCompareExchangePointer((PVOID*) & User_AGENT_ProcessId, 0, 0);
+						*AGENT_handle = (HANDLE)InterlockedCompareExchangePointer((PVOID*)&User_AGENT_Process_Handle, 0, 0);
+					}
+				}
 			}
 			VOID CleanUp_IOCTL_PROCESSING()
 			{
@@ -138,7 +154,7 @@ namespace EDR
 
 				// USER PID
 				resource::User_AGENT_ProcessId = User_ProcessId;
-
+				debug_break();
 				// USER PID -> HANDLE( 없는 경우 최초 1회진행 ) 
 				if (!resource::User_AGENT_Process_Handle)
 				{

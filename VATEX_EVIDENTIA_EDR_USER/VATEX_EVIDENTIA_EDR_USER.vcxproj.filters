@@ -1,17 +1,70 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="소스 파일">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    <Filter Include="Util">
+      <UniqueIdentifier>{aa24a685-628c-4092-ba9e-403faf48f2bf}</UniqueIdentifier>
     </Filter>
-    <Filter Include="헤더 파일">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    <Filter Include="IOCTL">
+      <UniqueIdentifier>{de3ffbc9-6777-43da-b186-758d54f5eb7b}</UniqueIdentifier>
     </Filter>
-    <Filter Include="리소스 파일">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    <Filter Include="LogReceiver">
+      <UniqueIdentifier>{b03f8bc0-7b17-42a7-9775-e140e430ef4f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Util\Kafka">
+      <UniqueIdentifier>{a3d977ca-eb61-4ed4-b181-22096fd2ce42}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Util\queue">
+      <UniqueIdentifier>{0acf7e06-9f3d-4c0c-abe7-fd1dc4d785ea}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="LogReceiver\APC">
+      <UniqueIdentifier>{30235319-e2ce-4729-b79a-17bc0c7d5840}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="LogReceiver\Sender">
+      <UniqueIdentifier>{245f3608-d070-474b-8f96-6484ec2a3b32}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="APC.cpp">
+      <Filter>LogReceiver\APC</Filter>
+    </ClCompile>
+    <ClCompile Include="LogReceiver.cpp">
+      <Filter>LogReceiver</Filter>
+    </ClCompile>
+    <ClCompile Include="queue.hpp">
+      <Filter>Util\queue</Filter>
+    </ClCompile>
+    <ClCompile Include="Kafka.cpp">
+      <Filter>Util\Kafka</Filter>
+    </ClCompile>
+    <ClCompile Include="IOCTL.cpp">
+      <Filter>IOCTL</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="APC.hpp">
+      <Filter>LogReceiver\APC</Filter>
+    </ClInclude>
+    <ClInclude Include="LogReceiver.hpp">
+      <Filter>LogReceiver</Filter>
+    </ClInclude>
+    <ClInclude Include="Kafka.hpp">
+      <Filter>Util\Kafka</Filter>
+    </ClInclude>
+    <ClInclude Include="Util.hpp">
+      <Filter>Util</Filter>
+    </ClInclude>
+    <ClInclude Include="ioctlcodes.hpp">
+      <Filter>IOCTL</Filter>
+    </ClInclude>
+    <ClInclude Include="EventLog.hpp">
+      <Filter>LogReceiver</Filter>
+    </ClInclude>
+    <ClInclude Include="IOCTL.hpp">
+      <Filter>IOCTL</Filter>
+    </ClInclude>
+    <ClInclude Include="LogSender.hpp">
+      <Filter>LogReceiver\Sender</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

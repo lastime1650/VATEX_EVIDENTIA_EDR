@@ -22,7 +22,7 @@ namespace EDR
 		
 
 		BOOLEAN INITIALIZE_APC(HANDLE USER_ThreadID, PVOID USER_APC_Handler); // APC 전역정보 초기화
-		BOOLEAN ApcToUser(ULONG64 cmd, PVOID UserAllocatedData);// APC 큐기반 유저모드에게 비동기적 데이터 전송
+		BOOLEAN ApcToUser(ULONG64 cmd, PVOID UserAllocatedData, ULONG64 DataSize);// APC 큐기반 유저모드에게 비동기적 데이터 전송
 		VOID CleanUp_APC();
 
 		
