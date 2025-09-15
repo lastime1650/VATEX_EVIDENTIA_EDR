@@ -5,6 +5,9 @@
 #include "NotifyRoutine.hpp"
 #include "LogSender.hpp"
 #include "Network.hpp"
+#include "MiniFilter.hpp"
+#include "Registry.hpp"
+#include "ObRegisterCallback.hpp"
 
 extern "C" NTSTATUS DriverEntry(PDRIVER_OBJECT driverobject, PUNICODE_STRING registerpath)
 {
@@ -38,6 +41,21 @@ extern "C" NTSTATUS DriverEntry(PDRIVER_OBJECT driverobject, PUNICODE_STRING reg
 
 	// 2. Network
 	status = EDR::WFP_Filter::Load_WFP_Filter(pDevice);
+	if (!NT_SUCCESS(status))
+		return status;
+
+	// 3. Filesystem
+	status = EDR::MiniFilter::Load_MiniFilter(driverobject);
+	if (!NT_SUCCESS(status))
+		return status;
+
+	// 4. Registry
+	//status = EDR::Registry::Load_RegistryCallback(driverobject);
+	//if (!NT_SUCCESS(status))
+	//	return status;
+
+	// 5. ObRegisterCallback
+	status = EDR::ObRegisterCallback::Load_ObRegisterCallbacks();
 	if (!NT_SUCCESS(status))
 		return status;
 

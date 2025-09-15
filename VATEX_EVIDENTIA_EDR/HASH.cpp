@@ -104,6 +104,97 @@ namespace EDR
                         return 0;
                     }
                 }
+
+
+                /*
+                    외부에서 Update방식으로 SHA256해싱할수 있도록 함
+                */
+                namespace with_UpdateMode
+                {
+
+                    // SHA256 초기화
+                    BOOLEAN SHA256_Initialize(struct SHA256_UPDATE_CTX* ctx)
+                    {
+                        if (!ctx)
+                            return FALSE;
+
+                        NTSTATUS status = BCryptOpenAlgorithmProvider(
+                            &ctx->hAlg,
+                            BCRYPT_SHA256_ALGORITHM,
+                            NULL,
+                            0
+                        );
+                        if (!NT_SUCCESS(status))
+                            return FALSE;
+
+                        status = BCryptCreateHash(
+                            ctx->hAlg,
+                            &ctx->hHash,
+                            NULL, // 버퍼 직접 할당하지 않고 자동 크기 사용
+                            0,
+                            NULL,
+                            0,
+                            0
+                        );
+                        if (!NT_SUCCESS(status))
+                        {
+                            BCryptCloseAlgorithmProvider(ctx->hAlg, 0);
+                            ctx->hAlg = NULL;
+                            return FALSE;
+                        }
+
+                        return TRUE;
+                    }
+
+                    // SHA256 점진적 업데이트
+                    BOOLEAN SHA256_Update(struct SHA256_UPDATE_CTX* ctx, PUCHAR CurrentPosition, ULONG32 chunkSize)
+                    {
+                        if (!ctx || !ctx->hHash || !CurrentPosition || chunkSize == 0)
+                            return FALSE;
+
+                        NTSTATUS status = BCryptHashData(
+                            ctx->hHash,
+                            CurrentPosition,
+                            chunkSize,
+                            0
+                        );
+
+                        return NT_SUCCESS(status);
+                    }
+
+                    ULONG32 SHA256_Finish(struct SHA256_UPDATE_CTX* ctx, PCHAR Buffer, ULONG32 BufferSize)
+                    {
+                        if (!ctx || !ctx->hHash || !Buffer || BufferSize < SHA256_String_Byte_Length)
+                            return 0;
+
+                        UCHAR hashData[SHA256_BINARY_LENGTH] = { 0 };
+
+                        NTSTATUS status = BCryptFinishHash(ctx->hHash, hashData, SHA256_BINARY_LENGTH, 0);
+
+                        // 해시 리소스 해제
+                        BCryptDestroyHash(ctx->hHash);
+                        ctx->hHash = NULL;
+
+                        if (ctx->hAlg)
+                        {
+                            BCryptCloseAlgorithmProvider(ctx->hAlg, 0);
+                            ctx->hAlg = NULL;
+                        }
+
+                        if (!NT_SUCCESS(status))
+                            return 0;
+
+                        // 바이너리 해시 -> 16진수 문자열
+                        for (ULONG i = 0; i < SHA256_BINARY_LENGTH; i++)
+                        {
+                            RtlStringCchPrintfA(&Buffer[i * 2], 3, "%02x", hashData[i]);
+                        }
+                        Buffer[SHA256_STRING_LENGTH] = '\0'; // NULL 종단
+
+                        return SHA256_String_Byte_Length;
+                    }
+                }
+
 			}
 
             VOID Release_Hashed(PCHAR HashBytes)

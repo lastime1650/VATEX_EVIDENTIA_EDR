@@ -6,6 +6,9 @@
 #include "NotifyRoutine.hpp"
 #include "LogSender.hpp"
 #include "Network.hpp"
+#include "MiniFilter.hpp"
+#include "Registry.hpp"
+#include "ObRegisterCallback.hpp"
 
 namespace EDR
 {
@@ -29,6 +32,15 @@ namespace EDR
 			
 			// Network 秦力
 			EDR::WFP_Filter::Cleanup_WFP_Filter();
+
+			// Minifilter 秦力
+			EDR::MiniFilter::CleanUp_MiniFilter();
+
+			// RegistryCallback 秦力
+			EDR::Registry::CleanUp_RegistryCallback();
+
+			// ObRegisterCallback 秦力
+			EDR::ObRegisterCallback::CleanUp_ObRegisterCallbacks();
 
 			return;
 		}

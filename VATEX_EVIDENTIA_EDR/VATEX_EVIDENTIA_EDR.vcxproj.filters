@@ -83,6 +83,9 @@
     <Filter Include="util\UserSpace">
       <UniqueIdentifier>{6c855ce4-37b7-45f1-b8d1-5296d8c60bba}</UniqueIdentifier>
     </Filter>
+    <Filter Include="AGENT\Response">
+      <UniqueIdentifier>{4db7d121-301a-4f47-8c2e-3705aa08f6ac}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Inf Include="VATEX_EVIDENTIA_EDR.inf">
@@ -139,6 +142,15 @@
     <ClCompile Include="Network.cpp">
       <Filter>AGENT\Event\WFP_Network</Filter>
     </ClCompile>
+    <ClCompile Include="MiniFilter.cpp">
+      <Filter>AGENT\Event\MiniFilter</Filter>
+    </ClCompile>
+    <ClCompile Include="Registry.cpp">
+      <Filter>AGENT\Event\Registry</Filter>
+    </ClCompile>
+    <ClCompile Include="ObRegisterCallback.cpp">
+      <Filter>AGENT\Event\ObregisterCallbacks</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DriverUnload.hpp">
@@ -194,6 +206,18 @@
     </ClInclude>
     <ClInclude Include="Network.hpp">
       <Filter>AGENT\Event\WFP_Network</Filter>
+    </ClInclude>
+    <ClInclude Include="MiniFilter.hpp">
+      <Filter>AGENT\Event\MiniFilter</Filter>
+    </ClInclude>
+    <ClInclude Include="Registry.hpp">
+      <Filter>AGENT\Event\Registry</Filter>
+    </ClInclude>
+    <ClInclude Include="ObRegisterCallback.hpp">
+      <Filter>AGENT\Event\ObregisterCallbacks</Filter>
+    </ClInclude>
+    <ClInclude Include="Response.hpp">
+      <Filter>AGENT\Response</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

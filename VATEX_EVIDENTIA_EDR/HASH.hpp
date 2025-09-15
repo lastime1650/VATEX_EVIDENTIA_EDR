@@ -20,6 +20,22 @@ namespace EDR
 			namespace SHA256
 			{
 				ULONG SHA256_Hasing(PCHAR* Output_Hashed, _In_ PUCHAR Data, _In_ SIZE_T DataSize);
+
+				namespace with_UpdateMode
+				{
+					struct SHA256_UPDATE_CTX
+					{
+						BCRYPT_ALG_HANDLE hAlg = NULL;
+						BCRYPT_HASH_HANDLE hHash = NULL;
+
+
+					};
+
+					BOOLEAN SHA256_Initialize(struct SHA256_UPDATE_CTX* ctx );
+					BOOLEAN SHA256_Update(struct SHA256_UPDATE_CTX* ctx, PUCHAR CurrentPosition, ULONG32 chunkSize);
+					ULONG32 SHA256_Finish(struct SHA256_UPDATE_CTX* ctx, PCHAR Buffer, ULONG32 BufferSize);
+				}
+
 			}
 
 			VOID Release_Hashed(PCHAR HashBytes);

@@ -94,9 +94,11 @@ namespace EDR
 				HANDLE ProcessId,
 				ULONG64 NanoTimestamp,
 
-				PCHAR Action,
-				ULONG32 ActionStrSize
+				EDR::EventLog::Enum::FileSystem::Filesystem_enum FsEnum,
+				UNICODE_STRING* Normalized_FilePath, // \harddisk..\,,\ ( DOS 파티션 알파벳이 아님 )
 
+				UNICODE_STRING* To_Renmae_FilePath // if NULL< not Rename.
+				
 			);
 
 			BOOLEAN NetworkLog(
@@ -113,15 +115,35 @@ namespace EDR
 
 				PUCHAR REMOTE_IP,
 				ULONG32 REMOTE_IP_StrSIze,
-				ULONG32 REMOTE_PORT,
+				ULONG32 REMOTE_PORT
+			);
 
-				PUCHAR RealPacketBinaryBuffer,
-				ULONG32 RealPacketBinaryBufferSize
+			// Registry
+			BOOLEAN Registry_by_CompleteorObjectNameLog(
+				EDR::EventLog::Enum::Registry::Registry_enum KeyClass, HANDLE ProcessId, ULONG64 NanoTimestamp,
+				PUNICODE_STRING CompleteName
+			);
+			BOOLEAN Registry_by_SetNameLog( // rename 포함
+				EDR::EventLog::Enum::Registry::Registry_enum KeyClass, HANDLE ProcessId, ULONG64 NanoTimestamp, 
+				PUNICODE_STRING Object, PUNICODE_STRING Name
+			);
+
+			//ObRegisterCallback
+			BOOLEAN ObRegisterCallbackLog(
+				HANDLE ProcessId,
+				ULONG64 NanoTimestamp,
+
+				BOOLEAN is_CreateHandleInformation,
+				ULONG32 DesiredAccess,
+				HANDLE Target_ProcessId
 			);
 		}
 		
 		namespace helper
 		{
+			BOOLEAN CHAR_to_FILESIZE(PCHAR FIlePathBuffer, ULONG32 FIlePathBufferSize, SIZE_T* FileSize);
+			BOOLEAN CHAR_to_HASH(PCHAR FIlePathBuffer, ULONG32 FIlePathBufferSize, PCHAR out_HASHBUFFER, SIZE_T* out_FileSize);
+
 			// UNICODE_STRING to CHAR
 			BOOLEAN UNICODE_to_CHAR(PUNICODE_STRING input, CHAR* Buffer, SIZE_T BUfferSIze);
 

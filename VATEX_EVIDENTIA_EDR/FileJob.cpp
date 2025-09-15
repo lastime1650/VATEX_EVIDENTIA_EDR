@@ -1,5 +1,6 @@
 #include "FileJob.hpp"
-
+#include "HASH.hpp"
+#include <intrin.h>
 namespace EDR
 {
 	namespace Util
@@ -8,6 +9,191 @@ namespace EDR
 		{
 			namespace Read
 			{
+
+
+                NTSTATUS Get_FIleSIze(PUNICODE_STRING FilePath, SIZE_T* FIleSIze)
+                {
+                    NTSTATUS status = STATUS_UNSUCCESSFUL;
+                    HANDLE fileHandle = NULL;
+                    OBJECT_ATTRIBUTES objAttr;
+                    IO_STATUS_BLOCK ioStatus = { 0 };
+                    FILE_STANDARD_INFORMATION fileInfo = { 0 };
+
+                    // 열기
+                    InitializeObjectAttributes(&objAttr,
+                        FilePath,
+                        OBJ_CASE_INSENSITIVE | OBJ_KERNEL_HANDLE,
+                        NULL,
+                        NULL);
+
+                    status = ZwOpenFile(&fileHandle,
+                        GENERIC_READ,
+                        &objAttr,
+                        &ioStatus,
+                        FILE_SHARE_READ | FILE_SHARE_WRITE,
+                        FILE_SYNCHRONOUS_IO_NONALERT);
+                    if (!NT_SUCCESS(status))
+                        return status;
+
+                    // 파일 사이즈 조회
+                    status = ZwQueryInformationFile(
+                        fileHandle,
+                        &ioStatus,
+                        &fileInfo,
+                        sizeof(fileInfo),
+                        FileStandardInformation
+                    );
+                    if (!NT_SUCCESS(status)) {
+                        ZwClose(fileHandle);
+                        return status;
+                    }
+
+                    *FIleSIze = (SIZE_T)fileInfo.EndOfFile.QuadPart;
+                    ZwClose(fileHandle);
+                    return STATUS_SUCCESS;
+                }
+
+                // OutSHAHexBuffer: 최소 SHA_HEX_SIZE 바이트 확보 필요
+
+                #define HASH_CHUNK_SIZE   (5 * 1024 * 1024) // 5MB chunk (원하면 상수 변경 가능)
+                NTSTATUS ReadFileAndComputeSHA256(
+                    _In_ UNICODE_STRING FilePath,
+                     _Inout_ PCHAR OutSHAHexBuffer,
+                     _Out_ SIZE_T* FileSize
+                )
+                {
+                    if (!FilePath.Buffer || FilePath.Length == 0)
+                        return STATUS_INVALID_PARAMETER_1;
+                    if (!OutSHAHexBuffer)
+                        return STATUS_INVALID_PARAMETER_2;
+
+                    NTSTATUS status = STATUS_UNSUCCESSFUL;
+                    HANDLE fileHandle = NULL;
+                    OBJECT_ATTRIBUTES objAttr;
+                    IO_STATUS_BLOCK ioStatus = { 0 };
+                    FILE_STANDARD_INFORMATION fileInfo = { 0 };
+                    PUCHAR chunkBuffer = NULL;
+                    SIZE_T chunkSize = HASH_CHUNK_SIZE;
+                    SIZE_T totalSize = 0;
+                    SIZE_T bytesRemaining = 0;
+                    ULONG bytesRead = 0;
+
+                    // 열기
+                    InitializeObjectAttributes(&objAttr,
+                        &FilePath,
+                        OBJ_CASE_INSENSITIVE | OBJ_KERNEL_HANDLE,
+                        NULL,
+                        NULL);
+
+                    status = ZwOpenFile(&fileHandle,
+                        GENERIC_READ,
+                        &objAttr,
+                        &ioStatus,
+                        FILE_SHARE_READ | FILE_SHARE_WRITE,
+                        FILE_SYNCHRONOUS_IO_NONALERT);
+                    if (!NT_SUCCESS(status))
+                        return status;
+
+                    // 파일 사이즈 조회
+                    status = ZwQueryInformationFile(
+                        fileHandle,
+                        &ioStatus,
+                        &fileInfo,
+                        sizeof(fileInfo),
+                        FileStandardInformation
+                    );
+                    if (!NT_SUCCESS(status)) {
+                        ZwClose(fileHandle);
+                        return status;
+                    }
+
+                    totalSize = (SIZE_T)fileInfo.EndOfFile.QuadPart;
+                    *FileSize = totalSize;
+                    if (totalSize == 0) {
+                        // 빈 파일
+                        OutSHAHexBuffer[0] = '\0'; // 초기화 보장
+                        ZwClose(fileHandle);
+                        return STATUS_SUCCESS;
+                    }
+
+                    // chunk buffer 할당 (paged)
+                    if (chunkSize > totalSize)
+                        chunkSize = totalSize;
+
+                    chunkBuffer = (PUCHAR)ExAllocatePool2(POOL_FLAG_PAGED, chunkSize, FILEJOB_ALLOC_TAG);
+                    if (!chunkBuffer) {
+                        ZwClose(fileHandle);
+                        return STATUS_INSUFFICIENT_RESOURCES;
+                    }
+
+                    // SHA 초기화
+                    EDR::Util::Hash::SHA256::with_UpdateMode::SHA256_UPDATE_CTX shaCtx = { 0 };
+                    if (!EDR::Util::Hash::SHA256::with_UpdateMode::SHA256_Initialize(&shaCtx)) {
+                        ExFreePoolWithTag(chunkBuffer, FILEJOB_ALLOC_TAG);
+                        ZwClose(fileHandle);
+                        return STATUS_INTERNAL_ERROR;
+                    }
+
+                    // 순차적으로 읽어가며 해시 업데이트
+                    bytesRemaining = totalSize;
+                    while (bytesRemaining > 0) {
+                        ULONG toRead = (ULONG)min(chunkSize, bytesRemaining);
+
+                        // ZwReadFile: 파일 핸들이 synchronous로 열려 있으므로 ByteOffset == NULL로 순차 읽기
+                        status = ZwReadFile(
+                            fileHandle,
+                            NULL,
+                            NULL,
+                            NULL,
+                            &ioStatus,
+                            chunkBuffer,
+                            toRead,
+                            NULL,
+                            NULL
+                        );
+
+                        if (status == STATUS_PENDING) {
+                            // 동기 핸들로 열었을 때는 보통 Pending이 발생하지 않지만, 안전히 처리
+                            status = ZwWaitForSingleObject(fileHandle, FALSE, NULL);
+                            // 이후 ioStatus.Status 확인
+                            status = ioStatus.Status;
+                        }
+
+                        if (!NT_SUCCESS(status)) {
+                            // 실패 시 정리
+                            EDR::Util::Hash::SHA256::with_UpdateMode::SHA256_Finish(&shaCtx, OutSHAHexBuffer, SHA256_String_Byte_Length); // cleanup inside
+                            ExFreePoolWithTag(chunkBuffer, FILEJOB_ALLOC_TAG);
+                            ZwClose(fileHandle);
+                            return status;
+                        }
+
+                        // 실제 읽은 바이트 수
+                        bytesRead = (ULONG)ioStatus.Information;
+                        if (bytesRead == 0)
+                            break;
+
+                        // Update 해시 (bytesRead 만큼)
+                        if (!EDR::Util::Hash::SHA256::with_UpdateMode::SHA256_Update(&shaCtx, chunkBuffer, bytesRead)) {
+                            EDR::Util::Hash::SHA256::with_UpdateMode::SHA256_Finish(&shaCtx, OutSHAHexBuffer, SHA256_String_Byte_Length);
+                            ExFreePoolWithTag(chunkBuffer, FILEJOB_ALLOC_TAG);
+                            ZwClose(fileHandle);
+                            return STATUS_INTERNAL_ERROR;
+                        }
+
+                        bytesRemaining -= bytesRead;
+                    }
+
+                    // 최종 해시 문자열 생성
+                    ULONG32 hexLen = EDR::Util::Hash::SHA256::with_UpdateMode::SHA256_Finish(&shaCtx, OutSHAHexBuffer, SHA256_String_Byte_Length);
+                    // 정리
+                    ExFreePoolWithTag(chunkBuffer, FILEJOB_ALLOC_TAG);
+                    ZwClose(fileHandle);
+
+                    if (hexLen != SHA256_String_Byte_Length)
+                        return STATUS_INTERNAL_ERROR;
+
+                    return STATUS_SUCCESS;
+                }
 				
 				NTSTATUS ReadFile(_In_ UNICODE_STRING FilePath, _Inout_ PUCHAR* FileBytes, _Inout_ SIZE_T* FileBytesSize)
 				{

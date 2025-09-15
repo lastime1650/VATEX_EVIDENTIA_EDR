@@ -21,6 +21,7 @@ UINT32 g_wpsCalloutIds[NUM_LAYERS] = { 0 };
 UINT32 g_wpmCalloutIds[NUM_LAYERS] = { 0 };
 UINT64 g_wpmFilterIds[NUM_LAYERS] = { 0 };
 
+// Heavy
 BOOLEAN Copy_Packet_Data(
 	void* layerData,
 
@@ -30,6 +31,8 @@ BOOLEAN Copy_Packet_Data(
 	ULONG* actualSize,
 	ULONG* ProtocolNumber
 );
+
+BOOLEAN Get_Packet_Size(void* layerData, ULONG32* PacketSize, ULONG32* ProtocolNumber);
 
 NTSTATUS NDIS_PacketFilter_Register(PDEVICE_OBJECT DeviceObject);
 NTSTATUS GenerateGUID(_Inout_ GUID* inout_guid);
@@ -43,7 +46,7 @@ namespace EDR
 		namespace Handler
 		{
 			#define PACKETBUFFALLOC 'PKBF'
-			#define PACKETBUFFMAXIMUMSIZE 65535
+			#define PACKETBUFFMAXIMUMSIZE 16384//65535
 			extern "C" void FwpsCalloutClassifyFn3(
 				_In_ const FWPS_INCOMING_VALUES0* inFixedValues,
 				_In_ const FWPS_INCOMING_METADATA_VALUES0* inMetaValues,
@@ -122,19 +125,7 @@ namespace EDR
 					return;
 				}
 				}
-				PUCHAR RealPacketBinaryBuffer = (PUCHAR)ExAllocatePool2(POOL_FLAG_NON_PAGED, PACKETBUFFMAXIMUMSIZE, PACKETBUFFALLOC);
-				RtlZeroMemory(RealPacketBinaryBuffer, PACKETBUFFMAXIMUMSIZE);
-				ULONG32 RealPacketBinaryBufferSize = 0;
-				if (!Copy_Packet_Data(
-						layerData,
-						RealPacketBinaryBuffer,
-						PACKETBUFFMAXIMUMSIZE,
-						(ULONG*)&packetSize,
-						(ULONG*)& protocolNumber
-					)
-				)
-					return;
-				RealPacketBinaryBufferSize = packetSize;
+				Get_Packet_Size(layerData, &packetSize, &protocolNumber);
 
 
 				CHAR localIpStr[16] = { 0 }; // "xxx.xxx.xxx.xxx" (최대 15자) + NULL
@@ -166,13 +157,8 @@ namespace EDR
 
 					(PUCHAR)remoteIpStr,
 					(ULONG32)strlen(remoteIpStr),
-					remotePort,
-
-					RealPacketBinaryBuffer,
-					RealPacketBinaryBufferSize
+					remotePort
 				);
-
-				ExFreePoolWithTag(RealPacketBinaryBuffer, PACKETBUFFALLOC);
 
 				return;
 			}
@@ -275,7 +261,7 @@ BOOLEAN Copy_Packet_Data(
 	return TRUE;
 }
 
-/*
+
 BOOLEAN Get_Packet_Size(void* layerData, ULONG32* PacketSize, ULONG32* ProtocolNumber) {
 
 	// PAGED_CODE(); // CalloutFn은 DISPATCH_LEVEL에서 실행될 수 있으므로 PAGED_CODE 주석 처리 또는 제거
@@ -320,7 +306,7 @@ BOOLEAN Get_Packet_Size(void* layerData, ULONG32* PacketSize, ULONG32* ProtocolN
 
 	return TRUE;
 }
-*/
+
 
 NTSTATUS Set_CallOut(
 	PDEVICE_OBJECT DeviceObject,

@@ -18,9 +18,47 @@ namespace EDR
 				Network,
 
 				Filesystem,
-				ImageLoad
+
+				Registry_CompleteNameLog, // Registry - CompleteName
+
+				ImageLoad,
+				ObRegisterCallback
 
 			};
+
+			namespace FileSystem
+			{
+				// Filesystem
+				enum Filesystem_enum
+				{
+					create = 1,
+					remove,
+					rename,
+					read,
+					write
+				};
+			}
+
+
+			namespace Registry
+			{
+				//Registry
+				enum Registry_enum
+				{
+					RegNtPreDeleteKey = 0,
+					RegNtPreSetValueKey = 1,
+					RegNtPreDeleteValueKey = 2,
+					RegNtPreSetInformationKey = 3,
+					RegNtPreRenameKey = 4,
+
+					RegNtPreQueryKey = 7,
+					RegNtPreQueryValueKey = 8,
+					RegNtPreQueryMultipleValueKey = 9,
+					RegNtPreCreateKeyEx = 26,
+					RegNtPreOpenKeyEx = 28
+				};
+			}
+
 		}
 
 		namespace Struct
@@ -33,124 +71,182 @@ namespace EDR
 				HANDLE ProcessId;
 				ULONG64 NanoTimestamp;
 				CHAR Version[256];
+
 			};
-
-			// Process_Create
-			struct EventLog_Process_Create
+			namespace Process
 			{
-				struct EventLog_Header header;
-
-				struct
+				// Process_Create
+				struct EventLog_Process_Create
 				{
-					HANDLE Parent_ProcessId;
+					struct EventLog_Header header;
 
-					/*
-						[POST]
-							비동기 후속 작업 요구
-					*/
 					struct
 					{
-						CHAR SID[256];
+						HANDLE Parent_ProcessId;
 
 
-						ULONG64 Self_Process_exe_size;
-						CHAR Self_Process_exe_SHA256[65];
-						CHAR Self_Process_exe_path[4096];
+						/*
+							[POST]
+								비동기 후속 작업 요구
+						*/
+						struct
+						{
+							CHAR SID[256];
 
-						ULONG64 Parent_Process_exe_size;
-						CHAR Parent_Process_exe_SHA256[65];
-						CHAR Parent_Process_exe_path[4096];
 
-					}post;
-				}body;
-			};
+							ULONG64 Self_Process_exe_size;
+							CHAR Self_Process_exe_SHA256[65];
+							CHAR Self_Process_exe_path[4096];
 
-			// Process_Terminate
-			struct EventLog_Process_Terminate
-			{
-				struct EventLog_Header header;
+							ULONG64 Parent_Process_exe_size;
+							CHAR Parent_Process_exe_SHA256[65];
+							CHAR Parent_Process_exe_path[4096];
 
-				CHAR ImagePathAnsi[4096];
+						}post;
 
-				struct
+					}body;
+
+				};
+
+				// Process_Terminate
+				struct EventLog_Process_Terminate
 				{
-					ULONG64 Parent_Process_exe_size;
-					CHAR Parent_Process_exe_SHA256[65];
-				}post;
-			};
+					struct EventLog_Header header;
+				};
+			}
 
-			// ImageLoad
-			struct EventLog_Process_ImageLoad
+			namespace ImageLoad
 			{
-				struct EventLog_Header header;
-
-				struct
+				// ImageLoad
+				struct EventLog_ImageLoad
 				{
+					struct EventLog_Header header;
 
-					/*
-						[POST]
-							비동기 후속 작업 요구
-					*/
 					struct
 					{
-						CHAR SID[256];
+						CHAR ImagePathAnsi[4096];
 
-						CHAR ImagePath[4096];
-						CHAR ImageSHA256[65];
-						SIZE_T ImageSize;
+						struct
+						{
+							ULONG64 Parent_Process_exe_size;
+							CHAR Parent_Process_exe_SHA256[65];
+						}post;
 
-					}post;
+					}body;
+				};
+			}
 
-				}body;
-
-			};
-
-			// Network
-			struct EventLog_Process_Network
+			namespace Network
 			{
-				struct EventLog_Header header;
-
-				struct
+				// Network
+				struct EventLog_Process_Network
 				{
+					struct EventLog_Header header;
 
-					/*
-						[POST]
-							비동기 후속 작업 요구
-					*/
-					ULONG32 ProtocolNumber;
-					BOOLEAN is_INBOUND;
-					ULONG32 PacketSize;
-
-					CHAR LOCAL_IP[16];
-					ULONG32 LOCAL_PORT;
-
-					CHAR REMOTE_IP[16];
-					ULONG32 REMOTE_PORT;
-
-					UCHAR PacketBinary[65535];
-					ULONG32 PacketBinSize;
-
-				}body;
-
-			};
-
-			// Filesystem
-			struct EventLog_Process_Filesystem
-			{
-				struct EventLog_Header header;
-
-				struct
-				{
-
-					/*
-						[POST]
-							비동기 후속 작업 요구
-					*/
 					struct
 					{
-						CHAR SID[256];
 
-					}post;
+						ULONG32 ProtocolNumber;
+						BOOLEAN is_INBOUND;
+						ULONG32 PacketSize;
+
+						CHAR LOCAL_IP[16];
+						ULONG32 LOCAL_PORT;
+
+						CHAR REMOTE_IP[16];
+						ULONG32 REMOTE_PORT;
+
+					}body;
+
+				};
+			}
+
+
+			namespace FileSystem
+			{
+				// Filesystem
+				// Filesystem
+				struct EventLog_Process_Filesystem
+				{
+					struct EventLog_Header header;
+
+					struct
+					{
+
+						/*
+							비동기 후속처리
+						*/
+						struct
+						{
+							ULONG64 FileSize;
+						}post;
+
+						Enum::FileSystem::Filesystem_enum Action;
+						CHAR FilePath[4096];
+
+						struct
+						{
+							BOOLEAN is_valid;
+							CHAR RenameFilePath[4096];
+						}rename;
+
+					}body;
+
+				};
+			}
+
+			namespace Registry
+			{
+				// Registry
+				struct EventLog_Process_Registry_CompleteorObjectNameLog
+				{
+					struct EventLog_Header header;
+
+					struct
+					{
+
+						Enum::Registry::Registry_enum FunctionName;
+						CHAR Name[4096];
+
+
+					}body;
+
+				};
+			}
+
+			namespace ObRegisterCallback
+			{
+				// ObRegisterCallback
+				struct EventLog_Process_ObRegisterCallback
+				{
+					struct EventLog_Header header;
+
+					struct
+					{
+						BOOLEAN is_CreateHandleInformation; // if TRUE, CreateHandle / else DuplicateHandleInformation
+						HANDLE Target_ProcessId;
+						CHAR TargetProcess_Path[4096];
+						ULONG32 DesiredAccess; // 접근권한
+					}body;
+
+				};
+			}
+
+
+			// ProcessAccess
+			// ObRegisterCallback으로 해당 프로세스가 다른 프로세스에 영향이 가는지 확인
+
+			struct EventLog_Process_ProcessAccess
+			{
+				struct EventLog_Header header;
+
+				struct
+				{
+
+
+					HANDLE SourceProcessId;
+					HANDLE TargetProcessId;
+
 
 				}body;
 

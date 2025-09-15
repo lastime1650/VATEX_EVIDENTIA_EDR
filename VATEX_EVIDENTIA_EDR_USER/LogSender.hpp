@@ -16,7 +16,7 @@ namespace EDR
 				// 프로세스 생성
 
 			private:
-				EDR::Util::Kafka::Kafka& Kafka
+				EDR::Util::Kafka::Kafka& Kafka;
 		};
 	}
 }

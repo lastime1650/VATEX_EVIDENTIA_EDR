@@ -29,7 +29,7 @@ namespace EDR
 						{
 						case EDR::EventLog::Enum::Process_Create:
 						{
-							EDR::EventLog::Struct::EventLog_Process_Create* ProcessCreatedLog = reinterpret_cast<EDR::EventLog::Struct::EventLog_Process_Create*>(Log.logData);
+							EDR::EventLog::Struct::Process::EventLog_Process_Create* ProcessCreatedLog = reinterpret_cast<EDR::EventLog::Struct::Process::EventLog_Process_Create*>(Log.logData);
 							std::cout << "SID: " << ProcessCreatedLog->body.post.SID << std::endl;
 							break;
 						}
@@ -42,6 +42,14 @@ namespace EDR
 							break;
 						}
 						case EDR::EventLog::Enum::Network:
+						{
+							break;
+						}
+						case EDR::EventLog::Enum::Filesystem:
+						{
+							break;
+						}
+						case EDR::EventLog::Enum::ObRegisterCallback:
 						{
 							break;
 						}
