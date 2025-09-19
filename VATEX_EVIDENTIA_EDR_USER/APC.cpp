@@ -18,7 +18,7 @@ namespace EDR
 			PVOID AllocatedLogData = SystemArgument1;
 			ULONG64 AllocatedLogData_Size = (ULONG64)SystemArgument2;
 
-			std::cout << "NormalContext: " << type << " Arg1: " << AllocatedLogData << " Arg2: " << AllocatedLogData_Size << std::endl;
+			//std::cout << "NormalContext: " << type << " Arg1: " << AllocatedLogData << " Arg2: " << AllocatedLogData_Size << std::endl;
 
 			EDR::EventLog::HandlerLog::HandlerLog_s log_s;
 

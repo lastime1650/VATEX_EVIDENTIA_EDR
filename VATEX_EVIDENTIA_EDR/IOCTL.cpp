@@ -85,7 +85,7 @@ namespace EDR
 				PIO_STACK_LOCATION irpSp = IoGetCurrentIrpStackLocation(Irp); // Request Information
 
 				ULONG_PTR IoStatusInformation = 0;
-				debug_break();
+				//debug_break();
 				switch (irpSp->Parameters.DeviceIoControl.IoControlCode)
 				{
 					case IOCTL_INIT:
@@ -142,8 +142,9 @@ namespace EDR
 				if (!resource::User_AGENT_Process_Handle)
 					EDR::Util::Process::Handle::ReleaseLookupProcessHandlebyProcessId(resource::User_AGENT_Process_Handle);
 			}
-
-			NTSTATUS INITIALIZE(struct IOCTL_INIT_s* parameter1)
+			
+			// 1. 
+			BOOLEAN INITIALIZE(struct IOCTL_INIT_s* parameter1)
 			{
 				NTSTATUS status;
 				HANDLE User_ProcessId = parameter1->input.User_AGENT_ProcessId;
@@ -154,7 +155,7 @@ namespace EDR
 
 				// USER PID
 				resource::User_AGENT_ProcessId = User_ProcessId;
-				debug_break();
+				//debug_break();
 				// USER PID -> HANDLE( 없는 경우 최초 1회진행 ) 
 				if (!resource::User_AGENT_Process_Handle)
 				{
@@ -162,7 +163,7 @@ namespace EDR
 					if (!NT_SUCCESS(status))
 					{
 						is_complete_init = FALSE;
-						return status;
+						return is_complete_init;
 					}
 						
 				}
@@ -172,12 +173,12 @@ namespace EDR
 				if (!NT_SUCCESS(status))
 				{
 					is_complete_init = FALSE;
-					return status;
+					return is_complete_init;
 				}
 
 
 				is_complete_init = TRUE;
-				return status;
+				return is_complete_init;
 			}
 		}
 	}

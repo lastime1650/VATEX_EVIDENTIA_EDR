@@ -45,8 +45,8 @@ namespace EDR
 
 		namespace Handler
 		{
-			#define PACKETBUFFALLOC 'PKBF'
-			#define PACKETBUFFMAXIMUMSIZE 16384//65535
+			//#define PACKETBUFFALLOC 'PKBF'
+			//#define PACKETBUFFMAXIMUMSIZE 9216 // MTU (15xx + VLAN TAG + JumboFrame.. )
 			extern "C" void FwpsCalloutClassifyFn3(
 				_In_ const FWPS_INCOMING_VALUES0* inFixedValues,
 				_In_ const FWPS_INCOMING_METADATA_VALUES0* inMetaValues,
@@ -56,9 +56,9 @@ namespace EDR
 				_In_ UINT64 flowContext,
 				_Inout_ FWPS_CLASSIFY_OUT0* classifyOut
 			){
-				// DISPATCH 레벨 이상.
+				// DISPATCH 레벨 수준
 				//UNREFERENCED_PARAMETER(inFixedValues);
-				UNREFERENCED_PARAMETER(inMetaValues);
+				//UNREFERENCED_PARAMETER(inMetaValues);
 				//UNREFERENCED_PARAMETER(layerData);
 				UNREFERENCED_PARAMETER(classifyContext);
 				UNREFERENCED_PARAMETER(filter);
@@ -72,6 +72,12 @@ namespace EDR
 				if (PID == EDR::IOCTL::IOCTL_PROCESSING::resource::User_AGENT_ProcessId)
 					return;
 
+
+
+				// interfac e
+				ULONG32 NetworkInterfaceIndex;
+
+
 				BOOLEAN is_inbound = FALSE;
 				ULONG32 protocolNumber = 0;
 				ULONG32 packetSize = 0;
@@ -83,6 +89,7 @@ namespace EDR
 				switch (inFixedValues->layerId) {
 				case FWPS_LAYER_INBOUND_TRANSPORT_V4:
 				{
+
 					is_inbound = TRUE;
 					//protocolNumber = inFixedValues->incomingValue[FWPS_FIELD_INBOUND_TRANSPORT_V4_IP_PROTOCOL].value.uint8;
 					localIp = inFixedValues->incomingValue[FWPS_FIELD_INBOUND_TRANSPORT_V4_IP_LOCAL_ADDRESS].value.uint32;
@@ -127,6 +134,14 @@ namespace EDR
 				}
 				Get_Packet_Size(layerData, &packetSize, &protocolNumber);
 
+				if (is_inbound)
+				{
+					NetworkInterfaceIndex = inMetaValues->destinationInterfaceIndex;
+				}
+				else
+				{
+					NetworkInterfaceIndex = inMetaValues->sourceInterfaceIndex;
+				}
 
 				CHAR localIpStr[16] = { 0 }; // "xxx.xxx.xxx.xxx" (최대 15자) + NULL
 				CHAR remoteIpStr[16] = { 0 };
@@ -139,7 +154,7 @@ namespace EDR
 				// Remote IP 변환
 				addr.S_un.S_addr = RtlUlongByteSwap(remoteIp);
 				RtlIpv4AddressToStringA(&addr, remoteIpStr);
-
+				
 				// 준비된 모든 정보를 사용하여 유저 모드로 로그를 전송합니다.
 				EDR::LogSender::function::NetworkLog(
 					PID,
@@ -154,10 +169,12 @@ namespace EDR
 					(PUCHAR)localIpStr,
 					(ULONG32)strlen(localIpStr), 
 					localPort,
-
+					
 					(PUCHAR)remoteIpStr,
 					(ULONG32)strlen(remoteIpStr),
-					remotePort
+					remotePort,
+
+					NetworkInterfaceIndex
 				);
 
 				return;
@@ -217,6 +234,7 @@ namespace EDR
 		}
 	}
 }
+
 
 
 BOOLEAN Copy_Packet_Data(

@@ -11,7 +11,7 @@ namespace EDR
 
 	namespace LogSender
 	{
-
+		extern KMUTEX g_mutex;
 		BOOLEAN INITIALIZE();
 		VOID CleanUp();
 
@@ -75,7 +75,8 @@ namespace EDR
 				HANDLE ProcessId,
 				ULONG64 NanoTimestamp,
 
-				HANDLE Parent_ProcessId
+				HANDLE Parent_ProcessId,
+				PCUNICODE_STRING CommandLine
 			);
 
 			BOOLEAN ProcessTerminateLog(
@@ -115,7 +116,9 @@ namespace EDR
 
 				PUCHAR REMOTE_IP,
 				ULONG32 REMOTE_IP_StrSIze,
-				ULONG32 REMOTE_PORT
+				ULONG32 REMOTE_PORT,
+
+				ULONG32 NetworkInterfaceIndex
 			);
 
 			// Registry
@@ -137,24 +140,6 @@ namespace EDR
 				ULONG32 DesiredAccess,
 				HANDLE Target_ProcessId
 			);
-		}
-		
-		namespace helper
-		{
-			BOOLEAN CHAR_to_FILESIZE(PCHAR FIlePathBuffer, ULONG32 FIlePathBufferSize, SIZE_T* FileSize);
-			BOOLEAN CHAR_to_HASH(PCHAR FIlePathBuffer, ULONG32 FIlePathBufferSize, PCHAR out_HASHBUFFER, SIZE_T* out_FileSize);
-
-			// UNICODE_STRING to CHAR
-			BOOLEAN UNICODE_to_CHAR(PUNICODE_STRING input, CHAR* Buffer, SIZE_T BUfferSIze);
-
-			BOOLEAN Process_to_HASH(HANDLE ProcessId, CHAR* out_ImagePathNameBuffer, SIZE_T in_ImagePathNameBufferSIze, SIZE_T* out_ImageFileSize, CHAR* out_SHA256Buffer, SIZE_T SHA256BufferSize);
-			BOOLEAN FilePath_to_HASH(PUNICODE_STRING UnicodeImagePath, SIZE_T* out_ImageFileSize, CHAR* inout_SHA256Buffer, SIZE_T SHA256BufferSize);
-
-			// PID to CHAR
-			BOOLEAN Process_to_CHAR(HANDLE ProcessHandle, CHAR* Buffer, SIZE_T BUfferSIze);
-			
-			// SID copy to CHAR
-			BOOLEAN SID_to_CHAR(HANDLE ProcessId, CHAR* Buffer, SIZE_T BUfferSIze);
 		}
 
 	}

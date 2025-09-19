@@ -24,6 +24,11 @@ namespace EDR
 				VOID ReleaseLookupProcessAbsoluteImagePathbyProcessHandle(PUNICODE_STRING Input_unicode);
 			}
 
+			namespace Terminate
+			{
+				// 
+				NTSTATUS TerminateProcess(HANDLE ProcessId);
+			}
 
 		}
 	}

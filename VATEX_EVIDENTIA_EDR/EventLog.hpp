@@ -83,7 +83,7 @@ namespace EDR
 					struct
 					{
 						HANDLE Parent_ProcessId;
-
+						CHAR CommandLine[4096];
 
 						/*
 							[POST]
@@ -155,6 +155,13 @@ namespace EDR
 
 						CHAR REMOTE_IP[16];
 						ULONG32 REMOTE_PORT;
+
+						ULONG32 ifindex; // 유저모드에서 인터페이스 이름 추출 필요
+
+						struct
+						{
+							CHAR InterfaceName[256];
+						}post;
 
 					}body;
 

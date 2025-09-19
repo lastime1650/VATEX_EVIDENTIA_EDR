@@ -19,8 +19,26 @@
     <Filter Include="LogReceiver\APC">
       <UniqueIdentifier>{30235319-e2ce-4729-b79a-17bc0c7d5840}</UniqueIdentifier>
     </Filter>
-    <Filter Include="LogReceiver\Sender">
-      <UniqueIdentifier>{245f3608-d070-474b-8f96-6484ec2a3b32}</UniqueIdentifier>
+    <Filter Include="LogReceiver\LogSender">
+      <UniqueIdentifier>{29561db6-b5e0-4758-9dfd-72591e843f37}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Util\Timestamp">
+      <UniqueIdentifier>{b29fa460-7a79-455a-bf87-9c232de7c08d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="SessionManager">
+      <UniqueIdentifier>{51668256-14a0-44eb-8f56-f3f514850f3f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="SessionManager\ProcessSession">
+      <UniqueIdentifier>{5efe1d7d-8050-41bb-8c4a-b3d519d2c88c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="SessionManager\NetworkSession">
+      <UniqueIdentifier>{834a10cd-3adf-4cdc-b793-9955ec5b2bec}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Util\Hash">
+      <UniqueIdentifier>{2ebd6898-99bd-43e5-adbc-e150d3e9f2db}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Util\Windows">
+      <UniqueIdentifier>{38946364-bc15-4eda-92d7-67e7431289e7}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -39,6 +57,24 @@
     </ClCompile>
     <ClCompile Include="IOCTL.cpp">
       <Filter>IOCTL</Filter>
+    </ClCompile>
+    <ClCompile Include="LogSender.cpp">
+      <Filter>LogReceiver\LogSender</Filter>
+    </ClCompile>
+    <ClCompile Include="Timestamp.cpp">
+      <Filter>Util\Timestamp</Filter>
+    </ClCompile>
+    <ClCompile Include="ProcessSession.cpp">
+      <Filter>SessionManager\ProcessSession</Filter>
+    </ClCompile>
+    <ClCompile Include="Hash.cpp">
+      <Filter>Util\Hash</Filter>
+    </ClCompile>
+    <ClCompile Include="Windows.hpp">
+      <Filter>Util\Windows</Filter>
+    </ClCompile>
+    <ClCompile Include="Windows.cpp">
+      <Filter>Util\Windows</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -64,7 +100,19 @@
       <Filter>IOCTL</Filter>
     </ClInclude>
     <ClInclude Include="LogSender.hpp">
-      <Filter>LogReceiver\Sender</Filter>
+      <Filter>LogReceiver\LogSender</Filter>
+    </ClInclude>
+    <ClInclude Include="Timestamp.hpp">
+      <Filter>Util\Timestamp</Filter>
+    </ClInclude>
+    <ClInclude Include="ProcessSession.hpp">
+      <Filter>SessionManager\ProcessSession</Filter>
+    </ClInclude>
+    <ClInclude Include="NetworkSession.hpp">
+      <Filter>SessionManager\NetworkSession</Filter>
+    </ClInclude>
+    <ClInclude Include="Hash.hpp">
+      <Filter>Util\Hash</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

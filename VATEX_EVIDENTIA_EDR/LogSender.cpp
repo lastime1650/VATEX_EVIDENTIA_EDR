@@ -4,8 +4,12 @@ namespace EDR
 {
 	namespace LogSender
 	{
+		KMUTEX g_mutex; // 순차적 처리를 위한 FASTMUTEX
 		BOOLEAN INITIALIZE()
 		{
+			// 순차적으로 처리하기 위한 FASTMUTEX
+			KeInitializeMutex(&g_mutex, 0);
+
 			PAGED_CODE();
 			// Consume 스레드생성 (단일)
 			HANDLE ConsumeThreadHandle = NULL;
@@ -192,6 +196,8 @@ namespace EDR
 			{
 				extern "C" VOID POST_SystemThread_method(PVOID CTX)
 				{
+					KeWaitForSingleObject(&EDR::LogSender::g_mutex, Executive, KernelMode, FALSE, NULL);
+
 					NTSTATUS status = STATUS_UNSUCCESSFUL;
 					EDR::EventLog::Struct::EventLog_Header* logHeader = (EDR::EventLog::Struct::EventLog_Header*)CTX;
 
@@ -217,7 +223,7 @@ namespace EDR
 							EDR::EventLog::Struct::FileSystem::EventLog_Process_Filesystem* log = (EDR::EventLog::Struct::FileSystem::EventLog_Process_Filesystem*)CTX;
 							logSize = sizeof(EDR::EventLog::Struct::FileSystem::EventLog_Process_Filesystem);
 
-							helper::CHAR_to_FILESIZE(
+							EDR::Util::helper::CHAR_to_FILESIZE(
 								log->body.FilePath,
 								sizeof(log->body.FilePath),
 								&log->body.post.FileSize
@@ -238,7 +244,18 @@ namespace EDR
 						}
 						case EDR::EventLog::Enum::Network:
 						{
+							EDR::EventLog::Struct::Network::EventLog_Process_Network* log = (EDR::EventLog::Struct::Network::EventLog_Process_Network*)CTX;
 							logSize = sizeof(EDR::EventLog::Struct::Network::EventLog_Process_Network);
+
+
+							// ifindex -> InterfaceName(ansi)
+							EDR::Util::helper::GetInterfaceNameFromIndex_Ansi(
+								(ULONG)log->body.ifindex,
+								log->body.post.InterfaceName,
+								sizeof(log->body.post.InterfaceName)
+							);
+
+
 							AllocatedUserSpaceSize = logSize;
 							// User 공간 Allocate
 							EDR::Util::UserSpace::Memory::AllocateMemory(
@@ -275,7 +292,7 @@ namespace EDR
 							UNICODE_STRING ImagePath;
 							EDR::Util::String::Ansi2Unicode::ANSI_to_UnicodeString((PCHAR)log->body.ImagePathAnsi, (ULONG32)( strlen(log->body.ImagePathAnsi) + 1), &ImagePath);
 
-							helper::FilePath_to_HASH(
+							EDR::Util::helper::FilePath_to_HASH(
 								&ImagePath,
 								&log->body.post.Parent_Process_exe_size,
 								log->body.post.Parent_Process_exe_SHA256,
@@ -306,13 +323,13 @@ namespace EDR
 							/*
 								SID 추출
 							*/
-							if (!helper::SID_to_CHAR(log->header.ProcessId, (PCHAR)log->body.post.SID, sizeof(log->body.post.SID)))
+							if (!EDR::Util::helper::SID_to_CHAR(log->header.ProcessId, (PCHAR)log->body.post.SID, sizeof(log->body.post.SID)))
 								goto CleanUp;
 
 							/*
 								Self 프로세스 이미지경로/파일사이즈/해시값 경로구하기
 							*/
-							helper::Process_to_HASH(
+							EDR::Util::helper::Process_to_HASH(
 								log->header.ProcessId,
 
 								// Self Process EXE ImagePath
@@ -330,7 +347,7 @@ namespace EDR
 							/*
 								Parent 프로세스 이미지경로/파일사이즈/해시값 경로구하기
 							*/
-							helper::Process_to_HASH(
+							EDR::Util::helper::Process_to_HASH(
 								log->body.Parent_ProcessId,
 
 								// Parent Process EXE ImagePath
@@ -386,6 +403,7 @@ namespace EDR
 					{
 						if(CTX)
 							ExFreePoolWithTag(CTX, LogALLOC);
+						KeReleaseMutex(&EDR::LogSender::g_mutex, FALSE);
 					}
 				}
 			}
@@ -398,7 +416,8 @@ namespace EDR
 				HANDLE ProcessId,
 				ULONG64 NanoTimestamp,
 
-				HANDLE Parent_ProcessId
+				HANDLE Parent_ProcessId,
+				PCUNICODE_STRING CommandLine
 			) {
 				PAGED_CODE();
 
@@ -413,10 +432,15 @@ namespace EDR
 				log->header.Type = EDR::EventLog::Enum::Process_Create;
 				log->header.ProcessId = ProcessId;
 				log->header.NanoTimestamp = NanoTimestamp;
-				log->body.Parent_ProcessId = Parent_ProcessId;
 				EDR::Util::SysVersion::GetSysVersion(log->header.Version, sizeof(log->header.Version));
 
 
+				log->body.Parent_ProcessId = Parent_ProcessId;
+				EDR::Util::helper::UNICODE_to_CHAR(
+					(PUNICODE_STRING)CommandLine,
+					log->body.CommandLine,
+					sizeof(log->body.CommandLine)
+				);
 
 
 
@@ -481,7 +505,7 @@ namespace EDR
 				EDR::Util::SysVersion::GetSysVersion(log->header.Version, sizeof(log->header.Version));
 
 
-				helper::UNICODE_to_CHAR(
+				EDR::Util::helper::UNICODE_to_CHAR(
 					(PUNICODE_STRING)ImagePath,
 					log->body.ImagePathAnsi,
 					sizeof(log->body.ImagePathAnsi)
@@ -527,7 +551,9 @@ namespace EDR
 
 				PUCHAR REMOTE_IP,
 				ULONG32 REMOTE_IP_StrSIze,
-				ULONG32 REMOTE_PORT
+				ULONG32 REMOTE_PORT,
+
+				ULONG32 NetworkInterfaceIndex
 			)
 			{
 				// ~ DISPATCH LEVEL
@@ -545,6 +571,9 @@ namespace EDR
 				log->body.ProtocolNumber = ProtocolNumber;
 				log->body.is_INBOUND = is_INBOUND;
 				log->body.PacketSize = PacketSize;
+				log->body.ifindex = NetworkInterfaceIndex;
+
+				
 
 				RtlCopyMemory(
 					log->body.LOCAL_IP,
@@ -602,14 +631,14 @@ namespace EDR
 
 				// Body
 				log->body.Action = FsEnum;
-				helper::UNICODE_to_CHAR(Normalized_FilePath, log->body.FilePath, sizeof(log->body.FilePath));
+				EDR::Util::helper::UNICODE_to_CHAR(Normalized_FilePath, log->body.FilePath, sizeof(log->body.FilePath));
 				//RtlCopyMemory(log->body.SHA256, SHA256, SHA256_STRING_LENGTH); // SHA256
 
 				//if rename
 				if (To_Renmae_FilePath)
 				{
 					log->body.rename.is_valid = TRUE;
-					helper::UNICODE_to_CHAR(To_Renmae_FilePath, log->body.rename.RenameFilePath, sizeof(log->body.rename.RenameFilePath));
+					EDR::Util::helper::UNICODE_to_CHAR(To_Renmae_FilePath, log->body.rename.RenameFilePath, sizeof(log->body.rename.RenameFilePath));
 					
 				}
 				else
@@ -651,7 +680,7 @@ namespace EDR
 				EDR::Util::SysVersion::GetSysVersion(log->header.Version, sizeof(log->header.Version));
 
 				log->body.FunctionName = KeyClass;
-				helper::UNICODE_to_CHAR(CompleteName, log->body.Name, sizeof(log->body.Name));
+				EDR::Util::helper::UNICODE_to_CHAR(CompleteName, log->body.Name, sizeof(log->body.Name));
 
 				// WORK_ITEM
 				LogPost::WorkItem_method::WORK_CONTEXT* work_context = (LogPost::WorkItem_method::WORK_CONTEXT*)ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(LogPost::WorkItem_method::WORK_CONTEXT), WorkItem_LogALLOC);
@@ -704,7 +733,7 @@ namespace EDR
 					ExFreePoolWithTag(log, LogALLOC);
 					return FALSE;
 				}
-				helper::Process_to_CHAR(Target_ProcessHandle, log->body.TargetProcess_Path, sizeof(log->body.TargetProcess_Path));
+				EDR::Util::helper::Process_to_CHAR(Target_ProcessHandle, log->body.TargetProcess_Path, sizeof(log->body.TargetProcess_Path));
 				EDR::Util::Process::Handle::ReleaseLookupProcessHandlebyProcessId(Target_ProcessHandle);
 
 
@@ -726,182 +755,6 @@ namespace EDR
 				ExQueueWorkItem(&work_context->Item, NormalWorkQueue);
 				return TRUE;
 			}
-
 		}
-		
-
-		
-
-
-		namespace helper
-		{
-			
-			BOOLEAN CHAR_to_FILESIZE(PCHAR FIlePathBuffer, ULONG32 FIlePathBufferSize, SIZE_T* FileSize)
-			{
-				UNICODE_STRING filepath = { 0, };
-				if (!EDR::Util::String::Ansi2Unicode::ANSI_to_UnicodeString(FIlePathBuffer, FIlePathBufferSize, &filepath))
-					return FALSE;
-
-				if (!EDR::Util::File::Read::Get_FIleSIze(&filepath, FileSize))
-				{
-					EDR::Util::String::Ansi2Unicode::Release_ANSI_to_UnicodeString(&filepath);
-					return FALSE;
-				}
-
-				EDR::Util::String::Ansi2Unicode::Release_ANSI_to_UnicodeString(&filepath);
-				return TRUE;
-			}
-
-			BOOLEAN CHAR_to_HASH(PCHAR FIlePathBuffer, ULONG32 FIlePathBufferSize, PCHAR out_HASHBUFFER, SIZE_T* out_FileSize)
-			{
-				
-				UNICODE_STRING filepath = { 0, };
-				if (!EDR::Util::String::Ansi2Unicode::ANSI_to_UnicodeString(FIlePathBuffer, FIlePathBufferSize, &filepath))
-					return FALSE;
-
-				// 파일 읽고 해시 구하기
-				if (!NT_SUCCESS(EDR::Util::File::Read::ReadFileAndComputeSHA256(
-					filepath,
-					out_HASHBUFFER,
-					out_FileSize)
-				))
-				{
-					EDR::Util::String::Ansi2Unicode::Release_ANSI_to_UnicodeString(&filepath);
-					return FALSE;
-				}
-
-
-				EDR::Util::String::Ansi2Unicode::Release_ANSI_to_UnicodeString(&filepath);
-				return TRUE;
-			}
-
-			BOOLEAN UNICODE_to_CHAR(PUNICODE_STRING input, CHAR* Buffer, SIZE_T BUfferSIze)
-			{
-				PCHAR ansi = NULL;
-				ULONG32 ansi_sz = 0;
-				EDR::Util::String::Unicode2Ansi::UnicodeString_to_ANSI(
-					input,
-					&ansi,
-					&ansi_sz
-				);
-				if (!ansi)
-					return FALSE;
-
-				// copy to sendingdata
-				RtlCopyMemory(
-					Buffer,
-					ansi,
-					ansi_sz > BUfferSIze ? BUfferSIze : (ansi_sz-1)
-				);
-
-				EDR::Util::String::Unicode2Ansi::Release_UnicodeString_to_ANSI(ansi);
-				return TRUE;
-			}
-
-			BOOLEAN Process_to_HASH(HANDLE ProcessId, CHAR* out_ImagePathNameBuffer, SIZE_T in_ImagePathNameBufferSIze, SIZE_T* out_ImageFileSize, CHAR* out_SHA256Buffer, SIZE_T SHA256BufferSize)
-			{
-				// 1. 프로세스 핸들 얻기
-				HANDLE ProcessHandle = NULL;
-				EDR::Util::Process::Handle::LookupProcessHandlebyProcessId(ProcessId, &ProcessHandle);
-				if (!ProcessHandle)
-					return FALSE;
-
-				// 2. 프로세스 이미지 절대경로 얻기
-				PUNICODE_STRING Process_ImagePath = NULL;
-				EDR::Util::Process::ImagePath::LookupProcessAbsoluteImagePathbyProcessHandle(ProcessHandle, &Process_ImagePath);
-				if (!Process_ImagePath)
-				{
-					EDR::Util::Process::Handle::ReleaseLookupProcessHandlebyProcessId(ProcessHandle);
-					return FALSE;
-				}
-
-				// 3. 프로세스 이미지 해시와 파일크기 얻기
-				if (!FilePath_to_HASH(
-					Process_ImagePath,
-					out_ImageFileSize,
-					out_SHA256Buffer,
-					SHA256BufferSize
-				))
-				{
-					EDR::Util::Process::ImagePath::ReleaseLookupProcessAbsoluteImagePathbyProcessHandle(Process_ImagePath);
-					EDR::Util::Process::Handle::ReleaseLookupProcessHandlebyProcessId(ProcessHandle);
-					return FALSE;
-				}
-
-				// Final
-				UNICODE_to_CHAR(Process_ImagePath, out_ImagePathNameBuffer, in_ImagePathNameBufferSIze);
-
-				EDR::Util::Process::ImagePath::ReleaseLookupProcessAbsoluteImagePathbyProcessHandle(Process_ImagePath);
-				EDR::Util::Process::Handle::ReleaseLookupProcessHandlebyProcessId(ProcessHandle);
-				return TRUE;
-			}
-			// FilePath to FilePath/FileSize/SHA256
-			BOOLEAN FilePath_to_HASH(PUNICODE_STRING UnicodeImagePath, SIZE_T* out_ImageFileSize, CHAR* inout_SHA256Buffer, SIZE_T SHA256BufferSize)
-			{
-				PUCHAR FileBin = NULL;
-				SIZE_T FileBInSz = 0;
-				if (!NT_SUCCESS( EDR::Util::File::Read::ReadFile(*UnicodeImagePath, &FileBin, &FileBInSz)) )
-					return FALSE;
-
-				PCHAR SHA256 = NULL;
-				ULONG SHA256_sz = EDR::Util::Hash::SHA256::SHA256_Hasing(&SHA256, FileBin, FileBInSz);
-				if (!SHA256_sz || !SHA256)
-				{
-					EDR::Util::File::Release_File(FileBin);
-					return FALSE;
-				}
-
-				RtlCopyMemory(inout_SHA256Buffer, SHA256, SHA256_sz > SHA256BufferSize ? SHA256BufferSize-1 : SHA256_sz);
-
-				*out_ImageFileSize = FileBInSz;
-
-				EDR::Util::Hash::Release_Hashed(SHA256);
-				EDR::Util::File::Release_File(FileBin);
-				return TRUE;
-			}
-
-			BOOLEAN Process_to_CHAR(HANDLE ProcessHandle, CHAR* Buffer, SIZE_T BUfferSIze)
-			{
-				PUNICODE_STRING EXEImagePath = NULL;
-				if (!NT_SUCCESS(EDR::Util::Process::ImagePath::LookupProcessAbsoluteImagePathbyProcessHandle(ProcessHandle, &EXEImagePath)))
-					return FALSE;
-
-				if (!UNICODE_to_CHAR(EXEImagePath, Buffer, BUfferSIze))
-				{
-					EDR::Util::Process::ImagePath::ReleaseLookupProcessAbsoluteImagePathbyProcessHandle(EXEImagePath);
-					return FALSE;
-				}
-
-				EDR::Util::Process::ImagePath::ReleaseLookupProcessAbsoluteImagePathbyProcessHandle(EXEImagePath);
-
-				return TRUE;
-			}
-
-			BOOLEAN SID_to_CHAR(HANDLE ProcessId, CHAR* Buffer, SIZE_T BUfferSIze)
-			{
-				/*
-								SID 추출
-							*/
-				UNICODE_STRING sid = { 0, };
-				NTSTATUS status = EDR::Util::Account::SID::Get_PROCESS_SID(
-					ProcessId,
-					&sid
-				);
-				if (!NT_SUCCESS(status))
-					return FALSE;
-
-				// Unicode -> Char
-				if (!UNICODE_to_CHAR(&sid, Buffer, BUfferSIze))
-				{
-					EDR::Util::Account::SID::Release_PROCESS_SID(&sid);
-					return FALSE;
-				}
-
-				EDR::Util::Account::SID::Release_PROCESS_SID(&sid);
-
-				return TRUE;
-			}
-		}
-
 	}
 }

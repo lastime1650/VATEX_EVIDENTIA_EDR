@@ -40,7 +40,8 @@ namespace EDR
 						EDR::LogSender::function::ProcessCreateLog(
 							ProcessId,
 							NanoTimestamp,
-							CreateInfo->ParentProcessId
+							CreateInfo->ParentProcessId,
+							CreateInfo->CommandLine
 						);
 
 					}

@@ -8,6 +8,7 @@
 #include "MiniFilter.hpp"
 #include "Registry.hpp"
 #include "ObRegisterCallback.hpp"
+#include "Response.hpp"
 
 extern "C" NTSTATUS DriverEntry(PDRIVER_OBJECT driverobject, PUNICODE_STRING registerpath)
 {
@@ -22,6 +23,9 @@ extern "C" NTSTATUS DriverEntry(PDRIVER_OBJECT driverobject, PUNICODE_STRING reg
 	// 초기화
 	// 1. LogSender
 	EDR::LogSender::INITIALIZE();
+	// 2. Response
+	EDR::Response::HashTable::Initialize();
+
 
 	// 언로드 설정
 	driverobject->DriverUnload = EDR::UnLoad::DRIVER_UNLOAD;

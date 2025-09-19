@@ -1,12 +1,56 @@
 #include "ProcessUtil.hpp"
 #include "API.hpp"
 
+
 namespace EDR
 {
 	namespace Util
 	{
 		namespace Process
 		{
+			namespace Terminate
+			{
+				#define QueryProcessTag 'QPAL'
+				NTSTATUS TerminateProcess(HANDLE ProcessId)
+				{
+					if (!ProcessId)
+						return STATUS_INVALID_PARAMETER_1;
+
+					ULONG bufferSize = 0; // Initial buffer size
+					PUCHAR buffer = NULL;
+					while (ZwQuerySystemInformation(SystemProcessInformation, buffer, bufferSize, &bufferSize) == STATUS_INFO_LENGTH_MISMATCH) {
+						if (buffer == NULL) {
+							buffer = (PUCHAR)ExAllocatePool2(POOL_FLAG_NON_PAGED, bufferSize, QueryProcessTag); // QueRyProceSs
+							if (buffer == NULL) {
+								return STATUS_INSUFFICIENT_RESOURCES;
+							}
+						}
+					}
+					PSYSTEM_PROCESS_INFORMATION processInfo = (PSYSTEM_PROCESS_INFORMATION)buffer;
+					while (processInfo) {
+						if (processInfo->UniqueProcessId == ProcessId) {
+
+							HANDLE ProcessHandle = NULL;
+							Handle::LookupProcessHandlebyProcessId(ProcessId, &ProcessHandle);
+							if (ProcessHandle)
+							{
+								ZwTerminateProcess(ProcessHandle, STATUS_SUCCESS);
+								Handle::ReleaseLookupProcessHandlebyProcessId(ProcessHandle);
+								ExFreePoolWithTag(buffer, QueryProcessTag);
+								return STATUS_SUCCESS;
+							}
+							
+							
+						}
+
+						processInfo = (PSYSTEM_PROCESS_INFORMATION)((PUCHAR)processInfo + processInfo->NextEntryOffset);
+					}
+
+					ExFreePoolWithTag(buffer, QueryProcessTag);
+
+					return STATUS_UNSUCCESSFUL;
+				}
+			}
 			namespace Handle
 			{
 				NTSTATUS LookupProcessHandlebyProcessId(HANDLE ProcessId, HANDLE* ProcessHandle)

@@ -151,6 +151,9 @@
     <ClCompile Include="ObRegisterCallback.cpp">
       <Filter>AGENT\Event\ObregisterCallbacks</Filter>
     </ClCompile>
+    <ClCompile Include="Response.cpp">
+      <Filter>AGENT\Response</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DriverUnload.hpp">

@@ -9,7 +9,7 @@
 #include "MiniFilter.hpp"
 #include "Registry.hpp"
 #include "ObRegisterCallback.hpp"
-
+#include "Response.hpp"
 namespace EDR
 {
 	namespace UnLoad
@@ -26,6 +26,9 @@ namespace EDR
 
 			// APC 해제
 			EDR::APC::CleanUp_APC();
+
+			// Response 해시테이블 해제
+			EDR::Response::HashTable::CleanUp();
 
 			// NotifyRoutines 해제
 			EDR::NotifyRoutines::CleanUp();

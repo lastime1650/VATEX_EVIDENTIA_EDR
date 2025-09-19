@@ -45,8 +45,13 @@ namespace EDR
 			}
 
 			// IOCTL_INIT
-			NTSTATUS INITIALIZE(struct IOCTL_INIT_s* parameter1);
+			BOOLEAN INITIALIZE(
+				struct IOCTL_INIT_s* parameter1
+			);
 
+			// 파일 요청
+			// 파일 이 클 수 있기 때문에, 연결리스트로 유저모드에 전달. 
+			PVOID REQUEST_FILE(const PCHAR FilePath, SIZE_T FIlePathBuffer);
 
 			VOID CleanUp_IOCTL_PROCESSING();
 		}
