@@ -14,7 +14,7 @@ namespace EDR
 			{
 				if (!FullImageName)
 					return;
-				if (!EDR::IOCTL::IOCTL_PROCESSING::is_complete_init)
+				if (!EDR::Util::Shared::USER_AGENT::ProcessId)
 					return;
 				PAGED_CODE();
 

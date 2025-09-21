@@ -69,7 +69,7 @@ namespace EDR
 				HANDLE PID = PsGetCurrentProcessId();
 				if (PsIsSystemProcess(PsGetCurrentProcess()))
 					return;
-				if (PID == EDR::IOCTL::IOCTL_PROCESSING::resource::User_AGENT_ProcessId)
+				if (PID == EDR::Util::Shared::USER_AGENT::ProcessId)
 					return;
 
 

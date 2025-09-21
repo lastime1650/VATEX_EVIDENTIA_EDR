@@ -131,7 +131,7 @@ namespace EDR
                     return FLT_PREOP_SUCCESS_NO_CALLBACK;
 
                 // AGENT Usermode Process는 제외
-                if( EDR::IOCTL::IOCTL_PROCESSING::resource::User_AGENT_ProcessId == ProcessId)
+                if( EDR::Util::Shared::USER_AGENT::ProcessId == ProcessId)
                     return FLT_PREOP_SUCCESS_NO_CALLBACK;
 
                 // 파일 확인

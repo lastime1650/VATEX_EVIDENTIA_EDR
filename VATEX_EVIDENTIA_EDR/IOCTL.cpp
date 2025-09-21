@@ -68,8 +68,6 @@ namespace EDR
 				IoDeleteSymbolicLink(&symbolic);
 				IoDeleteDevice(resource::ioctl_device);
 			}
-			
-			IOCTL_PROCESSING::CleanUp_IOCTL_PROCESSING();
 		}
 
 		/*
@@ -98,6 +96,19 @@ namespace EDR
 						IoStatusInformation = sizeof(struct IOCTL_INIT_s);
 						break;
 					}
+					case IOCTL_REQ_LOG:
+					{
+						//debug_break();
+						struct IOCTL_REQ_LOG_s* parameter = (struct IOCTL_REQ_LOG_s*)Irp->AssociatedIrp.SystemBuffer;
+						if (!parameter) break;
+
+						parameter->output.is_success = IOCTL_PROCESSING::REQUEST_LOG(&parameter->output.BufferAddress, &parameter->output.BUfferSize);
+
+						//debug_log("LOG REQ : %p , %llu", parameter->output.BufferAddress, parameter->output.BUfferSize);
+
+						IoStatusInformation = sizeof(struct IOCTL_REQ_LOG_s);
+						break;
+					}
 					default:
 					{
 						status = STATUS_UNSUCCESSFUL;
@@ -107,6 +118,7 @@ namespace EDR
 
 				Irp->IoStatus.Status = status;
 				Irp->IoStatus.Information = IoStatusInformation;
+				IoCompleteRequest(Irp, IO_NO_INCREMENT);
 
 				return status;
 			}
@@ -118,30 +130,6 @@ namespace EDR
 		namespace IOCTL_PROCESSING
 		{
 			BOOLEAN is_complete_init = FALSE;
-			namespace resource
-			{
-				HANDLE User_AGENT_ProcessId = 0;
-				HANDLE User_AGENT_Process_Handle = NULL;
-
-				namespace function
-				{
-					VOID Set_User_AGENT_INFO(HANDLE AGENT_pid, HANDLE AGENT_handle)
-					{
-						InterlockedExchangePointer(&User_AGENT_ProcessId, AGENT_pid);
-						InterlockedExchangePointer(&User_AGENT_Process_Handle, AGENT_handle);
-					}
-					VOID Get_User_AGENT_INFO(HANDLE* AGENT_pid, HANDLE* AGENT_handle)
-					{
-						*AGENT_pid = (HANDLE)InterlockedCompareExchangePointer((PVOID*) & User_AGENT_ProcessId, 0, 0);
-						*AGENT_handle = (HANDLE)InterlockedCompareExchangePointer((PVOID*)&User_AGENT_Process_Handle, 0, 0);
-					}
-				}
-			}
-			VOID CleanUp_IOCTL_PROCESSING()
-			{
-				if (!resource::User_AGENT_Process_Handle)
-					EDR::Util::Process::Handle::ReleaseLookupProcessHandlebyProcessId(resource::User_AGENT_Process_Handle);
-			}
 			
 			// 1. 
 			BOOLEAN INITIALIZE(struct IOCTL_INIT_s* parameter1)
@@ -154,19 +142,19 @@ namespace EDR
 				PVOID User_APC_Routine = parameter1->input.User_APC_Handler_UserAddress;
 
 				// USER PID
-				resource::User_AGENT_ProcessId = User_ProcessId;
-				//debug_break();
-				// USER PID -> HANDLE( 없는 경우 최초 1회진행 ) 
-				if (!resource::User_AGENT_Process_Handle)
+				EDR::Util::Shared::USER_AGENT::ProcessId = User_ProcessId;
+
+				// USER PID -> HANDLE( 이전에 있는 경우, 해제하고 갱신
+				if (EDR::Util::Shared::USER_AGENT::ProcessHandle)
+					EDR::Util::Process::Handle::ReleaseLookupProcessHandlebyProcessId(EDR::Util::Shared::USER_AGENT::ProcessHandle);
+
+				status = EDR::Util::Process::Handle::LookupProcessHandlebyProcessId(User_ProcessId, &EDR::Util::Shared::USER_AGENT::ProcessHandle);
+				if (!NT_SUCCESS(status))
 				{
-					status = EDR::Util::Process::Handle::LookupProcessHandlebyProcessId(User_ProcessId, &resource::User_AGENT_Process_Handle);
-					if (!NT_SUCCESS(status))
-					{
-						is_complete_init = FALSE;
-						return is_complete_init;
-					}
-						
+					is_complete_init = FALSE;
+					return is_complete_init;
 				}
+
 				
 				// APC
 				status = EDR::APC::INITIALIZE_APC(User_ThreadId, User_APC_Routine);
@@ -179,6 +167,14 @@ namespace EDR
 
 				is_complete_init = TRUE;
 				return is_complete_init;
+			}
+
+			BOOLEAN REQUEST_LOG(_Out_ PUCHAR* StartBUff, _Out_ ULONG64* SIze)
+			{
+				return EDR::LogSender::resource::Consume::Consume(
+					(PVOID*)StartBUff, 
+					SIze
+				);
 			}
 		}
 	}

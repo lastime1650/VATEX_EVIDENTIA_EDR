@@ -211,9 +211,25 @@ namespace EDR
 					struct
 					{
 
-						Enum::Registry::Registry_enum FunctionName;
-						CHAR Name[4096];
+						CHAR FunctionName[256];
+						CHAR Name[2048];
 
+					}body;
+
+				};
+				struct EventLog_Process_Registry_OldNewNameLog
+				{
+					struct EventLog_Header header;
+
+					struct
+					{
+
+						CHAR FunctionName[256];
+						CHAR Name[2048];
+
+
+						CHAR OldName[2048];
+						CHAR NewName[2048];
 
 					}body;
 

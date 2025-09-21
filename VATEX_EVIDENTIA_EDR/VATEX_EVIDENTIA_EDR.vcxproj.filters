@@ -86,6 +86,9 @@
     <Filter Include="AGENT\Response">
       <UniqueIdentifier>{4db7d121-301a-4f47-8c2e-3705aa08f6ac}</UniqueIdentifier>
     </Filter>
+    <Filter Include="util\Shared">
+      <UniqueIdentifier>{2bf69ac6-c936-4925-9f3a-59969c0ae146}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Inf Include="VATEX_EVIDENTIA_EDR.inf">
@@ -154,6 +157,9 @@
     <ClCompile Include="Response.cpp">
       <Filter>AGENT\Response</Filter>
     </ClCompile>
+    <ClCompile Include="Shared.cpp">
+      <Filter>util\Shared</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DriverUnload.hpp">
@@ -221,6 +227,9 @@
     </ClInclude>
     <ClInclude Include="Response.hpp">
       <Filter>AGENT\Response</Filter>
+    </ClInclude>
+    <ClInclude Include="Shared.hpp">
+      <Filter>util\Shared</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

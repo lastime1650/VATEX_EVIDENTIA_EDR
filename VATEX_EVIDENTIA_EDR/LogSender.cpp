@@ -4,29 +4,9 @@ namespace EDR
 {
 	namespace LogSender
 	{
-		KMUTEX g_mutex; // 순차적 처리를 위한 FASTMUTEX
 		BOOLEAN INITIALIZE()
 		{
-			// 순차적으로 처리하기 위한 FASTMUTEX
-			KeInitializeMutex(&g_mutex, 0);
-
 			PAGED_CODE();
-			// Consume 스레드생성 (단일)
-			HANDLE ConsumeThreadHandle = NULL;
-			PsCreateSystemThread(
-				&ConsumeThreadHandle,
-				THREAD_ALL_ACCESS,
-				NULL,
-				NULL,
-				NULL,
-				resource::Consume::Consume,
-				NULL
-			);
-			if (!ConsumeThreadHandle)
-				return FALSE;
-			else
-				resource::is_consume_working = TRUE;
-			ZwClose(ConsumeThreadHandle); // Detach
 
 			return TRUE;
 		}
@@ -38,20 +18,16 @@ namespace EDR
 		namespace resource
 		{
 			SLIST_HEADER g_ListHead;
-			volatile ULONG64 g_NodeCount = 0;  // 노드 개수 카운터
-
-			BOOLEAN is_consume_working = false;
 
 			namespace Produce
 			{
 				BOOLEAN ProducdeLogData(ULONG64 Type, PVOID UserSpace, SIZE_T UserSpaceSize)
 				{
 
-					if (!resource::is_consume_working)
+					USHORT NodeCount = QueryDepthSList(&g_ListHead);
+					if (NodeCount >= MAXIMUM_SLIST_NODE_SIZE)
 						return FALSE;
 
-					if (g_NodeCount >= MAXIMUM_SLIST_NODE_SIZE)
-						return FALSE;
 
 
 					PLOG_NODE node = (PLOG_NODE)ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(LOG_NODE), LogALLOC);
@@ -62,99 +38,157 @@ namespace EDR
 					node->UserSpace = UserSpace;
 					node->UserSpaceSize = UserSpaceSize;
 					InterlockedPushEntrySList(&g_ListHead, &node->Entry); // 노드 추가
-					InterlockedIncrement64((volatile LONG64*)&g_NodeCount); // 노드 개수 원자적으로 1씩 증가
 
 					return  TRUE;
 				}
 			}
 			namespace Consume
 			{
+				BOOLEAN Consume(_Out_ PVOID* AllocatedUser, _Out_ ULONG64* Size)
+				{
+					if (!AllocatedUser || !Size)
+						return FALSE;
+
+					*AllocatedUser = NULL;
+					*Size = 0;
+
+					PSLIST_ENTRY firstEntry = InterlockedFlushSList(&g_ListHead); // 모든 노드 엔트리 플러시 ( 원자적으로 다 가져옴 ) 
+					if (!firstEntry)
+						return FALSE;
+
+					BOOLEAN RETURNBOOL = FALSE;
+
+					// 크기 계산
+					PSLIST_ENTRY currentEntry = firstEntry;
+					USHORT TotalNodeCount = 0;
+					ULONG64 ALLOCATED_SIZE = 0;
+					while (currentEntry != NULL) {
+
+
+						PLOG_NODE node = CONTAINING_RECORD(currentEntry, LOG_NODE, Entry);
+
+						// 1. 
+						TotalNodeCount++;
+
+						// 2.
+						ALLOCATED_SIZE += sizeof(PVOID);
+
+						currentEntry = currentEntry->Next;
+					}
+
+					// 할당
+					PUCHAR ALLBUFF = (PUCHAR)ExAllocatePool2(POOL_FLAG_PAGED, ALLOCATED_SIZE, LogALLOC);
+					if (!ALLBUFF)
+					{
+						goto CleanUp;
+					}
+
+					// 복사
+					currentEntry = firstEntry;
+					ULONG64 offset = 0;
+					while (currentEntry != NULL) {
+						PLOG_NODE node = CONTAINING_RECORD(currentEntry, LOG_NODE, Entry);
+						RtlCopyMemory(
+							ALLBUFF + offset,
+							&node->UserSpace,
+							sizeof(node->UserSpace)
+						);
+						offset += sizeof(node->UserSpace);
+						currentEntry = currentEntry->Next;
+					}
+
+
+
+					// 유저에 복사
+					HANDLE UserAgent_ProcessHandle = EDR::Util::Shared::USER_AGENT::ProcessHandle;
+					if (!UserAgent_ProcessHandle)
+						goto CleanUp;
+					HANDLE UserAgent_ProcessId = EDR::Util::Shared::USER_AGENT::ProcessId;
+					if (!UserAgent_ProcessId)
+						goto CleanUp;
+
+
+					PVOID AllocatedUserSpace = NULL;
+					SIZE_T AllocatedUserSpaceSize = ALLOCATED_SIZE;
+
+					// 유저공간에 할당
+					EDR::Util::UserSpace::Memory::AllocateMemory(
+						UserAgent_ProcessHandle,
+						&AllocatedUserSpace,
+						&AllocatedUserSpaceSize
+					);
+					if (!AllocatedUserSpace)
+						goto CleanUp;
+
+					RETURNBOOL = EDR::Util::UserSpace::Memory::Copy(UserAgent_ProcessId, AllocatedUserSpace, ALLBUFF, ALLOCATED_SIZE);
+					if (!RETURNBOOL)
+					{
+						EDR::Util::UserSpace::Memory::FreeMemory(
+							UserAgent_ProcessHandle,
+							AllocatedUserSpace,
+							AllocatedUserSpaceSize
+						);
+						goto CleanUp;
+					}
+
+
+
+					*AllocatedUser = AllocatedUserSpace;
+					*Size = ALLOCATED_SIZE;
+
+					RETURNBOOL = TRUE;
+
+				CleanUp:
+					{
+
+						if (ALLBUFF)
+							ExFreePoolWithTag(ALLBUFF, LogALLOC);
+
+						for (ULONG64 i = 0; i < TotalNodeCount; i++)
+						{
+							PSLIST_ENTRY entry_node = InterlockedPopEntrySList(&g_ListHead);
+							if (!entry_node)
+								break;
+							PLOG_NODE node = CONTAINING_RECORD(entry_node, LOG_NODE, Entry);
+							ExFreePoolWithTag(node, LogALLOC);
+						}
+						return RETURNBOOL;
+					}
+				}
+
+
+
 				void CleanUpNodes()
 				{
-					if (is_consume_working)
+					// 남은 노드 엔트리 모두 할당해제
+					USHORT NodeCount = QueryDepthSList(&g_ListHead);
+					if (NodeCount)
 					{
-						is_consume_working = FALSE;
-						// 남은 노드 엔트리 모두 할당해제
-						if (g_NodeCount)
+						for (ULONG64 node_count = 0; node_count < NodeCount; node_count++)
 						{
-							for (ULONG64 node_count = 0; node_count < g_NodeCount; node_count++)
+							PSLIST_ENTRY entry_node = InterlockedPopEntrySList(&g_ListHead);  // 노드 개수 원자적으로 1씩 감소
+							if (!entry_node)
+								break;
+
+							PLOG_NODE node = CONTAINING_RECORD(entry_node, LOG_NODE, Entry);
+							HANDLE APC_Target_ProcessHandle = EDR::Util::Shared::USER_AGENT::ProcessHandle;
+
+							if (APC_Target_ProcessHandle)
 							{
-								PSLIST_ENTRY entry_node = InterlockedPopEntrySList(&g_ListHead);  // 노드 개수 원자적으로 1씩 감소
-								if (!entry_node)
-									break;
-
-								PLOG_NODE node = CONTAINING_RECORD(entry_node, LOG_NODE, Entry);
-								HANDLE APC_Target_ProcessHandle = EDR::IOCTL::IOCTL_PROCESSING::resource::User_AGENT_Process_Handle;
-
-								if (APC_Target_ProcessHandle)
-								{
-									EDR::Util::UserSpace::Memory::FreeMemory(
-										APC_Target_ProcessHandle,
-										node->UserSpace,
-										node->UserSpaceSize
-									);
-								}
-
-								ExFreePoolWithTag(node, LogALLOC);
+								EDR::Util::UserSpace::Memory::FreeMemory(
+									APC_Target_ProcessHandle,
+									node->UserSpace,
+									node->UserSpaceSize
+								);
 							}
+
+							ExFreePoolWithTag(node, LogALLOC);
 						}
 					}
+
 				}
-				extern "C" VOID Consume(PVOID ctx)
-				{
-					UNREFERENCED_PARAMETER(ctx);
 
-					const ULONG64 Threshold = 10;
-					LARGE_INTEGER interval;
-
-					while (is_consume_working)
-					{
-						if (g_NodeCount >= Threshold)
-						{
-							// 현재 큐 사이즈만큼 배치 소비
-							ULONG64 consumeCount = g_NodeCount;
-
-							for (ULONG64 i = 0; i < consumeCount; i++)
-							{
-								PSLIST_ENTRY entry_node = InterlockedPopEntrySList(&g_ListHead);  // 노드 개수 원자적으로 1씩 감소
-								if (!entry_node)
-									break;
-
-								InterlockedDecrement64((volatile LONG64*)&g_NodeCount);
-
-								PLOG_NODE node = CONTAINING_RECORD(entry_node, LOG_NODE, Entry);
-
-								if (!EDR::APC::ApcToUser(node->Type, node->UserSpace, node->UserSpaceSize))
-								{
-									HANDLE APC_Target_ProcessHandle = EDR::IOCTL::IOCTL_PROCESSING::resource::User_AGENT_Process_Handle;
-
-									if (APC_Target_ProcessHandle)
-									{
-										EDR::Util::UserSpace::Memory::FreeMemory(
-											APC_Target_ProcessHandle,
-											node->UserSpace,
-											node->UserSpaceSize
-										);
-									}
-								}
-
-								ExFreePoolWithTag(node, LogALLOC);
-							}
-							interval.QuadPart = -10 * 100; // 0.0001초
-						}
-						else
-						{
-							// 큐가 충분히 쌓이지 않았으면 잠깐 Sleep
-							
-							interval.QuadPart = -10 * 1000 * 1000; // 1초
-							
-						}
-						KeDelayExecutionThread(KernelMode, FALSE, &interval);
-					}
-				}
-				
 			}
-
 		}
 
 		namespace LogPost
@@ -163,6 +197,8 @@ namespace EDR
 			{
 				extern "C" VOID POST_Workitem_method(PVOID ctx)
 				{
+					
+
 					if (!ctx)
 						return;
 
@@ -196,7 +232,7 @@ namespace EDR
 			{
 				extern "C" VOID POST_SystemThread_method(PVOID CTX)
 				{
-					KeWaitForSingleObject(&EDR::LogSender::g_mutex, Executive, KernelMode, FALSE, NULL);
+					PAGED_CODE();
 
 					NTSTATUS status = STATUS_UNSUCCESSFUL;
 					EDR::EventLog::Struct::EventLog_Header* logHeader = (EDR::EventLog::Struct::EventLog_Header*)CTX;
@@ -206,10 +242,10 @@ namespace EDR
 					SIZE_T logSize = 0;
 
 					// APC타겟 유저(USER AGENT 프로세스) PID 유효체크
-					HANDLE APC_Target_ProcessHandle = EDR::IOCTL::IOCTL_PROCESSING::resource::User_AGENT_Process_Handle;
+					HANDLE APC_Target_ProcessHandle = EDR::Util::Shared::USER_AGENT::ProcessHandle;
 					if (!APC_Target_ProcessHandle)
 						goto CleanUp;
-					HANDLE APC_Target_ProcessId = EDR::IOCTL::IOCTL_PROCESSING::resource::User_AGENT_ProcessId;
+					HANDLE APC_Target_ProcessId = EDR::Util::Shared::USER_AGENT::ProcessId;
 					if (!APC_Target_ProcessId)
 						goto CleanUp;
 
@@ -389,21 +425,14 @@ namespace EDR
 					// Copy to User 공간s
 					EDR::Util::UserSpace::Memory::Copy(APC_Target_ProcessId, AllocatedUserSpace, CTX, logSize);
 
+
 					// Producing Log
 					EDR::LogSender::resource::Produce::ProducdeLogData((ULONG64)logHeader->Type, AllocatedUserSpace, logSize);
 
-					/*
-					// APC 전달
-					if (!EDR::APC::ApcToUser((ULONG64)logHeader->Type, AllocatedUserSpace, logSize))
-					{
-						EDR::Util::UserSpace::Memory::FreeMemory(APC_Target_ProcessHandle, AllocatedUserSpace, AllocatedUserSpaceSize);
-					}
-					*/
 					CleanUp:
 					{
 						if(CTX)
 							ExFreePoolWithTag(CTX, LogALLOC);
-						KeReleaseMutex(&EDR::LogSender::g_mutex, FALSE);
 					}
 				}
 			}
@@ -664,7 +693,7 @@ namespace EDR
 
 			// Registry
 			BOOLEAN Registry_by_CompleteorObjectNameLog(
-				EDR::EventLog::Enum::Registry::Registry_enum KeyClass, HANDLE ProcessId, ULONG64 NanoTimestamp,
+				PCHAR KeyClass, HANDLE ProcessId, ULONG64 NanoTimestamp,
 				PUNICODE_STRING CompleteName
 			)
 			{
@@ -679,7 +708,7 @@ namespace EDR
 				log->header.NanoTimestamp = NanoTimestamp;
 				EDR::Util::SysVersion::GetSysVersion(log->header.Version, sizeof(log->header.Version));
 
-				log->body.FunctionName = KeyClass;
+				memcpy(log->body.FunctionName, KeyClass, strlen(KeyClass));
 				EDR::Util::helper::UNICODE_to_CHAR(CompleteName, log->body.Name, sizeof(log->body.Name));
 
 				// WORK_ITEM
@@ -698,7 +727,49 @@ namespace EDR
 
 				return TRUE;
 			}
+			BOOLEAN Registry_by_OldNewNameLog(
+				PCHAR KeyClass, HANDLE ProcessId, ULONG64 NanoTimestamp,
+				PUNICODE_STRING Name, PUNICODE_STRING Old, PUNICODE_STRING New
+			)
+			{
+				// ~ APC_LEVEL
+					// work-item 필수
+				EDR::EventLog::Struct::Registry::EventLog_Process_Registry_OldNewNameLog* log = (EDR::EventLog::Struct::Registry::EventLog_Process_Registry_OldNewNameLog*)ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(EDR::EventLog::Struct::Registry::EventLog_Process_Registry_OldNewNameLog), LogALLOC);
+				if (!log)
+					return FALSE;
+				RtlZeroMemory(log, sizeof(EDR::EventLog::Struct::Registry::EventLog_Process_Registry_OldNewNameLog));
+				log->header.Type = EDR::EventLog::Enum::Registry_CompleteNameLog;
+				log->header.ProcessId = ProcessId;
+				log->header.NanoTimestamp = NanoTimestamp;
+				EDR::Util::SysVersion::GetSysVersion(log->header.Version, sizeof(log->header.Version));
 
+
+
+
+				memcpy(log->body.FunctionName, KeyClass, strlen(KeyClass));
+				EDR::Util::helper::UNICODE_to_CHAR(Name, log->body.Name, sizeof(log->body.Name));
+				EDR::Util::helper::UNICODE_to_CHAR(Old, log->body.OldName, sizeof(log->body.OldName));
+				EDR::Util::helper::UNICODE_to_CHAR(New, log->body.NewName, sizeof(log->body.NewName));
+
+
+
+
+				// WORK_ITEM
+				LogPost::WorkItem_method::WORK_CONTEXT* work_context = (LogPost::WorkItem_method::WORK_CONTEXT*)ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(LogPost::WorkItem_method::WORK_CONTEXT), WorkItem_LogALLOC);
+				if (!work_context)
+				{
+					ExFreePoolWithTag(log, LogALLOC);
+					return FALSE;
+				}
+
+
+				work_context->LogEvent = log;
+
+				ExInitializeWorkItem(&work_context->Item, LogPost::WorkItem_method::POST_Workitem_method, work_context);
+				ExQueueWorkItem(&work_context->Item, NormalWorkQueue);
+
+				return TRUE;
+			}
 
 			//ObRegisterCallback
 			BOOLEAN ObRegisterCallbackLog(

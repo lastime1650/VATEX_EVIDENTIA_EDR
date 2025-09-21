@@ -4,14 +4,12 @@
 #include "util.hpp"
 #include "EventLog.hpp"
 #include "APC.hpp"
-#include "IOCTL.hpp"
 
 namespace EDR
 {
 
 	namespace LogSender
 	{
-		extern KMUTEX g_mutex;
 		BOOLEAN INITIALIZE();
 		VOID CleanUp();
 
@@ -21,7 +19,6 @@ namespace EDR
 			#define MAXIMUM_SLIST_NODE_SIZE 65535
 			extern SLIST_HEADER g_ListHead;
 			extern BOOLEAN is_consume_working;
-			extern volatile ULONG64 g_NodeCount;  // 노드 개수 카운터
 
 			typedef struct _LOG_NODE {
 				SLIST_ENTRY Entry;
@@ -36,7 +33,7 @@ namespace EDR
 			}
 			namespace Consume
 			{
-				extern "C" VOID Consume(PVOID nothing);
+				extern BOOLEAN Consume(_Out_ PVOID* AllocatedUser, _Out_ ULONG64* Size);
 				void CleanUpNodes();
 			}
 
@@ -123,12 +120,12 @@ namespace EDR
 
 			// Registry
 			BOOLEAN Registry_by_CompleteorObjectNameLog(
-				EDR::EventLog::Enum::Registry::Registry_enum KeyClass, HANDLE ProcessId, ULONG64 NanoTimestamp,
-				PUNICODE_STRING CompleteName
+				PCHAR KeyClass, HANDLE ProcessId, ULONG64 NanoTimestamp,
+				PUNICODE_STRING Name
 			);
-			BOOLEAN Registry_by_SetNameLog( // rename 포함
-				EDR::EventLog::Enum::Registry::Registry_enum KeyClass, HANDLE ProcessId, ULONG64 NanoTimestamp, 
-				PUNICODE_STRING Object, PUNICODE_STRING Name
+			BOOLEAN Registry_by_OldNewNameLog (
+				PCHAR KeyClass, HANDLE ProcessId, ULONG64 NanoTimestamp,
+				PUNICODE_STRING Name, PUNICODE_STRING Old, PUNICODE_STRING New
 			);
 
 			//ObRegisterCallback

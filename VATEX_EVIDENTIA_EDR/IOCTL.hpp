@@ -9,6 +9,7 @@
 
 // IOCTL_PROCESSING
 #include "APC.hpp"
+#include "LogSender.hpp"
 
 namespace EDR
 {
@@ -31,29 +32,19 @@ namespace EDR
 		namespace IOCTL_PROCESSING
 		{
 			extern BOOLEAN is_complete_init;
-			namespace resource
-			{
-				
-				extern HANDLE User_AGENT_ProcessId;
-				extern HANDLE User_AGENT_Process_Handle;
-
-				namespace function
-				{
-					VOID Set_User_AGENT_INFO(HANDLE AGENT_pid, HANDLE AGENT_handle);
-					VOID Get_User_AGENT_INFO(HANDLE* User_AGENT_ProcessId, HANDLE* User_AGENT_Process_Handle);
-				}
-			}
 
 			// IOCTL_INIT
 			BOOLEAN INITIALIZE(
 				struct IOCTL_INIT_s* parameter1
 			);
 
+			// IOCTL_LOG 요청
+			BOOLEAN REQUEST_LOG( _Out_ PUCHAR* StartBUff, _Out_ ULONG64* SIze);
+
 			// 파일 요청
 			// 파일 이 클 수 있기 때문에, 연결리스트로 유저모드에 전달. 
 			PVOID REQUEST_FILE(const PCHAR FilePath, SIZE_T FIlePathBuffer);
 
-			VOID CleanUp_IOCTL_PROCESSING();
 		}
 
 	}

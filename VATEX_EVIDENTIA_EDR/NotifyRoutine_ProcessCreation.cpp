@@ -19,7 +19,7 @@ namespace EDR
 					_Inout_opt_ PPS_CREATE_NOTIFY_INFO CreateInfo
 				)
 				{
-					if (!EDR::IOCTL::IOCTL_PROCESSING::is_complete_init)
+					if (!EDR::Util::Shared::USER_AGENT::ProcessId)
 						return;
 
 					PAGED_CODE();

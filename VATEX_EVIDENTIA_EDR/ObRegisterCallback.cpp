@@ -40,7 +40,7 @@ namespace EDR
 					return OB_PREOP_SUCCESS;
 
 				// if AGENT User, skip !@
-				if (Self_ProcessId == EDR::IOCTL::IOCTL_PROCESSING::resource::User_AGENT_ProcessId)
+				if (Self_ProcessId == EDR::Util::Shared::USER_AGENT::ProcessId)
 					return OB_PREOP_SUCCESS;
 
 				// Process Event
@@ -67,7 +67,7 @@ namespace EDR
 
 
 					// 설마.. AGENT User 프로세스를 종료하려는 것인지?? 검증후, 보호 
-					if (Target_ProcessId == EDR::IOCTL::IOCTL_PROCESSING::resource::User_AGENT_ProcessId)
+					if (Target_ProcessId == EDR::Util::Shared::USER_AGENT::ProcessId)
 					{
 
 						if (OperationInformation->Operation == OB_OPERATION_HANDLE_CREATE)

@@ -27,7 +27,7 @@
 #include "FileJob.hpp"
 #include "String_.hpp"
 #include "User.hpp"
-
+#include "Shared.hpp"
 
 namespace EDR
 {
