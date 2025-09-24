@@ -8,37 +8,145 @@ namespace EDR
 {
 	namespace LogReceiver
 	{
-		BOOLEAN Receiver::INITIALIZE(HANDLE* out_threadid, PVOID* APC_Handler)
+
+		bool LogManager::Run()
 		{
-			APCLoopThreadHandle = EDR::APC::Init_APC(out_threadid, APC_Handler, &Queue);
-			if (!APCLoopThreadHandle)
+			if (is_threading) // 최초 1번 실행
+				return false; 
+
+			bool status = false;
+
+			// 1. IOCTL 연결
+			if (!ioctl.INITIALIZE(
+				(HANDLE)GetCurrentProcessId()
+			))
 				return false;
-			is_APCLoopThreadHandle_loop = true;
 
-			is_ReceiveQueueWorking = true;
-			RecieveQueueThread = std::thread(
-				[this, Queue = &this->Queue, isWorking = &this->is_ReceiveQueueWorking]
+			is_threading = true;
+
+			// 2. IOCTL 수신 스레드
+			RecieveLogDataThread = std::thread(
+				[this, test = &ioctl, is_threading = &is_threading, queue = &this->Queue]()
 				{
-					std::cout << "RecieveQueueThread is running" << std::endl;
-					while (true)
+					while (*is_threading)
 					{
-						auto Log = Queue->get();
+						PVOID out_UserAllocatedFileBinaryAddress = NULL;
+						ULONG64 out_BinarySize = 0;
+						ioctl.REQUEST_LOG(
+							(PVOID*)&out_UserAllocatedFileBinaryAddress,
+							&out_BinarySize
+						);
 
-						/*
-							RawData ( 로그 ) 캐스팅
-						*/
-						switch (Log.type)
+						std::cout << "Log Received Size: " << out_BinarySize << std::endl;
+
+						for (ULONG64 i = 0; i < out_BinarySize; i += sizeof(PVOID))
+						{
+							/*
+								Kernel - User [ 로그 전송 ]
+								
+								PVOID(x64기준 8바이트)씩 나눠서 사전에 커널에서 유저모드에 할당한 공간에 로그 주소를 저장함
+
+							*/
+							PVOID log = *(PVOID*)((PUCHAR)out_UserAllocatedFileBinaryAddress + i);
+
+							EDR::EventLog::Struct::EventLog_Header* header = (EDR::EventLog::Struct::EventLog_Header*)log;
+
+							ULONG64 LogSize = 0;
+							switch (header->Type)
+							{
+								case EDR::EventLog::Enum::Process_Create:
+								{
+									LogSize = sizeof(EDR::EventLog::Struct::Process::EventLog_Process_Create);
+									break;
+								}
+								case EDR::EventLog::Enum::Process_Terminate:
+								{
+									LogSize = sizeof(EDR::EventLog::Struct::Process::EventLog_Process_Terminate);
+									break;
+								}
+								case EDR::EventLog::Enum::ImageLoad:
+								{
+									LogSize = sizeof(EDR::EventLog::Struct::ImageLoad::EventLog_ImageLoad);
+									break;
+								}
+								case EDR::EventLog::Enum::Network:
+								{
+									LogSize = sizeof(EDR::EventLog::Struct::Network::EventLog_Process_Network);
+									break;
+								}
+								case EDR::EventLog::Enum::Filesystem:
+								{
+									LogSize = sizeof(EDR::EventLog::Struct::FileSystem::EventLog_Process_Filesystem);
+									break;
+								}
+								case EDR::EventLog::Enum::ObRegisterCallback:
+								{
+									LogSize = sizeof(EDR::EventLog::Struct::ObRegisterCallback::EventLog_Process_ObRegisterCallback);
+									break;
+								}
+								default:
+								{
+									std::cout << "이해할 수 없는 로그" << std::endl;
+									break;
+								}
+
+							}
+
+
+							if (LogSize)
+							{
+								log_s logStruct;
+								logStruct.Type = header->Type;
+								logStruct.logData = new unsigned char[LogSize];
+								memcpy(logStruct.logData, log, LogSize);
+								logStruct.logSize = LogSize;
+
+								queue->put(logStruct); // 큐로 데이터 전송
+							}
+							
+
+							VirtualFree(log, 0, MEM_RELEASE);
+						}
+
+						VirtualFree(out_UserAllocatedFileBinaryAddress, 0, MEM_RELEASE);
+
+						Sleep(2000);
+					}
+				}
+			);
+			RecieveLogDataThread.detach();
+			
+			// 3. 로그 처리 스레드
+			RecieveQueueThread = std::thread(
+				[this, test = &ioctl, is_threading = &is_threading, queue = &this->Queue]()
+				{
+					while (*is_threading)
+					{
+						auto Log = queue->get();
+						
+						
+						switch (Log.Type)
 						{
 						case EDR::EventLog::Enum::Process_Create:
 						{
 							EDR::EventLog::Struct::Process::EventLog_Process_Create* ProcessCreatedLog = reinterpret_cast<EDR::EventLog::Struct::Process::EventLog_Process_Create*>(Log.logData);
+
 							
 
+
+							std::string root_SessionID;
 							std::string SessionID;
+							std::string parent_SessionID;
+							
+							
+
+							
 							ProcessSessionManager.ProcessCreate(
 								ProcessCreatedLog->header.ProcessId,
 								ProcessCreatedLog->body.Parent_ProcessId,
-								SessionID
+								SessionID,
+								root_SessionID,
+								parent_SessionID
 							);
 							if (SessionID.empty())
 								break;
@@ -53,6 +161,8 @@ namespace EDR
 
 							WindowsLogSender.Send_Log_Process_Create(
 								SessionID,
+								root_SessionID,
+								parent_SessionID,
 
 								ProcessCreatedLog->body.post.SID,
 								Username,
@@ -76,14 +186,20 @@ namespace EDR
 
 							break;
 						}
+						
 						case EDR::EventLog::Enum::Process_Terminate:
 						{
 							EDR::EventLog::Struct::Process::EventLog_Process_Terminate* ProcessTerminateLog = reinterpret_cast<EDR::EventLog::Struct::Process::EventLog_Process_Terminate*>(Log.logData);
-							
+
+							std::string root_SessionID;
 							std::string SessionID;
+							std::string parent_SessionID;
+
 							ProcessSessionManager.ProcessRemove(
 								ProcessTerminateLog->header.ProcessId,
-								SessionID
+								SessionID,
+								root_SessionID,
+								parent_SessionID
 							);
 							if (SessionID.empty())
 								break;
@@ -91,6 +207,9 @@ namespace EDR
 							// logSend
 							WindowsLogSender.Send_Log_Process_Remove(
 								SessionID,
+								root_SessionID,
+								parent_SessionID,
+
 								ProcessTerminateLog->header.Version,
 								ProcessTerminateLog->header.ProcessId,
 								ProcessTerminateLog->header.NanoTimestamp
@@ -103,10 +222,16 @@ namespace EDR
 							break;
 							EDR::EventLog::Struct::ImageLoad::EventLog_ImageLoad* ImageLoadLog = reinterpret_cast<EDR::EventLog::Struct::ImageLoad::EventLog_ImageLoad*>(Log.logData);
 
+							std::string root_SessionID;
 							std::string SessionID;
+							std::string parent_SessionID;
+
+
 							ProcessSessionManager.AppendingEvent(
 								ImageLoadLog->header.ProcessId,
-								SessionID
+								SessionID,
+								root_SessionID,
+								parent_SessionID
 							);
 							if (SessionID.empty())
 								break;
@@ -114,6 +239,8 @@ namespace EDR
 							// logSend
 							WindowsLogSender.Send_Log_ImageLoad(
 								SessionID,
+								root_SessionID,
+								parent_SessionID,
 
 								ImageLoadLog->header.Version,
 								ImageLoadLog->header.ProcessId,
@@ -131,17 +258,26 @@ namespace EDR
 						{
 							EDR::EventLog::Struct::Network::EventLog_Process_Network* NetworkLog = reinterpret_cast<EDR::EventLog::Struct::Network::EventLog_Process_Network*>(Log.logData);
 
+							std::string root_SessionID;
 							std::string SessionID;
+							std::string parent_SessionID;
+
 							ProcessSessionManager.AppendingEvent(
 								NetworkLog->header.ProcessId,
-								SessionID
+								SessionID,
+								root_SessionID,
+								parent_SessionID
 							);
 							if (SessionID.empty())
 								break;
 
+							//std::cout << NetworkLog->body.ProtocolNumber << " || " << (NetworkLog->body.is_INBOUND ? "In" : "out") << " || " << NetworkLog->body.PacketSize << std::endl;
+
 							// logSend
 							WindowsLogSender.Send_Log_Network(
 								SessionID,
+								root_SessionID,
+								parent_SessionID,
 
 								NetworkLog->header.Version,
 								NetworkLog->header.ProcessId,
@@ -164,10 +300,15 @@ namespace EDR
 						{
 							EDR::EventLog::Struct::FileSystem::EventLog_Process_Filesystem* FileSystemLog = reinterpret_cast<EDR::EventLog::Struct::FileSystem::EventLog_Process_Filesystem*>(Log.logData);
 
+							std::string root_SessionID;
 							std::string SessionID;
+							std::string parent_SessionID;
+
 							ProcessSessionManager.AppendingEvent(
 								FileSystemLog->header.ProcessId,
-								SessionID
+								SessionID,
+								root_SessionID,
+								parent_SessionID
 							);
 							if (SessionID.empty())
 								break;
@@ -192,6 +333,8 @@ namespace EDR
 								break;
 							default:
 							{
+								std::cout << "알 수 없는 파일 액션";
+								system("pause");
 								std::runtime_error("알 수 없는 파일 액션");
 								exit(-1);
 							}
@@ -200,12 +343,15 @@ namespace EDR
 							// LogSend
 							WindowsLogSender.Send_Log_FileSystem(
 								SessionID,
+								root_SessionID,
+								parent_SessionID,
 
 								FileSystemLog->header.Version,
 								FileSystemLog->header.ProcessId,
 
 								FileAction,
 								FileSystemLog->body.FilePath,
+								FileSystemLog->body.sha256.SHA256,
 								FileSystemLog->body.post.FileSize,
 
 								FileSystemLog->header.NanoTimestamp
@@ -217,10 +363,15 @@ namespace EDR
 						{
 							EDR::EventLog::Struct::ObRegisterCallback::EventLog_Process_ObRegisterCallback* ObRegisterCallbackLog = reinterpret_cast<EDR::EventLog::Struct::ObRegisterCallback::EventLog_Process_ObRegisterCallback*>(Log.logData);
 
+							std::string root_SessionID;
 							std::string SessionID;
+							std::string parent_SessionID;
+
 							ProcessSessionManager.AppendingEvent(
 								ObRegisterCallbackLog->header.ProcessId,
-								SessionID
+								SessionID,
+								root_SessionID,
+								parent_SessionID
 							);
 							if (SessionID.empty())
 								break;
@@ -230,7 +381,7 @@ namespace EDR
 								DesiredAccessVec.push_back("PROCESS_ALL_ACCESS");
 
 
-							#define PROCESS_SYNCHRONIZE                0x00100000
+#define PROCESS_SYNCHRONIZE                0x00100000
 							if (ObRegisterCallbackLog->body.DesiredAccess & PROCESS_CREATE_PROCESS)
 								DesiredAccessVec.push_back("PROCESS_CREATE_PROCESS");
 							if (ObRegisterCallbackLog->body.DesiredAccess & PROCESS_CREATE_THREAD)
@@ -279,15 +430,17 @@ namespace EDR
 								DesiredAccessVec.push_back("GENERIC_EXECUTE");
 							if (ObRegisterCallbackLog->body.DesiredAccess & GENERIC_ALL)
 								DesiredAccessVec.push_back("GENERIC_ALL");
-								
-							
+
+
 							WindowsLogSender.Send_Log_ProcessAccess(
 								SessionID,
+								root_SessionID,
+								parent_SessionID,
 
 								ObRegisterCallbackLog->header.Version,
 								ObRegisterCallbackLog->header.ProcessId,
 
-								ObRegisterCallbackLog->body.is_CreateHandleInformation ? "create" : "duplicate" ,
+								ObRegisterCallbackLog->body.is_CreateHandleInformation ? "create" : "duplicate",
 								ObRegisterCallbackLog->body.Target_ProcessId,
 								ObRegisterCallbackLog->body.TargetProcess_Path,
 								DesiredAccessVec,
@@ -300,17 +453,32 @@ namespace EDR
 						}
 						default:
 						{
-							std::cout << "이해할 수 없는 로그" << std::endl;
+							//std::cout << "이해할 수 없는 로그" << std::endl;
 							break;
 						}
 						}
-
+						
 						delete[] Log.logData;
 					}
+
+					Sleep(2111);
+					// queue clean
+					while (queue->empty() == false)
+					{
+						auto Log = queue->get();
+						delete[] Log.logData;
+					}
+					return;
 				}
 			);
-			return true;
+			RecieveQueueThread.detach();
+
+
+
+			return status;
 		}
+
+
 	}
 
 }

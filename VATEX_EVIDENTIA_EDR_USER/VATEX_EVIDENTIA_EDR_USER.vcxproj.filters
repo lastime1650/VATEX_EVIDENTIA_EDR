@@ -40,6 +40,12 @@
     <Filter Include="Util\Windows">
       <UniqueIdentifier>{38946364-bc15-4eda-92d7-67e7431289e7}</UniqueIdentifier>
     </Filter>
+    <Filter Include="EDR">
+      <UniqueIdentifier>{694fc18d-bee2-4012-a6ba-ca8bb61e1b63}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Util\TCP">
+      <UniqueIdentifier>{bc9a6f81-2988-44fb-a642-817f6d23b063}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
@@ -75,6 +81,9 @@
     </ClCompile>
     <ClCompile Include="Windows.cpp">
       <Filter>Util\Windows</Filter>
+    </ClCompile>
+    <ClCompile Include="TCP.cpp">
+      <Filter>Util\TCP</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -113,6 +122,9 @@
     </ClInclude>
     <ClInclude Include="Hash.hpp">
       <Filter>Util\Hash</Filter>
+    </ClInclude>
+    <ClInclude Include="TCP.hpp">
+      <Filter>Util\TCP</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

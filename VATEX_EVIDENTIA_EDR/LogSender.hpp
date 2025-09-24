@@ -10,13 +10,15 @@ namespace EDR
 
 	namespace LogSender
 	{
+		#define MAXIMUM_SLIST_NODE_SIZE 65535
+
 		BOOLEAN INITIALIZE();
 		VOID CleanUp();
 
 
 		namespace resource
 		{
-			#define MAXIMUM_SLIST_NODE_SIZE 65535
+			
 			extern SLIST_HEADER g_ListHead;
 			extern BOOLEAN is_consume_working;
 
@@ -41,20 +43,28 @@ namespace EDR
 
 		namespace LogPost
 		{
-			namespace WorkItem_method
-			{
-				#define WorkItem_LogALLOC 'WRKi'
-				typedef struct _WORK_CONTEXT {
-					WORK_QUEUE_ITEM Item;
+			#define LogALLOC 'Log'
+			#define LogPostCtxALLOC 'LogP'
 
-					PVOID LogEvent;
-				} WORK_CONTEXT, * PWORK_CONTEXT;
-				extern "C" VOID POST_Workitem_method(PVOID ctx);
-			}
+			#define Log_SLIST_ALLOC 'SLog'
+
+			extern BOOLEAN is_LogPostWorking;
+			extern SLIST_HEADER g_LogPostListHead; // 로그 저장 큐
+
+			typedef struct _LOG_QUEUE_NODE {
+				SLIST_ENTRY Entry;
+				PVOID log; // allocated log
+			} LOG_QUEUE_NODE, * PLOG_QUEUE_NODE;
+
+
+			BOOLEAN LogPut(PVOID log);
+			BOOLEAN LogGet(_Out_ PVOID* log);
+			VOID CleanUpLogNodes();
+			
+
 			namespace SystemThread_method
 			{
-				#define LogALLOC 'Log'
-				#define LogPostCtxALLOC 'LogP'
+				
 				struct ctx
 				{
 					EDR::EventLog::Enum::EventLog_Enum type;
@@ -95,7 +105,8 @@ namespace EDR
 				EDR::EventLog::Enum::FileSystem::Filesystem_enum FsEnum,
 				UNICODE_STRING* Normalized_FilePath, // \harddisk..\,,\ ( DOS 파티션 알파벳이 아님 )
 
-				UNICODE_STRING* To_Renmae_FilePath // if NULL< not Rename.
+				UNICODE_STRING* To_Renmae_FilePath, // if NULL< not Rename.
+				PCHAR SHA256 // if NULL not Calculate SHA256
 				
 			);
 

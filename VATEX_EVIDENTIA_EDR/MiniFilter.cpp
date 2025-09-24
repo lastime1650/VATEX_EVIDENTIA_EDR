@@ -20,34 +20,34 @@ namespace EDR
         
 
         const FLT_OPERATION_REGISTRATION Callback_s[] = {
-            { IRP_MJ_CREATE, 0, Handler::PRE::PRE_filter_Handler, Handler::POST::POST_filter_Handler },
-            { IRP_MJ_CREATE_NAMED_PIPE, 0, Handler::PRE::PRE_filter_Handler, Handler::POST::POST_filter_Handler },
-            { IRP_MJ_CLOSE, 0, Handler::PRE::PRE_filter_Handler, Handler::POST::POST_filter_Handler },
-            { IRP_MJ_READ, 0, Handler::PRE::PRE_filter_Handler, Handler::POST::POST_filter_Handler },
-            { IRP_MJ_WRITE, 0, Handler::PRE::PRE_filter_Handler, Handler::POST::POST_filter_Handler },
-            { IRP_MJ_QUERY_INFORMATION, 0, Handler::PRE::PRE_filter_Handler, Handler::POST::POST_filter_Handler },
-            { IRP_MJ_SET_INFORMATION, 0, Handler::PRE::PRE_filter_Handler, Handler::POST::POST_filter_Handler },
-            { IRP_MJ_QUERY_EA, 0, Handler::PRE::PRE_filter_Handler, Handler::POST::POST_filter_Handler },
-            { IRP_MJ_SET_EA, 0, Handler::PRE::PRE_filter_Handler, Handler::POST::POST_filter_Handler },
-            { IRP_MJ_FLUSH_BUFFERS, 0, Handler::PRE::PRE_filter_Handler, Handler::POST::POST_filter_Handler },
-            { IRP_MJ_QUERY_VOLUME_INFORMATION, 0, Handler::PRE::PRE_filter_Handler, Handler::POST::POST_filter_Handler },
-            { IRP_MJ_SET_VOLUME_INFORMATION, 0, Handler::PRE::PRE_filter_Handler, Handler::POST::POST_filter_Handler },
-            { IRP_MJ_DIRECTORY_CONTROL, 0, Handler::PRE::PRE_filter_Handler, Handler::POST::POST_filter_Handler },
-            { IRP_MJ_FILE_SYSTEM_CONTROL, 0, Handler::PRE::PRE_filter_Handler, Handler::POST::POST_filter_Handler },
-            { IRP_MJ_DEVICE_CONTROL, 0, Handler::PRE::PRE_filter_Handler, Handler::POST::POST_filter_Handler },
-            { IRP_MJ_INTERNAL_DEVICE_CONTROL, 0, Handler::PRE::PRE_filter_Handler, Handler::POST::POST_filter_Handler },
+            { IRP_MJ_CREATE, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
+            { IRP_MJ_CREATE_NAMED_PIPE, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
+            { IRP_MJ_CLOSE, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
+            { IRP_MJ_READ, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
+            { IRP_MJ_WRITE, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
+            { IRP_MJ_QUERY_INFORMATION, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
+            { IRP_MJ_SET_INFORMATION, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
+            { IRP_MJ_QUERY_EA, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler,(PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
+            { IRP_MJ_SET_EA, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
+            { IRP_MJ_FLUSH_BUFFERS, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
+            { IRP_MJ_QUERY_VOLUME_INFORMATION, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
+            { IRP_MJ_SET_VOLUME_INFORMATION, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
+            { IRP_MJ_DIRECTORY_CONTROL, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
+            { IRP_MJ_FILE_SYSTEM_CONTROL, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
+            { IRP_MJ_DEVICE_CONTROL, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
+            { IRP_MJ_INTERNAL_DEVICE_CONTROL, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
             //{ IRP_MJ_SHUTDOWN, 0, NULL, NULL }, // No post-operation callback
-            { IRP_MJ_LOCK_CONTROL, 0, Handler::PRE::PRE_filter_Handler, Handler::POST::POST_filter_Handler },
-            { IRP_MJ_CLEANUP, 0, Handler::PRE::PRE_filter_Handler, Handler::POST::POST_filter_Handler },
-            { IRP_MJ_CREATE_MAILSLOT, 0, Handler::PRE::PRE_filter_Handler, Handler::POST::POST_filter_Handler },
-            { IRP_MJ_QUERY_SECURITY, 0, Handler::PRE::PRE_filter_Handler, Handler::POST::POST_filter_Handler },
-            { IRP_MJ_SET_SECURITY, 0, Handler::PRE::PRE_filter_Handler, Handler::POST::POST_filter_Handler },
-            { IRP_MJ_POWER, 0, Handler::PRE::PRE_filter_Handler, Handler::POST::POST_filter_Handler },
-            { IRP_MJ_SYSTEM_CONTROL, 0, Handler::PRE::PRE_filter_Handler, Handler::POST::POST_filter_Handler },
-            { IRP_MJ_DEVICE_CHANGE, 0, Handler::PRE::PRE_filter_Handler, Handler::POST::POST_filter_Handler },
-            { IRP_MJ_QUERY_QUOTA, 0, Handler::PRE::PRE_filter_Handler, Handler::POST::POST_filter_Handler },
-            { IRP_MJ_SET_QUOTA, 0, Handler::PRE::PRE_filter_Handler, Handler::POST::POST_filter_Handler },
-            { IRP_MJ_PNP, 0, Handler::PRE::PRE_filter_Handler, Handler::POST::POST_filter_Handler },
+            { IRP_MJ_LOCK_CONTROL, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
+            { IRP_MJ_CLEANUP, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
+            { IRP_MJ_CREATE_MAILSLOT, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
+            { IRP_MJ_QUERY_SECURITY, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
+            { IRP_MJ_SET_SECURITY, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
+            { IRP_MJ_POWER, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
+            { IRP_MJ_SYSTEM_CONTROL, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
+            { IRP_MJ_DEVICE_CHANGE, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
+            { IRP_MJ_QUERY_QUOTA, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
+            { IRP_MJ_SET_QUOTA, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
+            { IRP_MJ_PNP, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
             { IRP_MJ_OPERATION_END } // Array termination
         };
 
@@ -98,14 +98,67 @@ namespace EDR
                 POST_filter_Handler(
                     PFLT_CALLBACK_DATA Data,
                     PCFLT_RELATED_OBJECTS FltObjects,
-                    PVOID CompletionContext,
+                    EDR::MiniFilter::resource::PPretoPost_CTX CompletionContext,
                     FLT_POST_OPERATION_FLAGS Flags
                 )
             {
                 UNREFERENCED_PARAMETER(FltObjects);
                 UNREFERENCED_PARAMETER(Data);
-                UNREFERENCED_PARAMETER(CompletionContext);
+                //UNREFERENCED_PARAMETER(CompletionContext);
                 UNREFERENCED_PARAMETER(Flags);
+
+                switch (Data->Iopb->MajorFunction)
+                {
+                    case IRP_MJ_CREATE:
+                    {
+                        if (CompletionContext)
+                        {
+                            debug_break();
+                            debug_log("%ws \n", (PWCH)(CompletionContext->NormalizedFilePath));
+
+                            ULONG64 FileSize = 0;
+                            CHAR SHA256[SHA256_String_Byte_Length] = { 0 };
+                            if (helper::Get_FileSHA256(
+                                FltObjects->Instance,
+                                FltObjects->FileObject,
+                                SHA256,
+                                &FileSize
+                            ))
+                            {
+                                // 해싱 성공 시,
+                                UNICODE_STRING NormalizedFilePath;
+                                RtlInitUnicodeString(&NormalizedFilePath, CompletionContext->NormalizedFilePath);
+
+                                // 로그 전송 처리 ( 지연된 Create ) 
+                                EDR::LogSender::function::FilesystemLog(
+                                    CompletionContext->ProcessId,
+                                    CompletionContext->timestamp,
+                                    CompletionContext->Action,
+                                    &NormalizedFilePath,
+                                    NULL,
+                                    SHA256
+                                );
+                            }
+
+                        }
+                        break;
+                    }
+                    default:
+                    {
+                        break;
+                    }
+                }
+
+                if (CompletionContext)
+                {
+                    // 파일명 해제
+                    if(CompletionContext->NormalizedFilePath)
+                        ExFreePoolWithTag(CompletionContext->NormalizedFilePath, PretoPost_CTX_ALLOC_TAG); 
+
+                    // CTX 해제
+                    ExFreePoolWithTag(CompletionContext, PretoPost_CTX_ALLOC_TAG);
+                }
+                
                 return FLT_POSTOP_FINISHED_PROCESSING;
             }
         }
@@ -115,9 +168,12 @@ namespace EDR
                 PRE_filter_Handler(
                     PFLT_CALLBACK_DATA Data,
                     PCFLT_RELATED_OBJECTS FltObjects,
-                    PVOID* CompletionContext
+                    EDR::MiniFilter::resource::PPretoPost_CTX* CompletionContext
                 )
             {
+                if (CompletionContext)
+                    *CompletionContext = NULL;
+
                 UNREFERENCED_PARAMETER(FltObjects);
 
                 HANDLE ProcessId = (HANDLE)FltGetRequestorProcessId(Data);
@@ -131,7 +187,7 @@ namespace EDR
                     return FLT_PREOP_SUCCESS_NO_CALLBACK;
 
                 // AGENT Usermode Process는 제외
-                if( EDR::Util::Shared::USER_AGENT::ProcessId == ProcessId)
+                if( !EDR::Util::Shared::USER_AGENT::ProcessId || EDR::Util::Shared::USER_AGENT::ProcessId == ProcessId)
                     return FLT_PREOP_SUCCESS_NO_CALLBACK;
 
                 // 파일 확인
@@ -155,10 +211,13 @@ namespace EDR
                     return FLT_PREOP_SUCCESS_NO_CALLBACK;
                 */
                 
-
+                FLT_PREOP_CALLBACK_STATUS ReturnStatus = FLT_PREOP_SUCCESS_NO_CALLBACK;
 
                 // if rename, valid
                 PUNICODE_STRING RenameFilePath = NULL;
+
+                // if got filesha256
+                
 
                 /*
                 * 
@@ -182,8 +241,69 @@ namespace EDR
                 {
                 case IRP_MJ_CREATE:
                 {
-                    Action = EDR::EventLog::Enum::FileSystem::create;
-                    break;
+                    
+                    /*
+                        IRP_MJ_CREATE시 에는 파일 상호작용을 위한 직전이므로, 이때 파일 해시를 구한다.
+                    */
+
+
+
+                    /*
+                    if (KeGetCurrentIrql() == PASSIVE_LEVEL)
+                    {
+                        
+                        debug_break();
+
+                        
+                        SIZE_T FileSize = 0;
+						SHA256 = (PCHAR)ExAllocatePool2(POOL_FLAG_NON_PAGED, SHA256_String_Byte_Length, 'fSH2');
+                        RtlZeroMemory(SHA256, SHA256_String_Byte_Length);
+
+                        // 파일 해시 구하기 ( 단, 파일경로 기반으로 해야한다. )
+                        if (helper::Get_FileSHA256_by_FILEPATH(NormalizedFilePath, &FileSize, SHA256))
+                        {
+                            // 구하기 성공
+                            debug_break();
+
+                        }
+                    }*/
+                    
+                    {
+                        Action = EDR::EventLog::Enum::FileSystem::create;
+                        /*
+                        * 
+                        * 1. 파일 해싱 구하는 방법
+                        * 
+                        * IRP_MJ_CREATE일 때 캐치
+                        * 
+                            IRP_MJ_CREATE시 무조건 POST 핸들러 콜백호출하도록 한다.
+                        */
+                        EDR::MiniFilter::resource::PPretoPost_CTX PRE_to_POST_CTX = (EDR::MiniFilter::resource::PPretoPost_CTX)ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(EDR::MiniFilter::resource::PretoPost_CTX), PretoPost_CTX_ALLOC_TAG);
+                        RtlZeroMemory(PRE_to_POST_CTX, sizeof(EDR::MiniFilter::resource::PretoPost_CTX));
+
+                        // IRP_MJ_CREATE (파일 오픈 등 파일핸들 딱 얻을 시점 )에서 POST호출 요청하여 파일 해싱 안전하게 처리
+                        PRE_to_POST_CTX->NormalizedFilePath = (PWCH)ExAllocatePool2(POOL_FLAG_NON_PAGED, NormalizedFilePath->MaximumLength + sizeof(WCHAR), PretoPost_CTX_ALLOC_TAG);
+                        RtlZeroMemory(PRE_to_POST_CTX->NormalizedFilePath, NormalizedFilePath->MaximumLength + sizeof(WCHAR));
+
+                        RtlCopyMemory(PRE_to_POST_CTX->NormalizedFilePath, NormalizedFilePath->Buffer, NormalizedFilePath->MaximumLength);
+                        *CompletionContext = PRE_to_POST_CTX;
+
+                        /*
+                             2. POST에 넘길 정보 저장
+                        */
+                        PRE_to_POST_CTX->Action = Action;
+                        PRE_to_POST_CTX->ProcessId = ProcessId;
+                        PRE_to_POST_CTX->timestamp = Nano_Timestamp;
+
+
+                        ReturnStatus = FLT_PREOP_SUCCESS_WITH_CALLBACK;
+                    }
+                    
+                    
+
+                    
+
+                    goto CleanUp; // 바로 리턴
                 }
                 case IRP_MJ_READ:
                 {
@@ -204,11 +324,11 @@ namespace EDR
                         Action = EDR::EventLog::Enum::FileSystem::rename;
                         PFILE_RENAME_INFORMATION renameInfo = (PFILE_RENAME_INFORMATION)Data->Iopb->Parameters.SetFileInformation.InfoBuffer;
                         if (!renameInfo)
-                            return FLT_PREOP_SUCCESS_NO_CALLBACK;
+                            return ReturnStatus;
 
                         RenameFilePath = (PUNICODE_STRING)ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(UNICODE_STRING) + renameInfo->FileNameLength+sizeof(WCHAR), 'Renm');
                         if(!RenameFilePath)
-                            return FLT_PREOP_SUCCESS_NO_CALLBACK;
+                            return ReturnStatus;
                         RtlZeroMemory(RenameFilePath, sizeof(UNICODE_STRING) + renameInfo->FileNameLength + sizeof(WCHAR));
                         RenameFilePath->Length = (USHORT)renameInfo->FileNameLength;
                         RenameFilePath->MaximumLength = (USHORT)renameInfo->FileNameLength+sizeof(WCHAR);
@@ -224,17 +344,17 @@ namespace EDR
                         Action = EDR::EventLog::Enum::FileSystem::remove;
                         PFILE_DISPOSITION_INFORMATION delInfo = (PFILE_DISPOSITION_INFORMATION)Data->Iopb->Parameters.SetFileInformation.InfoBuffer;
                         if (!delInfo && !delInfo->DeleteFile)
-                            return FLT_PREOP_SUCCESS_NO_CALLBACK;
+                            return ReturnStatus;
                     }
                     else
                     {
                         // 알수없음
-                        return FLT_PREOP_SUCCESS_NO_CALLBACK;
+                        return ReturnStatus;
                     }
                     break;
                 }
                 default:
-                    break;
+                    return ReturnStatus;
                 }
 
                 EDR::LogSender::function::FilesystemLog(
@@ -242,17 +362,40 @@ namespace EDR
                     Nano_Timestamp,
                     Action,
                     NormalizedFilePath,
-                    RenameFilePath
+                    RenameFilePath,
+                    NULL
                 );
 
-                if (RenameFilePath)
-                    ExFreePoolWithTag(RenameFilePath, 'Renm');
 
-                return FLT_PREOP_SUCCESS_NO_CALLBACK;
+
+            CleanUp:
+                {
+                    if (RenameFilePath)
+                        ExFreePoolWithTag(RenameFilePath, 'Renm');
+
+
+                    return ReturnStatus;
+                }
             }
         }
         namespace helper
         {
+            /*
+            * 
+            * 미니필터에서 ZwCreate,Open,Read등은 옳지 않다. [ POST ] 로 콜백호출하여 Flt.. 함수로 미니필터 전용 API 로 파일 해싱하던가  바이너리 작업 해야함
+            BOOLEAN Get_FileSHA256_by_FILEPATH(
+                PUNICODE_STRING FilePath,
+                PSIZE_T FileSize,
+                PCHAR Allocated_SHA256
+            )
+            {
+
+                return NT_SUCCESS(Util::File::Read::ReadFileAndComputeSHA256(
+                    *FilePath,
+                    Allocated_SHA256,
+                    FileSize
+                ));
+            }*/
 
             // 파일여부 확인 및 이름 정보 추출 ( 추출시 "Relase_Is_File_with_Get_File_Info" 호출 필수
             BOOLEAN Is_File_with_Get_File_Info(
@@ -317,7 +460,6 @@ namespace EDR
                 return TRUE;
             }
 
-            _Success_(return == TRUE)
             BOOLEAN Get_FileSHA256(
                 _In_ PFLT_INSTANCE Instance,
                 _In_ PFILE_OBJECT FileObject,

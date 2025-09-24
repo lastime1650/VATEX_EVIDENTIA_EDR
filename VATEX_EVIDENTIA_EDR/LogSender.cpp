@@ -4,15 +4,37 @@ namespace EDR
 {
 	namespace LogSender
 	{
+		ERESOURCE g_Resource;
+
 		BOOLEAN INITIALIZE()
 		{
 			PAGED_CODE();
+
+			LogPost::is_LogPostWorking = TRUE;
+
+			// 로그 큐 스레드 실행
+			HANDLE THREAD = NULL;
+			NTSTATUS status = PsCreateSystemThread(
+				&THREAD,
+				THREAD_ALL_ACCESS,
+				NULL,
+				NULL,
+				NULL,
+				(PKSTART_ROUTINE)EDR::LogSender::LogPost::SystemThread_method::POST_SystemThread_method,
+				NULL
+			);
+			if (!NT_SUCCESS(status) || !THREAD)
+				return FALSE;
+
+			// Detach
+			ZwClose(THREAD);
 
 			return TRUE;
 		}
 		VOID CleanUp()
 		{
 			resource::Consume::CleanUpNodes();
+			LogPost::CleanUpLogNodes();
 		}
 
 		namespace resource
@@ -193,6 +215,7 @@ namespace EDR
 
 		namespace LogPost
 		{
+			/*
 			namespace WorkItem_method
 			{
 				extern "C" VOID POST_Workitem_method(PVOID ctx)
@@ -227,35 +250,119 @@ namespace EDR
 
 					ExFreePoolWithTag(workitem_ctx, WorkItem_LogALLOC);
 				}
+			}*/
+
+			BOOLEAN is_LogPostWorking = false;
+			SLIST_HEADER g_LogPostListHead;
+
+			VOID CleanUpLogNodes()
+			{
+				is_LogPostWorking = false;
+				// 남은 노드 엔트리 모두 할당해제
+				USHORT NodeCount = QueryDepthSList(&g_LogPostListHead);
+				if (NodeCount)
+				{
+					for (ULONG64 node_count = 0; node_count < NodeCount; node_count++)
+					{
+						PSLIST_ENTRY entry_node = InterlockedPopEntrySList(&g_LogPostListHead);  // 노드 개수 원자적으로 1씩 감소
+						if (!entry_node)
+							break;
+
+						PLOG_QUEUE_NODE node = CONTAINING_RECORD(entry_node, LOG_QUEUE_NODE, Entry);
+
+						ExFreePoolWithTag(node, Log_SLIST_ALLOC);
+					}
+				}
 			}
+
+			BOOLEAN LogPut(PVOID log)
+			{
+				USHORT NodeCount = QueryDepthSList(&g_LogPostListHead);
+				if (NodeCount >= MAXIMUM_SLIST_NODE_SIZE)
+					return FALSE;
+
+
+
+				PLOG_QUEUE_NODE node = (PLOG_QUEUE_NODE)ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(LOG_QUEUE_NODE), Log_SLIST_ALLOC);
+				if (!node)
+					return false;
+
+				node->log = log;
+				InterlockedPushEntrySList(&g_LogPostListHead, &node->Entry); // 노드 추가
+
+				return  TRUE;
+			}
+
+			BOOLEAN LogGet(_Out_ PVOID* log)
+			{
+				if (!log)
+					return FALSE;
+
+				*log = NULL;
+
+				PSLIST_ENTRY Log_Entry = InterlockedPopEntrySList(&g_LogPostListHead); // 원자적으로 1개 가져옴
+				if (!Log_Entry)
+					return FALSE;
+
+				PLOG_QUEUE_NODE node = CONTAINING_RECORD(Log_Entry, LOG_QUEUE_NODE, Entry);
+				if (!node)
+					return FALSE;
+
+				*log = node->log; // log가져옴
+				if (!*log)
+					return FALSE;
+
+				ExFreePoolWithTag(node, Log_SLIST_ALLOC);
+
+				return TRUE;
+			}
+
 			namespace SystemThread_method
 			{
-				extern "C" VOID POST_SystemThread_method(PVOID CTX)
+				extern "C" VOID POST_SystemThread_method(PVOID no_used)
 				{
+					UNREFERENCED_PARAMETER(no_used);
+
 					PAGED_CODE();
 
-					NTSTATUS status = STATUS_UNSUCCESSFUL;
-					EDR::EventLog::Struct::EventLog_Header* logHeader = (EDR::EventLog::Struct::EventLog_Header*)CTX;
-
-					PVOID AllocatedUserSpace = NULL;
-					SIZE_T AllocatedUserSpaceSize = 0;
-					SIZE_T logSize = 0;
-
-					// APC타겟 유저(USER AGENT 프로세스) PID 유효체크
-					HANDLE APC_Target_ProcessHandle = EDR::Util::Shared::USER_AGENT::ProcessHandle;
-					if (!APC_Target_ProcessHandle)
-						goto CleanUp;
-					HANDLE APC_Target_ProcessId = EDR::Util::Shared::USER_AGENT::ProcessId;
-					if (!APC_Target_ProcessId)
-						goto CleanUp;
-
-					
-					switch (logHeader->Type)
+					while (is_LogPostWorking)
 					{
+
+						// 로그 가져오기
+						PVOID CTX = NULL;
+						if (!LogGet(&CTX))
+						{
+							// 100ms 대기
+							LARGE_INTEGER interval;
+							interval.QuadPart = -1000000LL; // 100ms, 단위: 100ns, 음수 = relative time
+							KeDelayExecutionThread(KernelMode, FALSE, &interval);
+							continue;
+						}
+
+
+						NTSTATUS status = STATUS_UNSUCCESSFUL;
+						EDR::EventLog::Struct::EventLog_Header* logHeader = (EDR::EventLog::Struct::EventLog_Header*)CTX;
+
+						PVOID AllocatedUserSpace = NULL;
+						SIZE_T AllocatedUserSpaceSize = 0;
+						SIZE_T logSize = 0;
+
+						// APC타겟 유저(USER AGENT 프로세스) PID 유효체크
+						HANDLE APC_Target_ProcessHandle = EDR::Util::Shared::USER_AGENT::ProcessHandle;
+						if (!APC_Target_ProcessHandle)
+							goto CleanUp;
+						HANDLE APC_Target_ProcessId = EDR::Util::Shared::USER_AGENT::ProcessId;
+						if (!APC_Target_ProcessId)
+							goto CleanUp;
+
+
+
+						switch (logHeader->Type)
+						{
 						case  EDR::EventLog::Enum::Filesystem:
 						{
 
-							
+
 							EDR::EventLog::Struct::FileSystem::EventLog_Process_Filesystem* log = (EDR::EventLog::Struct::FileSystem::EventLog_Process_Filesystem*)CTX;
 							logSize = sizeof(EDR::EventLog::Struct::FileSystem::EventLog_Process_Filesystem);
 
@@ -326,7 +433,7 @@ namespace EDR
 							logSize = sizeof(EDR::EventLog::Struct::ImageLoad::EventLog_ImageLoad);
 
 							UNICODE_STRING ImagePath;
-							EDR::Util::String::Ansi2Unicode::ANSI_to_UnicodeString((PCHAR)log->body.ImagePathAnsi, (ULONG32)( strlen(log->body.ImagePathAnsi) + 1), &ImagePath);
+							EDR::Util::String::Ansi2Unicode::ANSI_to_UnicodeString((PCHAR)log->body.ImagePathAnsi, (ULONG32)(strlen(log->body.ImagePathAnsi) + 1), &ImagePath);
 
 							EDR::Util::helper::FilePath_to_HASH(
 								&ImagePath,
@@ -419,22 +526,27 @@ namespace EDR
 						{
 							goto CleanUp;
 						}
-					}
-					
-
-					// Copy to User 공간s
-					EDR::Util::UserSpace::Memory::Copy(APC_Target_ProcessId, AllocatedUserSpace, CTX, logSize);
+						}
 
 
-					// Producing Log
-					EDR::LogSender::resource::Produce::ProducdeLogData((ULONG64)logHeader->Type, AllocatedUserSpace, logSize);
+						// Copy to User 공간s
+						EDR::Util::UserSpace::Memory::Copy(APC_Target_ProcessId, AllocatedUserSpace, CTX, logSize);
+
+
+						// Producing Log
+						EDR::LogSender::resource::Produce::ProducdeLogData((ULONG64)logHeader->Type, AllocatedUserSpace, logSize);
 
 					CleanUp:
-					{
-						if(CTX)
-							ExFreePoolWithTag(CTX, LogALLOC);
+						{
+							if (CTX)
+								ExFreePoolWithTag(CTX, LogALLOC);
+						}
 					}
+
+					
 				}
+
+				
 			}
 		}
 
@@ -472,25 +584,8 @@ namespace EDR
 				);
 
 
-
-
-				HANDLE thread = NULL;
-				PsCreateSystemThread(
-					&thread,
-					THREAD_ALL_ACCESS,
-					NULL,
-					NULL,
-					NULL,
-					(PKSTART_ROUTINE)LogPost::SystemThread_method::POST_SystemThread_method,
-					log
-				);
-				if (!thread)
-				{
-					ExFreePoolWithTag(log, LogALLOC);
-					return FALSE;
-				}
-
-				ZwClose(thread); // Detach
+				// 큐
+				LogPost::LogPut(log);
 
 				return TRUE;
 					
@@ -541,27 +636,8 @@ namespace EDR
 				);
 
 
-
-
-
-
-				HANDLE thread = NULL;
-				PsCreateSystemThread(
-					&thread,
-					THREAD_ALL_ACCESS,
-					NULL,
-					NULL,
-					NULL,
-					(PKSTART_ROUTINE)LogPost::SystemThread_method::POST_SystemThread_method,
-					log
-				);
-				if (!thread)
-				{
-					ExFreePoolWithTag(log, LogALLOC);
-					return FALSE;
-				}
-
-				ZwClose(thread); // Detach
+				// 큐
+				LogPost::LogPut(log);
 
 				return TRUE;
 			}
@@ -619,20 +695,10 @@ namespace EDR
 				log->body.REMOTE_PORT = REMOTE_PORT;
 
 
-				// WORK_ITEM
-				LogPost::WorkItem_method::WORK_CONTEXT* work_context = (LogPost::WorkItem_method::WORK_CONTEXT*)ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(LogPost::WorkItem_method::WORK_CONTEXT), WorkItem_LogALLOC);
-				if (!work_context)
-				{
-					ExFreePoolWithTag(log, LogALLOC);
-					return FALSE;
-				}
-
-
-				work_context->LogEvent = log;
-
-				ExInitializeWorkItem(&work_context->Item, LogPost::WorkItem_method::POST_Workitem_method, work_context);
-				ExQueueWorkItem(&work_context->Item, NormalWorkQueue);
+				// 큐
+				LogPost::LogPut(log);
 					
+
 				return TRUE;
 			}
 
@@ -643,11 +709,11 @@ namespace EDR
 				EDR::EventLog::Enum::FileSystem::Filesystem_enum FsEnum,
 				UNICODE_STRING* Normalized_FilePath,
 
-				UNICODE_STRING* To_Renmae_FilePath // if NULL< not Rename.
-				
+				UNICODE_STRING* To_Renmae_FilePath, // if NULL< not Rename.
+				PCHAR SHA256
 
 			) {
-				// ~ APC_LEVEL
+				// < = APC_LEVEL
 				// work-item 필수
 				EDR::EventLog::Struct::FileSystem::EventLog_Process_Filesystem* log = (EDR::EventLog::Struct::FileSystem::EventLog_Process_Filesystem*)ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(EDR::EventLog::Struct::FileSystem::EventLog_Process_Filesystem), LogALLOC);
 				if (!log)
@@ -673,20 +739,17 @@ namespace EDR
 				else
 					log->body.rename.is_valid = FALSE;
 				
-
-				// WORK_ITEM
-				LogPost::WorkItem_method::WORK_CONTEXT* work_context = (LogPost::WorkItem_method::WORK_CONTEXT*)ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(LogPost::WorkItem_method::WORK_CONTEXT), WorkItem_LogALLOC);
-				if (!work_context)
+				// if SHA256
+				if (SHA256)
 				{
-					ExFreePoolWithTag(log, LogALLOC);
-					return FALSE;
+					log->body.sha256.is_valid = TRUE;
+					RtlCopyMemory(log->body.sha256.SHA256, SHA256, SHA256_STRING_LENGTH); // SHA256
 				}
+				else
+					log->body.sha256.is_valid = FALSE;
 
-
-				work_context->LogEvent = log;
-
-				ExInitializeWorkItem(&work_context->Item, LogPost::WorkItem_method::POST_Workitem_method, work_context);
-				ExQueueWorkItem(&work_context->Item, NormalWorkQueue);
+				// 큐
+				LogPost::LogPut(log);
 
 				return TRUE;
 			}
@@ -711,19 +774,8 @@ namespace EDR
 				memcpy(log->body.FunctionName, KeyClass, strlen(KeyClass));
 				EDR::Util::helper::UNICODE_to_CHAR(CompleteName, log->body.Name, sizeof(log->body.Name));
 
-				// WORK_ITEM
-				LogPost::WorkItem_method::WORK_CONTEXT* work_context = (LogPost::WorkItem_method::WORK_CONTEXT*)ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(LogPost::WorkItem_method::WORK_CONTEXT), WorkItem_LogALLOC);
-				if (!work_context)
-				{
-					ExFreePoolWithTag(log, LogALLOC);
-					return FALSE;
-				}
-
-
-				work_context->LogEvent = log;
-
-				ExInitializeWorkItem(&work_context->Item, LogPost::WorkItem_method::POST_Workitem_method, work_context);
-				ExQueueWorkItem(&work_context->Item, NormalWorkQueue);
+				// 큐
+				LogPost::LogPut(log);
 
 				return TRUE;
 			}
@@ -752,21 +804,8 @@ namespace EDR
 				EDR::Util::helper::UNICODE_to_CHAR(New, log->body.NewName, sizeof(log->body.NewName));
 
 
-
-
-				// WORK_ITEM
-				LogPost::WorkItem_method::WORK_CONTEXT* work_context = (LogPost::WorkItem_method::WORK_CONTEXT*)ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(LogPost::WorkItem_method::WORK_CONTEXT), WorkItem_LogALLOC);
-				if (!work_context)
-				{
-					ExFreePoolWithTag(log, LogALLOC);
-					return FALSE;
-				}
-
-
-				work_context->LogEvent = log;
-
-				ExInitializeWorkItem(&work_context->Item, LogPost::WorkItem_method::POST_Workitem_method, work_context);
-				ExQueueWorkItem(&work_context->Item, NormalWorkQueue);
+				// 큐
+				LogPost::LogPut(log);
 
 				return TRUE;
 			}
@@ -808,22 +847,9 @@ namespace EDR
 				EDR::Util::Process::Handle::ReleaseLookupProcessHandlebyProcessId(Target_ProcessHandle);
 
 
+				// 큐
+				LogPost::LogPut(log);
 
-
-
-				// WORK_ITEM
-				LogPost::WorkItem_method::WORK_CONTEXT* work_context = (LogPost::WorkItem_method::WORK_CONTEXT*)ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(LogPost::WorkItem_method::WORK_CONTEXT), WorkItem_LogALLOC);
-				if (!work_context)
-				{
-					ExFreePoolWithTag(log, LogALLOC);
-					return FALSE;
-				}
-
-
-				work_context->LogEvent = log;
-
-				ExInitializeWorkItem(&work_context->Item, LogPost::WorkItem_method::POST_Workitem_method, work_context);
-				ExQueueWorkItem(&work_context->Item, NormalWorkQueue);
 				return TRUE;
 			}
 		}

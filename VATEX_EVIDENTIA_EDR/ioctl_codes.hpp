@@ -14,10 +14,6 @@ struct IOCTL_INIT_s
 	struct
 	{
 		HANDLE User_AGENT_ProcessId; // 유저 에이전트 PID
-
-		HANDLE User_APC_ThreadId; // 유저 APC처리 대기 스레드 ID
-		PVOID User_APC_Handler_UserAddress; // APC 함수 ( 유저주소임 ) 
-
 	} input;
 
 	struct

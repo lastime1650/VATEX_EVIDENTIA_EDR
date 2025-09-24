@@ -197,6 +197,12 @@ namespace EDR
 							CHAR RenameFilePath[4096];
 						}rename;
 
+						struct
+						{
+							BOOLEAN is_valid;
+							CHAR SHA256[65];
+						}sha256;
+
 					}body;
 
 				};

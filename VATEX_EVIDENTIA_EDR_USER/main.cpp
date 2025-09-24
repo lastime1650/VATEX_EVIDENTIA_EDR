@@ -5,6 +5,7 @@
 #include "LogReceiver.hpp"
 #include "IOCTL.hpp"
 
+#include "EventLog.hpp"
 
 int main()
 {
@@ -24,19 +25,16 @@ int main()
 	}
 
 
-	HANDLE APC_ThreadId = NULL;
-	PVOID APC_Handler = NULL;
-	EDR::LogReceiver::Receiver recevier(kafkaInstance, AGENT_ID);
-	if (!recevier.INITIALIZE(&APC_ThreadId, &APC_Handler) || !APC_ThreadId)
-		return -1;
+	/*
+		로그 수신부
+	*/
+	EDR::LogReceiver::LogManager logman(kafkaInstance, AGENT_ID);
+	logman.Run();
+		
+	/*
+		EDR 연결 부
+	*/
 
-	// IOCTL 초기화
-	EDR::IOCTL::IOCTL ioctl;
-	if (!ioctl.INITIALIZE((HANDLE)GetCurrentProcessId(), APC_ThreadId, APC_Handler))
-	{
-		recevier.~Receiver();
-		return -1;
-	}
 
 	while(1){
 		Sleep(INFINITE);

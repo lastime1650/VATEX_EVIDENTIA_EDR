@@ -5,24 +5,8 @@
 
 #define IOCTL_Device_SymbolicName L"\\??\\VATEX_EVIDENTIA_EDR_AGENT"
 
-#define IOCTL_INIT \
-	CTL_CODE(FILE_DEVICE_UNKNOWN, 0x1650, METHOD_BUFFERED, FILE_ANY_ACCESS) // 초기화 통신
-struct IOCTL_INIT_s
-{
-	struct
-	{
-		HANDLE User_AGENT_ProcessId; // 유저 에이전트 PID
+#include "ioctlcodes.hpp"
 
-		HANDLE User_APC_ThreadId; // 유저 APC처리 대기 스레드 ID
-		PVOID User_APC_Handler_UserAddress; // APC 함수 ( 유저주소임 ) 
-
-	} input;
-
-	struct
-	{
-		NTSTATUS is_success;
-	}output;
-};
 
 
 namespace EDR
@@ -37,9 +21,8 @@ namespace EDR
 					DisconnectIOCTL();
 				}
 
-				BOOLEAN INITIALIZE(HANDLE ProcessId, HANDLE APC_THREADID, PVOID APC_HANDLER);
+				
 
-			private:
 				
 				HANDLE hDevice = NULL;
 
@@ -47,6 +30,40 @@ namespace EDR
 				VOID DisconnectIOCTL();
 
 				BOOLEAN DataToKernel(DWORD IOCTLCODE, PVOID Data, SIZE_T DataSize);
+		};
+
+		/*
+			로그 가져오고 Kafka 전달 책임
+		*/
+		class Log_IOCTL : public IOCTL
+		{
+		public:
+			Log_IOCTL() = default;
+			~Log_IOCTL() = default; // 부모 소멸자가 자동 호출됨
+
+			BOOLEAN INITIALIZE(HANDLE ProcessId);
+
+
+			BOOLEAN REQUEST_LOG(PVOID* out_UserAllocatedFileBinaryAddress, ULONG64* out_BinarySize);
+
+		};
+
+		/*
+			EDR 서버로부터 명령을 통해 요청하는 IOCTL
+		*/
+		class EDR_IOCTL : public IOCTL
+		{
+		public:
+			EDR_IOCTL() = default;
+			~EDR_IOCTL() = default; // 부모 소멸자가 자동 호출됨
+
+
+			BOOLEAN REQUEST_FILE();
+
+			BOOLEAN REQUEST_RESPONSE_PROCESS();
+			BOOLEAN REQUEST_RESPONSE_FILE();
+			BOOLEAN REQUEST_RESPONSE_IP();
+
 		};
 	}
 }

@@ -289,190 +289,212 @@ namespace EDR
                     case RegNtPostCreateKeyEx:
                     {
                         PREG_POST_CREATE_KEY_INFORMATION pInfo = (PREG_POST_CREATE_KEY_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
-                        helper::SendRegistryEvent(
-                            "RegNtPostCreateKeyEx",
-                            ProcessId, Nano_Timestamp,
-                            nullptr, pInfo->CompleteName, nullptr, nullptr, nullptr);
+                        if (NT_SUCCESS(pInfo->Status) && pInfo->CompleteName)
+                            helper::SendRegistryEvent(
+                                "RegNtPostCreateKeyEx",
+                                ProcessId, Nano_Timestamp,
+                                nullptr, pInfo->CompleteName, nullptr, nullptr, nullptr);
                         break;
                     }
                     case RegNtPostOpenKeyEx:
                     {
                         PREG_POST_OPEN_KEY_INFORMATION pInfo = (PREG_POST_OPEN_KEY_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
-                        helper::SendRegistryEvent(
-                            "RegNtPostOpenKeyEx",
-                            ProcessId, Nano_Timestamp,
-                            nullptr, nullptr, pInfo->CompleteName, nullptr, nullptr);
+                        if (NT_SUCCESS(pInfo->Status) && pInfo->CompleteName)
+                            helper::SendRegistryEvent(
+                                "RegNtPostOpenKeyEx",
+                                ProcessId, Nano_Timestamp,
+                                nullptr, nullptr, pInfo->CompleteName, nullptr, nullptr);
                         break;
                     }
                     case RegNtPostDeleteKey:
                     {
                         PREG_POST_OPERATION_INFORMATION pInfo = (PREG_POST_OPERATION_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
-                        helper::SendRegistryEvent(
-                            "RegNtPostDeleteKey",
-                            ProcessId, Nano_Timestamp,
-                            pInfo->Object, nullptr, nullptr, nullptr, nullptr);
+                        if (NT_SUCCESS(pInfo->Status) && pInfo->Object)
+                            helper::SendRegistryEvent(
+                                "RegNtPostDeleteKey",
+                                ProcessId, Nano_Timestamp,
+                                pInfo->Object, nullptr, nullptr, nullptr, nullptr);
+                        
                         break;
                     }
                     case RegNtPostSetValueKey:
                     {
                         PREG_POST_OPERATION_INFORMATION pInfo = (PREG_POST_OPERATION_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
-                        helper::SendRegistryEvent(
-                            "RegNtPostSetValueKey",
-                            ProcessId, Nano_Timestamp,
-                            pInfo->Object, nullptr, nullptr, nullptr, nullptr);
+                        if (NT_SUCCESS(pInfo->Status) && pInfo->Object)
+                            helper::SendRegistryEvent(
+                                "RegNtPostSetValueKey",
+                                ProcessId, Nano_Timestamp,
+                                pInfo->Object, nullptr, nullptr, nullptr, nullptr);
                         break;
                     }
                     case RegNtPostDeleteValueKey:
                     {
                         PREG_POST_OPERATION_INFORMATION pInfo = (PREG_POST_OPERATION_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
-                        helper::SendRegistryEvent(
-                            "RegNtPostDeleteValueKey",
-                            ProcessId, Nano_Timestamp,
-                            pInfo->Object, nullptr, nullptr, nullptr, nullptr);
+                        if (NT_SUCCESS(pInfo->Status) && pInfo->Object)
+                            helper::SendRegistryEvent(
+                                "RegNtPostDeleteValueKey",
+                                ProcessId, Nano_Timestamp,
+                                pInfo->Object, nullptr, nullptr, nullptr, nullptr);
                         break;
                     }
                     case RegNtPostSetInformationKey:
                     {
                         PREG_POST_OPERATION_INFORMATION pInfo = (PREG_POST_OPERATION_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
-                        helper::SendRegistryEvent(
-                            "RegNtPostSetInformationKey",
-                            ProcessId, Nano_Timestamp,
-                            pInfo->Object, nullptr, nullptr, nullptr, nullptr);
+                        if (NT_SUCCESS(pInfo->Status) && pInfo->Object)
+                            helper::SendRegistryEvent(
+                                "RegNtPostSetInformationKey",
+                                ProcessId, Nano_Timestamp,
+                                pInfo->Object, nullptr, nullptr, nullptr, nullptr);
                         break;
                     }
                     case RegNtPostRenameKey:
                     {
                         PREG_POST_OPERATION_INFORMATION pInfo = (PREG_POST_OPERATION_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
-                        helper::SendRegistryEvent(
-                            "RegNtPostRenameKey",
-                            ProcessId, Nano_Timestamp,
-                            pInfo->Object, nullptr, nullptr, nullptr, nullptr);
+                        if (NT_SUCCESS(pInfo->Status) && pInfo->Object)
+                            helper::SendRegistryEvent(
+                                "RegNtPostRenameKey",
+                                ProcessId, Nano_Timestamp,
+                                pInfo->Object, nullptr, nullptr, nullptr, nullptr);
                         break;
                     }
                     case RegNtPostQueryKey:
                     {
                         PREG_POST_OPERATION_INFORMATION pInfo = (PREG_POST_OPERATION_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
-                        helper::SendRegistryEvent(
-                            "RegNtPostQueryKey",
-                            ProcessId, Nano_Timestamp,
-                            pInfo->Object, nullptr, nullptr, nullptr, nullptr);
+                        if (NT_SUCCESS(pInfo->Status) && pInfo->Object)
+                            helper::SendRegistryEvent(
+                                "RegNtPostQueryKey",
+                                ProcessId, Nano_Timestamp,
+                                pInfo->Object, nullptr, nullptr, nullptr, nullptr);
                         break;
                     }
                     case RegNtPostQueryValueKey:
                     {
                         PREG_POST_OPERATION_INFORMATION pInfo = (PREG_POST_OPERATION_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
-                        helper::SendRegistryEvent(
-                            "RegNtPostQueryValueKey",
-                            ProcessId, Nano_Timestamp,
-                            pInfo->Object, nullptr, nullptr, nullptr, nullptr);
+                        if (NT_SUCCESS(pInfo->Status) && pInfo->Object)
+                            helper::SendRegistryEvent(
+                                "RegNtPostQueryValueKey",
+                                ProcessId, Nano_Timestamp,
+                                pInfo->Object, nullptr, nullptr, nullptr, nullptr);
                         break;
                     }
                     case RegNtPostQueryMultipleValueKey:
                     {
                         PREG_POST_OPERATION_INFORMATION pInfo = (PREG_POST_OPERATION_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
-                        helper::SendRegistryEvent(
-                            "RegNtPostQueryMultipleValueKey",
-                            ProcessId, Nano_Timestamp,
-                            pInfo->Object, nullptr, nullptr, nullptr, nullptr);
+                        if (NT_SUCCESS(pInfo->Status) && pInfo->Object)
+                            helper::SendRegistryEvent(
+                                "RegNtPostQueryMultipleValueKey",
+                                ProcessId, Nano_Timestamp,
+                                pInfo->Object, nullptr, nullptr, nullptr, nullptr);
                         break;
                     }
                     case RegNtPostKeyHandleClose:
                     {
                         PREG_POST_OPERATION_INFORMATION pInfo = (PREG_POST_OPERATION_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
-                        helper::SendRegistryEvent(
-                            "RegNtPostKeyHandleClose",
-                            ProcessId, Nano_Timestamp,
-                            pInfo->Object, nullptr, nullptr, nullptr, nullptr);
+                        if (NT_SUCCESS(pInfo->Status) && pInfo->Object)
+                            helper::SendRegistryEvent(
+                                "RegNtPostKeyHandleClose",
+                                ProcessId, Nano_Timestamp,
+                                pInfo->Object, nullptr, nullptr, nullptr, nullptr);
                         break;
                     }
                     case RegNtPostFlushKey:
                     {
                         PREG_POST_OPERATION_INFORMATION pInfo = (PREG_POST_OPERATION_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
-                        helper::SendRegistryEvent(
-                            "RegNtPostFlushKey",
-                            ProcessId, Nano_Timestamp,
-                            pInfo->Object, nullptr, nullptr, nullptr, nullptr);
+                        if (NT_SUCCESS(pInfo->Status) && pInfo->Object)
+                            helper::SendRegistryEvent(
+                                "RegNtPostFlushKey",
+                                ProcessId, Nano_Timestamp,
+                                pInfo->Object, nullptr, nullptr, nullptr, nullptr);
                         break;
                     }
                     case RegNtPostLoadKey:
                     {
                         PREG_POST_OPERATION_INFORMATION pInfo = (PREG_POST_OPERATION_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
-                        helper::SendRegistryEvent(
-                            "RegNtPostLoadKey",
-                            ProcessId, Nano_Timestamp,
-                            pInfo->Object, nullptr, nullptr, nullptr, nullptr);
+                        if (NT_SUCCESS(pInfo->Status) && pInfo->Object)
+                            helper::SendRegistryEvent(
+                                "RegNtPostLoadKey",
+                                ProcessId, Nano_Timestamp,
+                                pInfo->Object, nullptr, nullptr, nullptr, nullptr);
                         break;
                     }
                     case RegNtPostUnLoadKey:
                     {
                         PREG_POST_OPERATION_INFORMATION pInfo = (PREG_POST_OPERATION_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
-                        helper::SendRegistryEvent(
-                            "RegNtPostUnLoadKey",
-                            ProcessId, Nano_Timestamp,
-                            pInfo->Object, nullptr, nullptr, nullptr, nullptr);
+                        if (NT_SUCCESS(pInfo->Status) && pInfo->Object)
+                            helper::SendRegistryEvent(
+                                "RegNtPostUnLoadKey",
+                                ProcessId, Nano_Timestamp,
+                                pInfo->Object, nullptr, nullptr, nullptr, nullptr);
                         break;
                     }
                     case RegNtPostQueryKeySecurity:
                     {
                         PREG_POST_OPERATION_INFORMATION pInfo = (PREG_POST_OPERATION_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
-                        helper::SendRegistryEvent(
-                            "RegNtPostQueryKeySecurity",
-                            ProcessId, Nano_Timestamp,
-                            pInfo->Object, nullptr, nullptr, nullptr, nullptr);
+                        if (NT_SUCCESS(pInfo->Status) && pInfo->Object)
+                            helper::SendRegistryEvent(
+                                "RegNtPostQueryKeySecurity",
+                                ProcessId, Nano_Timestamp,
+                                pInfo->Object, nullptr, nullptr, nullptr, nullptr);
                         break;
                     }
                     case RegNtPostSetKeySecurity:
                     {
                         PREG_POST_OPERATION_INFORMATION pInfo = (PREG_POST_OPERATION_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
-                        helper::SendRegistryEvent(
-                            "RegNtPostSetKeySecurity",
-                            ProcessId, Nano_Timestamp,
-                            pInfo->Object, nullptr, nullptr, nullptr, nullptr);
+                        if (NT_SUCCESS(pInfo->Status) && pInfo->Object)
+                            helper::SendRegistryEvent(
+                                "RegNtPostSetKeySecurity",
+                                ProcessId, Nano_Timestamp,
+                                pInfo->Object, nullptr, nullptr, nullptr, nullptr);
                         break;
                     }
                     case RegNtPostRestoreKey:
                     {
                         PREG_POST_OPERATION_INFORMATION pInfo = (PREG_POST_OPERATION_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
-                        helper::SendRegistryEvent(
-                            "RegNtPostRestoreKey",
-                            ProcessId, Nano_Timestamp,
-                            pInfo->Object, nullptr, nullptr, nullptr, nullptr);
+                        if (NT_SUCCESS(pInfo->Status) && pInfo->Object)
+                            helper::SendRegistryEvent(
+                                "RegNtPostRestoreKey",
+                                ProcessId, Nano_Timestamp,
+                                pInfo->Object, nullptr, nullptr, nullptr, nullptr);
                         break;
                     }
                     case RegNtPostSaveKey:
                     {
                         PREG_POST_OPERATION_INFORMATION pInfo = (PREG_POST_OPERATION_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
-                        helper::SendRegistryEvent(
-                            "RegNtPostSaveKey",
-                            ProcessId, Nano_Timestamp,
-                            pInfo->Object, nullptr, nullptr, nullptr, nullptr);
+                        if (NT_SUCCESS(pInfo->Status) && pInfo->Object)
+                            helper::SendRegistryEvent(
+                                "RegNtPostSaveKey",
+                                ProcessId, Nano_Timestamp,
+                                pInfo->Object, nullptr, nullptr, nullptr, nullptr);
                         break;
                     }
                     case RegNtPostReplaceKey:
                     {
                         PREG_POST_OPERATION_INFORMATION pInfo = (PREG_POST_OPERATION_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
-                        helper::SendRegistryEvent(
-                            "RegNtPostReplaceKey",
-                            ProcessId, Nano_Timestamp,
-                            pInfo->Object, nullptr, nullptr, nullptr, nullptr);
+                        if (NT_SUCCESS(pInfo->Status) && pInfo->Object)
+                            helper::SendRegistryEvent(
+                                "RegNtPostReplaceKey",
+                                ProcessId, Nano_Timestamp,
+                                pInfo->Object, nullptr, nullptr, nullptr, nullptr);
                         break;
                     }
                     case RegNtPostQueryKeyName:
                     {
                         PREG_POST_OPERATION_INFORMATION pInfo = (PREG_POST_OPERATION_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
-                        helper::SendRegistryEvent(
-                            "RegNtPostQueryKeyName",
-                            ProcessId, Nano_Timestamp,
-                            pInfo->Object, nullptr, nullptr, nullptr, nullptr);
+                        if (NT_SUCCESS(pInfo->Status) && pInfo->Object)
+                            helper::SendRegistryEvent(
+                                "RegNtPostQueryKeyName",
+                                ProcessId, Nano_Timestamp,
+                                pInfo->Object, nullptr, nullptr, nullptr, nullptr);
                         break;
                     }
                     case RegNtPostSaveMergedKey:
                     {
                         PREG_POST_OPERATION_INFORMATION pInfo = (PREG_POST_OPERATION_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
-                        helper::SendRegistryEvent(
-                            "RegNtPostSaveMergedKey",
-                            ProcessId, Nano_Timestamp,
-                            pInfo->Object, nullptr, nullptr, nullptr, nullptr);
+                        if (NT_SUCCESS(pInfo->Status) && pInfo->Object)
+                            helper::SendRegistryEvent(
+                                "RegNtPostSaveMergedKey",
+                                ProcessId, Nano_Timestamp,
+                                pInfo->Object, nullptr, nullptr, nullptr, nullptr);
                         break;
                     }
                 }

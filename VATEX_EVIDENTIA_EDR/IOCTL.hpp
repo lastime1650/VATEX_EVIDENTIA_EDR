@@ -8,7 +8,6 @@
 #define IOCTL_Device_SymbolicName L"\\??\\VATEX_EVIDENTIA_EDR_AGENT"
 
 // IOCTL_PROCESSING
-#include "APC.hpp"
 #include "LogSender.hpp"
 
 namespace EDR

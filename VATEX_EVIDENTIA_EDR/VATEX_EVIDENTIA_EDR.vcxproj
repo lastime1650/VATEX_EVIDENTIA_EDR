@@ -113,7 +113,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Account.cpp" />
-    <ClCompile Include="APC.cpp" />
     <ClCompile Include="DriverUnload.cpp" />
     <ClCompile Include="EventLog.cpp" />
     <ClCompile Include="FileJob.cpp" />
@@ -137,7 +136,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Account.hpp" />
-    <ClInclude Include="APC.hpp" />
     <ClInclude Include="API.hpp" />
     <ClInclude Include="DriverUnload.hpp" />
     <ClInclude Include="EventLog.hpp" />

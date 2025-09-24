@@ -54,9 +54,9 @@ extern "C" NTSTATUS DriverEntry(PDRIVER_OBJECT driverobject, PUNICODE_STRING reg
 		return status;
 
 	// 4. Registry
-	status = EDR::Registry::Load_RegistryCallback(driverobject);
-	if (!NT_SUCCESS(status))
-		return status;
+	//status = EDR::Registry::Load_RegistryCallback(driverobject);
+	//if (!NT_SUCCESS(status))
+	//	return status;
 
 	// 5. ObRegisterCallback
 	status = EDR::ObRegisterCallback::Load_ObRegisterCallbacks();

@@ -1,7 +1,6 @@
 #include "DriverUnload.hpp"
 
 // FREE_Cleanup - Resource Headers
-#include "APC.hpp"
 #include "IOCTL.hpp"
 #include "NotifyRoutine.hpp"
 #include "LogSender.hpp"
@@ -23,9 +22,6 @@ namespace EDR
 
 			// IOCTL 해제
 			EDR::IOCTL::CleanUp_IOCTL();
-
-			// APC 해제
-			EDR::APC::CleanUp_APC();
 
 			// Response 해시테이블 해제
 			EDR::Response::HashTable::CleanUp();

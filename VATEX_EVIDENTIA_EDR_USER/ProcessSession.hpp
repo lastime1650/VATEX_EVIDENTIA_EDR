@@ -26,13 +26,13 @@ namespace EDR
 				~ProcessSession() = default;
 
 				// 프로세스 생성시
-				bool ProcessCreate(HANDLE pid, HANDLE ppid, std::string& out_processSession);
+				bool ProcessCreate(HANDLE pid, HANDLE ppid, std::string& out_processSession, std::string& out_root_processSession, std::string& out_parent_processSession);
 
 				// 프로세스 종료시
-				bool ProcessRemove(HANDLE pid, std::string& out_processSession);
+				bool ProcessRemove(HANDLE pid, std::string& out_processSession, std::string& out_root_processSession, std::string& out_parent_processSession);
 
 				// 그외 이벤트들 모두 
-				bool AppendingEvent(HANDLE pid, std::string& out_processSession);
+				bool AppendingEvent(HANDLE pid, std::string& out_processSession, std::string& out_root_processSession, std::string& out_parent_processSession);
 
 			private:
 				std::vector<struct Session_node> Root;

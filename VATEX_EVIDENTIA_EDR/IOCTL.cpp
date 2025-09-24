@@ -137,10 +137,6 @@ namespace EDR
 				NTSTATUS status;
 				HANDLE User_ProcessId = parameter1->input.User_AGENT_ProcessId;
 
-				
-				HANDLE User_ThreadId = parameter1->input.User_APC_ThreadId;
-				PVOID User_APC_Routine = parameter1->input.User_APC_Handler_UserAddress;
-
 				// USER PID
 				EDR::Util::Shared::USER_AGENT::ProcessId = User_ProcessId;
 
@@ -149,15 +145,6 @@ namespace EDR
 					EDR::Util::Process::Handle::ReleaseLookupProcessHandlebyProcessId(EDR::Util::Shared::USER_AGENT::ProcessHandle);
 
 				status = EDR::Util::Process::Handle::LookupProcessHandlebyProcessId(User_ProcessId, &EDR::Util::Shared::USER_AGENT::ProcessHandle);
-				if (!NT_SUCCESS(status))
-				{
-					is_complete_init = FALSE;
-					return is_complete_init;
-				}
-
-				
-				// APC
-				status = EDR::APC::INITIALIZE_APC(User_ThreadId, User_APC_Routine);
 				if (!NT_SUCCESS(status))
 				{
 					is_complete_init = FALSE;

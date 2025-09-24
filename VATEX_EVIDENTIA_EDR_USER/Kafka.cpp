@@ -49,6 +49,8 @@ namespace EDR
                 QueueThread = std::thread(
                     [this]()
                     {
+                        std::cout << "Kafka 큐 스레드 실행" << std::endl;
+
                         while (this->is_worked)
                         {
                             std::string json_message = this->MessageQueue.get();

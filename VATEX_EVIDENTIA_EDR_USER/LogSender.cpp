@@ -9,6 +9,8 @@ namespace EDR
             void LogSender::Send_Log_Process_Remove(
 
                 std::string SessionID,
+                std::string root_SessionID,
+                std::string parent_SessionID,
 
                 std::string OsVersion,
 
@@ -23,7 +25,9 @@ namespace EDR
                             {{
                                 "header": {{
                                     "agentid": "{}",
-									"sessionid": "{}",
+									"root_sessionid": "{}",
+                                    "parent_sessionid": "{}",
+								    "sessionid": "{}",
                                     "os": {{
                                         "version": "{}",
                                         "type": "{}"
@@ -37,7 +41,7 @@ namespace EDR
                                     }}
                                 }}
                             }}
-                    )", AgentID, SessionID, OsVersion, "Windows", pid, nano_timestamp,
+                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp,
                         "remove"
                     )
                 );
@@ -45,6 +49,8 @@ namespace EDR
             void LogSender::Send_Log_Process_Create(
 
                 std::string SessionID,
+                std::string root_SessionID,
+                std::string parent_SessionID,
 
                 std::string SID,
                 std::string Username,
@@ -71,7 +77,9 @@ namespace EDR
                             {{
                                 "header": {{
                                     "agentid": "{}",
-                                    "sessionid": "{}",
+                                    ""root_sessionid": "{}",
+                                    "parent_sessionid": "{}",
+								    "sessionid": "{}",
                                     "user": {{
 		                                "sid": "{}",
                                         "username": "{}"
@@ -95,15 +103,17 @@ namespace EDR
                                     }}
                                 }}
                             }}
-                    )", AgentID, SessionID, OsVersion, "Windows", pid, nano_timestamp,
+                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp,
 						"create", self_exe_path, self_exe_file_size, self_exe_bin_sha256, CommandLine,
-						ppid, parent_exe_path, parent_exe_file_size, parent_exe_bin_sha256
+                        (ULONG64)ppid, parent_exe_path, parent_exe_file_size, parent_exe_bin_sha256
                     )
                 );
             }
             void LogSender::Send_Log_Network(
 
                 std::string SessionID,
+                std::string root_SessionID,
+                std::string parent_SessionID,
 
                 std::string OsVersion,
                 HANDLE pid,
@@ -123,6 +133,8 @@ namespace EDR
                         {{
                             "header": {{
                                 "agentid": "{}",
+								"root_sessionid": "{}",
+                                "parent_sessionid": "{}",
 								"sessionid": "{}",
                                 "os": {{
                                     "version": "{}",
@@ -145,19 +157,23 @@ namespace EDR
                             }}
                             
                         }}
-                    )", AgentID, SessionID, OsVersion, "Windows", pid, nano_timestamp,
+                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp,
                         interface_name, protocol, packetSize, ipSrc, portSrc, ipDest, portDest, is_INGRESS ? "in" : "out")
                 );
             }
 
             void LogSender::Send_Log_FileSystem(
                 std::string SessionID,
+                std::string root_SessionID,
+                std::string parent_SessionID,
 
                 std::string OsVersion,
                 HANDLE pid,
                 std::string Action,
                 std::string FilePath,
-                ULONG32 filesize,
+                std::string FileSHA256, // Optional
+
+                ULONG64 filesize,
                 ULONG64 nano_timestamp
             )
             {
@@ -166,6 +182,8 @@ namespace EDR
                         {{
                             "header": {{
                                 "agentid": "{}",
+								"root_sessionid": "{}",
+                                "parent_sessionid": "{}",
 								"sessionid": "{}",
                                 "os": {{
                                     "version": "{}",
@@ -178,24 +196,27 @@ namespace EDR
                                 "filesystem" : {{
                                     "action": "{}",
                                     "filepath" : "{}",            
-                                    "filesize": {}
+                                    "filesize": {},
+                                    "filesha256": "{}"
                                 }}
                             }}
                             
                         }}
-                    )", AgentID, SessionID, OsVersion, "Windows", pid, nano_timestamp,
-                        Action, FilePath, filesize)
+                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp,
+                        Action, FilePath, filesize, FileSHA256)
                 );
             }
 
             void LogSender::Send_Log_ImageLoad(
 
                 std::string SessionID,
+                std::string root_SessionID,
+                std::string parent_SessionID,
 
                 std::string OsVersion,
                 HANDLE pid,
                 std::string FilePath,
-                ULONG32 filesize,
+                ULONG64 filesize,
                 std::string file_sha256,
                 ULONG64 nano_timestamp
             )
@@ -205,6 +226,8 @@ namespace EDR
                         {{
                             "header": {{
                                 "agentid": "{}",
+								"root_sessionid": "{}",
+                                "parent_sessionid": "{}",
 								"sessionid": "{}",
                                 "os": {{
                                     "version": "{}",
@@ -222,7 +245,7 @@ namespace EDR
                             }}
                             
                         }}
-                    )", AgentID, SessionID, OsVersion, "Windows", pid, nano_timestamp,
+                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp,
                         FilePath, filesize, file_sha256)
                 );
             }
@@ -230,6 +253,8 @@ namespace EDR
             void LogSender::Send_Log_ProcessAccess(
 
                 std::string SessionID,
+                std::string root_SessionID,
+                std::string parent_SessionID,
 
                 std::string OsVersion,
                 HANDLE pid,
@@ -254,6 +279,8 @@ namespace EDR
                         {{
                             "header": {{
                                 "agentid": "{}",
+                                "root_sessionid": "{}",
+                                "parent_sessionid": "{}",
 								"sessionid": "{}",
                                 "os": {{
                                     "version": "{}",
@@ -272,8 +299,8 @@ namespace EDR
                             }}
                             
                         }}
-                    )", AgentID, SessionID, OsVersion, "Windows", pid, nano_timestamp,
-                        CreateHandle, Target_ProcessId, TargetProcess_Path, DesiredAccessJsonArrayString)
+                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp,
+                        CreateHandle, (ULONG64)Target_ProcessId, TargetProcess_Path, DesiredAccessJsonArrayString)
                 );
             }
 

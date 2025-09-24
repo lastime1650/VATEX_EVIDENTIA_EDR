@@ -28,6 +28,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="ProcessSession.cpp" />
     <ClCompile Include="queue.hpp" />
+    <ClCompile Include="TCP.cpp" />
     <ClCompile Include="Timestamp.cpp" />
     <ClCompile Include="Windows.cpp" />
     <ClCompile Include="Windows.hpp" />
@@ -43,6 +44,7 @@
     <ClInclude Include="LogSender.hpp" />
     <ClInclude Include="NetworkSession.hpp" />
     <ClInclude Include="ProcessSession.hpp" />
+    <ClInclude Include="TCP.hpp" />
     <ClInclude Include="Timestamp.hpp" />
     <ClInclude Include="Util.hpp" />
   </ItemGroup>

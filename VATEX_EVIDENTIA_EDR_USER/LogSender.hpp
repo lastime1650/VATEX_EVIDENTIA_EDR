@@ -19,6 +19,8 @@ namespace EDR
                 void Send_Log_Process_Create(
 
                     std::string SessionID,
+                    std::string root_SessionID,
+                    std::string parent_SessionID,
 
                     std::string SID,
                     std::string Username,
@@ -43,6 +45,8 @@ namespace EDR
                 void Send_Log_Process_Remove(
 
                     std::string SessionID,
+                    std::string root_SessionID,
+                    std::string parent_SessionID,
 
                     std::string OsVersion,
 
@@ -55,6 +59,8 @@ namespace EDR
                 void Send_Log_Network(
 
                     std::string SessionID,
+                    std::string root_SessionID,
+                    std::string parent_SessionID,
 
                     std::string OsVersion,
                     HANDLE pid,
@@ -75,12 +81,15 @@ namespace EDR
                 void Send_Log_FileSystem(
 
                     std::string SessionID,
+                    std::string root_SessionID,
+                    std::string parent_SessionID,
 
                     std::string OsVersion,
                     HANDLE pid,
                     std::string Action,
                     std::string FilePath,
-                    ULONG32 filesize,
+                    std::string FileSHA256, // Optional
+                    ULONG64 filesize,
                     ULONG64 nano_timestamp
                 );
 
@@ -90,11 +99,13 @@ namespace EDR
                 void Send_Log_ImageLoad(
 
                     std::string SessionID,
+                    std::string root_SessionID,
+                    std::string parent_SessionID,
 
                     std::string OsVersion,
                     HANDLE pid,
                     std::string FilePath,
-                    ULONG32 filesize,
+                    ULONG64 filesize,
 					std::string file_sha256,
                     ULONG64 nano_timestamp
                 );
@@ -105,6 +116,8 @@ namespace EDR
                 void Send_Log_ProcessAccess(
 
                     std::string SessionID,
+                    std::string root_SessionID,
+                    std::string parent_SessionID,
 
                     std::string OsVersion,
                     HANDLE pid,

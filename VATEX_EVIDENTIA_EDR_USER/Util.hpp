@@ -11,5 +11,6 @@
 #include "Hash.hpp"
 #include "Windows.hpp"
 #include <fmt/ranges.h>
+#include "TCP.hpp"
 
 #endif

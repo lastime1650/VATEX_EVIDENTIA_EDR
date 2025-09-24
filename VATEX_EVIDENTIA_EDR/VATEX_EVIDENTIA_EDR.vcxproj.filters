@@ -41,9 +41,6 @@
     <Filter Include="AGENT\IOCTL\IOCTL_PROCESSING\RESPONSE">
       <UniqueIdentifier>{811ad0a5-62a0-4dcf-b3bd-eefa1d9d9a6e}</UniqueIdentifier>
     </Filter>
-    <Filter Include="AGENT\APC">
-      <UniqueIdentifier>{9daa0498-5731-4dd4-a122-5a5a60dcdfb0}</UniqueIdentifier>
-    </Filter>
     <Filter Include="AGENT\LogSender">
       <UniqueIdentifier>{766dda4a-935f-454c-af12-39f0d4896290}</UniqueIdentifier>
     </Filter>
@@ -139,9 +136,6 @@
     <ClCompile Include="User.cpp">
       <Filter>util\UserSpace</Filter>
     </ClCompile>
-    <ClCompile Include="APC.cpp">
-      <Filter>AGENT\APC</Filter>
-    </ClCompile>
     <ClCompile Include="Network.cpp">
       <Filter>AGENT\Event\WFP_Network</Filter>
     </ClCompile>
@@ -209,9 +203,6 @@
     </ClInclude>
     <ClInclude Include="util.hpp">
       <Filter>util</Filter>
-    </ClInclude>
-    <ClInclude Include="APC.hpp">
-      <Filter>AGENT\APC</Filter>
     </ClInclude>
     <ClInclude Include="Network.hpp">
       <Filter>AGENT\Event\WFP_Network</Filter>

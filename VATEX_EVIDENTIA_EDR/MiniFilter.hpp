@@ -10,6 +10,21 @@ namespace EDR
 {
 	namespace MiniFilter
 	{
+		namespace resource
+		{
+			extern PFLT_FILTER gFilterHandle;
+
+			#define PretoPost_CTX_ALLOC_TAG 'PTPC'
+			typedef struct _PretoPost_CTX
+			{
+				PWCH NormalizedFilePath;
+				ULONG64 timestamp;
+				HANDLE ProcessId;
+
+				EDR::EventLog::Enum::FileSystem::Filesystem_enum Action; // recently ) create
+
+			}PretoPost_CTX, *PPretoPost_CTX;
+		}
 
 		namespace Handler
 		{
@@ -19,7 +34,7 @@ namespace EDR
 					PRE_filter_Handler(
 						PFLT_CALLBACK_DATA Data,
 						PCFLT_RELATED_OBJECTS FltObjects,
-						PVOID* CompletionContext
+						EDR::MiniFilter::resource::PPretoPost_CTX* CompletionContext
 					);
 
 			}
@@ -36,7 +51,7 @@ namespace EDR
 					POST_filter_Handler(
 						PFLT_CALLBACK_DATA Data,
 						PCFLT_RELATED_OBJECTS FltObjects,
-						PVOID CompletionContext,
+						EDR::MiniFilter::resource::PPretoPost_CTX CompletionContext,
 						FLT_POST_OPERATION_FLAGS Flags
 					);
 			}
@@ -50,6 +65,13 @@ namespace EDR
 				_In_ PFILE_OBJECT FileObject,
 				_Inout_ PCHAR Inout_SHABuffer, // 최소 SHA256_BINARY_LENGTH 바이트
 				_Out_ ULONG64* Out_FileSize
+			);
+
+			// 파일 해시구하기 - B
+			BOOLEAN Get_FileSHA256_by_FILEPATH(
+				PUNICODE_STRING FilePath,
+				PSIZE_T FileSize,
+				PCHAR Allocated_SHA256
 			);
 
 			// 파일 사이즈 구하기
@@ -68,10 +90,7 @@ namespace EDR
 
 		}
 
-		namespace resource
-		{
-			extern PFLT_FILTER gFilterHandle;
-		}
+		
 
 		NTSTATUS Load_MiniFilter(PDRIVER_OBJECT DriverObject);
 		VOID CleanUp_MiniFilter();
