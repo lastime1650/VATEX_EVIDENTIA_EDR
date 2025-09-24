@@ -163,6 +163,8 @@ namespace EDR
 							CHAR InterfaceName[256];
 						}post;
 
+						UCHAR PacketBuffer[9200];
+
 					}body;
 
 				};

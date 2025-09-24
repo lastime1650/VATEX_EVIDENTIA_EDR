@@ -13,4 +13,9 @@
 #include <fmt/ranges.h>
 #include "TCP.hpp"
 
+#include <functional>
+#include <cstdint>
+#include <unordered_map>
+#include <string>
+
 #endif

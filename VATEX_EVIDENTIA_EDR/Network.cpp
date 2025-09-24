@@ -16,7 +16,7 @@ void NTAPI FlowDeleteFn(
 HANDLE EngineHandle = 0;
 
 GUID g_providerKey = { 0 };
-constexpr ULONG NUM_LAYERS = 4; // 필터링할 레이어 개수
+constexpr ULONG NUM_LAYERS = 2; // 필터링할 레이어 개수
 UINT32 g_wpsCalloutIds[NUM_LAYERS] = { 0 };
 UINT32 g_wpmCalloutIds[NUM_LAYERS] = { 0 };
 UINT64 g_wpmFilterIds[NUM_LAYERS] = { 0 };
@@ -32,7 +32,6 @@ BOOLEAN Copy_Packet_Data(
 	ULONG* ProtocolNumber
 );
 
-BOOLEAN Get_Packet_Size(void* layerData, ULONG32* PacketSize, ULONG32* ProtocolNumber);
 
 NTSTATUS NDIS_PacketFilter_Register(PDEVICE_OBJECT DeviceObject);
 NTSTATUS GenerateGUID(_Inout_ GUID* inout_guid);
@@ -42,11 +41,208 @@ namespace EDR
 {
 	namespace WFP_Filter
 	{
+		namespace helper
+		{
+			BOOLEAN Get_Packet_Size(_In_ void* layerData, _In_ BOOLEAN isInbound, PPARSED_PACKET_INFO* Output)
+			{
+				if (!Output || !layerData)
+					return FALSE;
+				
+				// 직접 바이트 체크
+				NET_BUFFER_LIST* netBufferList = (NET_BUFFER_LIST*)layerData;
+				NET_BUFFER* netBuffer = NET_BUFFER_LIST_FIRST_NB(netBufferList);
+				if (!netBuffer) {
+					return FALSE;
+				}
 
+				// 1. 이더넷 -> 끝 Layer 까지 길이 구하기
+				ULONG frameSize = 0; // 패킷 전체 사이즈
+				NET_BUFFER* currentNetBuffer = netBuffer;
+				while (currentNetBuffer != NULL) {
+					frameSize += NET_BUFFER_DATA_LENGTH(currentNetBuffer);
+					currentNetBuffer = NET_BUFFER_NEXT_NB(currentNetBuffer);
+				}
+
+				if (frameSize == 0) {
+					return FALSE;
+				}
+
+				// 2. 패킷 바이너리 할당
+
+				// 패킷 바이너리 정보 메타데이터 할당
+				*Output = (PPARSED_PACKET_INFO)ExAllocatePool2(
+					POOL_FLAG_NON_PAGED,
+					sizeof(PARSED_PACKET_INFO),
+					NetworkFilter_ALLOC_TAG
+				);
+				if (!*Output) {
+					return FALSE;
+				}
+				RtlZeroMemory(*Output, sizeof(PARSED_PACKET_INFO));
+				
+				// 실제 패킷 프레임 사이즈 할당
+				(*Output)->FrameBuffer = (PUCHAR)ExAllocatePool2(
+					POOL_FLAG_NON_PAGED,
+					frameSize,
+					NetworkFilter_ALLOC_TAG
+				);
+				if (!(*Output)->FrameBuffer)
+				{
+					ExFreePoolWithTag(*Output, NetworkFilter_ALLOC_TAG);
+					return FALSE;
+				}
+
+				ULONG bytesCopied = 0;
+				currentNetBuffer = netBuffer;
+				while (currentNetBuffer != NULL) {
+					ULONG len = NET_BUFFER_DATA_LENGTH(currentNetBuffer);
+					if (bytesCopied + len > frameSize) {
+						// 계산된 크기와 실제 복사 크기가 다른 경우. 오류 상황.
+						Release_Parsed_Packet(*Output);
+						*Output = NULL;
+						return FALSE;
+					}
+
+					PUCHAR dataPtr = (PUCHAR)NdisGetDataBuffer(currentNetBuffer, len, NULL, 1, 0);
+					if (dataPtr) {
+						RtlCopyMemory((*Output)->FrameBuffer + bytesCopied, dataPtr, len);
+						bytesCopied += len;
+					}
+					else {
+						// NdisGetDataBuffer가 NULL을 반환하는 경우는 매우 드물며,
+						// 이런 경우 MDL 체인을 직접 순회해야 함.
+						// 여기서는 간략화를 위해 실패로 처리.
+						Release_Parsed_Packet(*Output);
+						*Output = NULL;
+						return FALSE;
+					}
+					currentNetBuffer = NET_BUFFER_NEXT_NB(currentNetBuffer);
+				}
+
+				// 3. Output 정보 세팅 + 구조체 파싱
+				
+				PETHERNET_HEADER pEthHeader = NULL;
+				PIPV4_HEADER pIpHeader = NULL;
+
+
+				// 이더넷 계층 검증
+				if (frameSize < sizeof(ETHERNET_HEADER)) {
+					// 이더넷 헤더보다 작으면 파싱 불가.
+					Release_Parsed_Packet(*Output);
+					*Output = NULL;
+					return FALSE;
+				}
+				pEthHeader = (PETHERNET_HEADER)(*Output)->FrameBuffer;
+				if (RtlUshortByteSwap(pEthHeader->EtherType) != ETHERTYPE_IPV4) {
+					Release_Parsed_Packet(*Output);
+					*Output = NULL;
+					return FALSE; // IPv4 및 해당 계층이상이 아니면 파싱 실패 ( 이더넷 패킷 혼자는 아직 지원 X )
+				}
+				
+				(*Output)->network_layer.IsIPv4 = TRUE;
+
+				// 네트워크 계층 검증
+				PUCHAR transportHeaderPtr = NULL; // 프로토콜 해석안된 전송계층 시작 주소 (임시형)
+				ULONG ipHeaderLength = 0; // 얻은 IP헤더
+				if ((*Output)->network_layer.IsIPv4)
+				{
+					// IPV4
+
+					pIpHeader = (PIPV4_HEADER)((*Output)->FrameBuffer + sizeof(ETHERNET_HEADER));
+					ipHeaderLength = pIpHeader->HeaderLength * 4;
+
+					if (frameSize < sizeof(ETHERNET_HEADER) + ipHeaderLength) {
+						Release_Parsed_Packet(*Output);
+						*Output = NULL;
+						return FALSE; // IP 헤더 길이 부족
+					}
+
+					// 방향 + IP 복사 (변환 작업 후)
+					IN_ADDR addr;
+					if (isInbound) {
+
+						addr.S_un.S_addr = RtlUlongByteSwap(pIpHeader->SourceAddress);
+						RtlIpv4AddressToStringA(&addr, (*Output)->network_layer.LocalIp);
+
+						addr.S_un.S_addr = RtlUlongByteSwap(pIpHeader->DestinationAddress);
+						RtlIpv4AddressToStringA(&addr, (*Output)->network_layer.RemoteIp);
+					}
+					else {
+
+						addr.S_un.S_addr = RtlUlongByteSwap(pIpHeader->SourceAddress);
+						RtlIpv4AddressToStringA(&addr, (*Output)->network_layer.LocalIp);
+
+						addr.S_un.S_addr = RtlUlongByteSwap(pIpHeader->DestinationAddress);
+						RtlIpv4AddressToStringA(&addr, (*Output)->network_layer.RemoteIp);
+					}
+
+					transportHeaderPtr = ((PUCHAR)pIpHeader) + ipHeaderLength;
+
+				}
+				else
+				{
+					// IPV6
+				}
+
+
+				(*Output)->network_layer.ProtocolNumber = pIpHeader->Protocol;
+				(*Output)->FrameSize = frameSize;
+
+				
+				if ((*Output)->network_layer.ProtocolNumber == IP_PROTOCOL_TCP) {
+					if (frameSize < sizeof(ETHERNET_HEADER) + ipHeaderLength + sizeof(TCP_HEADER)) 
+						return TRUE;
+
+					PTCP_HEADER pTcpHeader = (PTCP_HEADER)transportHeaderPtr;
+					(*Output)->transport_layer.IsTCP = TRUE; // TCP
+
+					if (isInbound) {
+						(*Output)->transport_layer.LocalPort = RtlUshortByteSwap(pTcpHeader->DestinationPort);
+						(*Output)->transport_layer.RemotePort = RtlUshortByteSwap(pTcpHeader->SourcePort);
+					}
+					else {
+						(*Output)->transport_layer.LocalPort = RtlUshortByteSwap(pTcpHeader->SourcePort);
+						(*Output)->transport_layer.RemotePort = RtlUshortByteSwap(pTcpHeader->DestinationPort);
+					}
+				}
+				else if ((*Output)->network_layer.ProtocolNumber == IP_PROTOCOL_UDP) {
+					if (frameSize < sizeof(ETHERNET_HEADER) + ipHeaderLength + sizeof(UDP_HEADER)) 
+						return TRUE;
+
+					(*Output)->transport_layer.IsTCP = FALSE; // UDP
+
+					PUDP_HEADER pUdpHeader = (PUDP_HEADER)transportHeaderPtr;
+					if (isInbound) {
+						(*Output)->transport_layer.LocalPort = RtlUshortByteSwap(pUdpHeader->DestinationPort);
+						(*Output)->transport_layer.RemotePort = RtlUshortByteSwap(pUdpHeader->SourcePort);
+					}
+					else {
+						(*Output)->transport_layer.LocalPort = RtlUshortByteSwap(pUdpHeader->SourcePort);
+						(*Output)->transport_layer.RemotePort = RtlUshortByteSwap(pUdpHeader->DestinationPort);
+					}
+				}
+				
+
+
+				
+				return TRUE;
+			}
+
+			VOID Release_Parsed_Packet(_In_ PPARSED_PACKET_INFO packetInfo)
+			{
+				if (packetInfo)
+				{
+					if(packetInfo->FrameBuffer)
+						ExFreePoolWithTag(packetInfo->FrameBuffer, NetworkFilter_ALLOC_TAG);
+
+					ExFreePoolWithTag(packetInfo, NetworkFilter_ALLOC_TAG);
+				}
+			}
+		}
 		namespace Handler
 		{
 			//#define PACKETBUFFALLOC 'PKBF'
-			//#define PACKETBUFFMAXIMUMSIZE 9216 // MTU (15xx + VLAN TAG + JumboFrame.. )
+			#define PACKETBUFFMAXIMUMSIZE 9216 // MTU (15xx + VLAN TAG + JumboFrame.. )
 			extern "C" void FwpsCalloutClassifyFn3(
 				_In_ const FWPS_INCOMING_VALUES0* inFixedValues,
 				_In_ const FWPS_INCOMING_METADATA_VALUES0* inMetaValues,
@@ -75,18 +271,27 @@ namespace EDR
 
 
 				// interfac e
-				ULONG32 NetworkInterfaceIndex;
+				ULONG32 NetworkInterfaceIndex = 0;
 
 
 				BOOLEAN is_inbound = FALSE;
-				ULONG32 protocolNumber = 0;
-				ULONG32 packetSize = 0;
-				UINT32 localIp = 0;
-				UINT16 localPort = 0;
-				UINT32 remoteIp = 0;
-				UINT16 remotePort = 0;
 
 				switch (inFixedValues->layerId) {
+				case FWPS_LAYER_INBOUND_MAC_FRAME_NATIVE:
+				{
+					is_inbound = TRUE;
+					break;
+				}
+				case FWPS_LAYER_OUTBOUND_MAC_FRAME_NATIVE:
+				{
+					is_inbound = FALSE;
+					break;
+				}
+					/*
+					* 
+					* 패킷을 가져오는 오프셋이 IP 또는 UDP을 넘으면 온전한 패킷버퍼를 얻는 것이 불가능함. ( 해당 레이어에서부터 바이트를 얻기 때문 )
+					* 이 경우 MAC_FRAME 레이어단에서 직접 구조체로 파싱하면서 처리하는 것으로 결정한다.
+					* 
 				case FWPS_LAYER_INBOUND_TRANSPORT_V4:
 				{
 
@@ -126,14 +331,26 @@ namespace EDR
 					localPort = 0;
 					remotePort = 0;
 					break;
-				}
+				}*/
 				default:
 				{
 					return;
 				}
 				}
-				Get_Packet_Size(layerData, &packetSize, &protocolNumber);
+				
+				
 
+				helper::PPARSED_PACKET_INFO PACKET_INFO = NULL;
+				if (!helper::Get_Packet_Size(
+					layerData,
+					is_inbound,
+
+					&PACKET_INFO
+				))
+				{
+					// 실패
+					return;
+				}
 				if (is_inbound)
 				{
 					NetworkInterfaceIndex = inMetaValues->destinationInterfaceIndex;
@@ -142,40 +359,31 @@ namespace EDR
 				{
 					NetworkInterfaceIndex = inMetaValues->sourceInterfaceIndex;
 				}
-
-				CHAR localIpStr[16] = { 0 }; // "xxx.xxx.xxx.xxx" (최대 15자) + NULL
-				CHAR remoteIpStr[16] = { 0 };
-				IN_ADDR addr;
-
-				// Local IP 변환
-				addr.S_un.S_addr = RtlUlongByteSwap(localIp);
-				RtlIpv4AddressToStringA(&addr, localIpStr);
-
-				// Remote IP 변환
-				addr.S_un.S_addr = RtlUlongByteSwap(remoteIp);
-				RtlIpv4AddressToStringA(&addr, remoteIpStr);
 				
 				// 준비된 모든 정보를 사용하여 유저 모드로 로그를 전송합니다.
 				EDR::LogSender::function::NetworkLog(
 					PID,
 					NanoTimestamp,
 
-					protocolNumber,
+					PACKET_INFO->network_layer.ProtocolNumber,
 
 					is_inbound,
 
-					packetSize,
+					PACKET_INFO->FrameSize,
 
-					(PUCHAR)localIpStr,
-					(ULONG32)strlen(localIpStr), 
-					localPort,
+					(PUCHAR)PACKET_INFO->network_layer.LocalIp,
+					(ULONG32)strlen(PACKET_INFO->network_layer.LocalIp),
+					PACKET_INFO->transport_layer.LocalPort,
 					
-					(PUCHAR)remoteIpStr,
-					(ULONG32)strlen(remoteIpStr),
-					remotePort,
+					(PUCHAR)PACKET_INFO->network_layer.RemoteIp,
+					(ULONG32)strlen(PACKET_INFO->network_layer.RemoteIp),
+					PACKET_INFO->transport_layer.RemotePort,
 
-					NetworkInterfaceIndex
+					NetworkInterfaceIndex,
+					PACKET_INFO->FrameBuffer
 				);
+
+				Release_Parsed_Packet(PACKET_INFO);
 
 				return;
 			}
@@ -279,7 +487,10 @@ BOOLEAN Copy_Packet_Data(
 	return TRUE;
 }
 
-
+/*
+* 
+* 
+* 더 이상 사용하지 않음 ( Old ) 
 BOOLEAN Get_Packet_Size(void* layerData, ULONG32* PacketSize, ULONG32* ProtocolNumber) {
 
 	// PAGED_CODE(); // CalloutFn은 DISPATCH_LEVEL에서 실행될 수 있으므로 PAGED_CODE 주석 처리 또는 제거
@@ -324,7 +535,7 @@ BOOLEAN Get_Packet_Size(void* layerData, ULONG32* PacketSize, ULONG32* ProtocolN
 
 	return TRUE;
 }
-
+*/
 
 NTSTATUS Set_CallOut(
 	PDEVICE_OBJECT DeviceObject,
@@ -485,10 +696,12 @@ NTSTATUS NDIS_PacketFilter_Register(PDEVICE_OBJECT DeviceObject) {
 	}
 
 	const GUID LayerKey[] = {
-		FWPM_LAYER_INBOUND_TRANSPORT_V4,
-		FWPM_LAYER_OUTBOUND_TRANSPORT_V4,
-		FWPM_LAYER_INBOUND_IPPACKET_V4,
-		FWPM_LAYER_OUTBOUND_IPPACKET_V4
+		//FWPM_LAYER_INBOUND_TRANSPORT_V4,
+		//FWPM_LAYER_OUTBOUND_TRANSPORT_V4,
+		//FWPM_LAYER_INBOUND_IPPACKET_V4,
+		//FWPM_LAYER_OUTBOUND_IPPACKET_V4
+		FWPM_LAYER_INBOUND_MAC_FRAME_NATIVE,
+		FWPM_LAYER_OUTBOUND_MAC_FRAME_NATIVE
 	};
 
 	// NUM_LAYERS와 배열 크기가 일치하는지 확인

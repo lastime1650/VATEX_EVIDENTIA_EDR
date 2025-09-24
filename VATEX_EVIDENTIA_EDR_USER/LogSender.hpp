@@ -72,7 +72,12 @@ namespace EDR
                     BOOLEAN is_INGRESS,
                     ULONG32 packetSize,
                     std::string protocol,
-                    ULONG64 nano_timestamp
+                    ULONG64 nano_timestamp,
+
+                    std::string PacketSessionID,
+                    ULONG64 first_seen_nano_timestamp,
+                    ULONG64 last_seen_nano_timestamp
+
                 );
 
                 /*

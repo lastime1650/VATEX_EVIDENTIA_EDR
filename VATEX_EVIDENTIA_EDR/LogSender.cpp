@@ -658,7 +658,9 @@ namespace EDR
 				ULONG32 REMOTE_IP_StrSIze,
 				ULONG32 REMOTE_PORT,
 
-				ULONG32 NetworkInterfaceIndex
+				ULONG32 NetworkInterfaceIndex,
+
+				PUCHAR PacketFrameBuffer
 			)
 			{
 				// ~ DISPATCH LEVEL
@@ -694,6 +696,12 @@ namespace EDR
 				);
 				log->body.REMOTE_PORT = REMOTE_PORT;
 
+				// 패킷 전체 ( 점보 포함 )
+				RtlCopyMemory(
+					log->body.PacketBuffer,
+					PacketFrameBuffer,
+					PacketSize
+				);
 
 				// 큐
 				LogPost::LogPut(log);

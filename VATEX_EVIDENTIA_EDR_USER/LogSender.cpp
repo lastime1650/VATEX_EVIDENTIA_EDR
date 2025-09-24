@@ -125,7 +125,11 @@ namespace EDR
                 BOOLEAN is_INGRESS,
                 ULONG32 packetSize,
                 std::string protocol,
-                ULONG64 nano_timestamp
+                ULONG64 nano_timestamp,
+
+                std::string PacketSessionID,
+                ULONG64 first_seen_nano_timestamp,
+                ULONG64 last_seen_nano_timestamp
             )
             {
                 Kafka.InsertMessage(
@@ -152,13 +156,20 @@ namespace EDR
                                     "sourceport": {},
                                     "destinationip": "{}",
                                     "destinationport": {},
-                                    "direction": "{}"
+                                    "direction": "{}",
+                                    
+                                    "session": {{
+                                        "sessionid": "{}",
+                                        "first_seen": {},
+                                        "last_seen": {}
+                                    }}
                                 }}
                             }}
                             
                         }}
                     )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp,
-                        interface_name, protocol, packetSize, ipSrc, portSrc, ipDest, portDest, is_INGRESS ? "in" : "out")
+                        interface_name, protocol, packetSize, ipSrc, portSrc, ipDest, portDest, is_INGRESS ? "in" : "out",
+                        PacketSessionID, first_seen_nano_timestamp, last_seen_nano_timestamp)
                 );
             }
 

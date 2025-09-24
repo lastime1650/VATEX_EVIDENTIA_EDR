@@ -6,6 +6,7 @@
 #include "IOCTL.hpp"
 #include "EventLog.hpp"
 #include "ProcessSession.hpp"
+#include "NetworkSession.hpp"
 #include "LogSender.hpp"
 
 namespace EDR
@@ -51,7 +52,9 @@ namespace EDR
 					Session
 				*/
 				EDR::Session::Process::ProcessSession ProcessSessionManager; // [橇肺技胶] 技记积己
-				EDR::LogSender::Windows::LogSender WindowsLogSender; // [橇肺技胶] 技记积己
+				EDR::Session::Network::NetworkSession NetworkSessionManager; // [匙飘况农] 技记积己
+
+				EDR::LogSender::Windows::LogSender WindowsLogSender; // 肺弊 傈价 ( To Kafka )
 
 				
 				// queue 

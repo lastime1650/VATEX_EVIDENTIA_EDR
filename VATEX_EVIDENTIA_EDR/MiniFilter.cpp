@@ -113,8 +113,8 @@ namespace EDR
                     {
                         if (CompletionContext)
                         {
-                            debug_break();
-                            debug_log("%ws \n", (PWCH)(CompletionContext->NormalizedFilePath));
+                            //debug_break();
+                            //debug_log("%ws \n", (PWCH)(CompletionContext->NormalizedFilePath));
 
                             ULONG64 FileSize = 0;
                             CHAR SHA256[SHA256_String_Byte_Length] = { 0 };
@@ -303,7 +303,7 @@ namespace EDR
 
                     
 
-                    goto CleanUp; // 바로 리턴
+                    goto CleanUp; // 바로 리턴 ( POST에서 후속작업 ) 
                 }
                 case IRP_MJ_READ:
                 {

@@ -26,6 +26,7 @@
     <ClCompile Include="LogReceiver.cpp" />
     <ClCompile Include="LogSender.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="NetworkSession.cpp" />
     <ClCompile Include="ProcessSession.cpp" />
     <ClCompile Include="queue.hpp" />
     <ClCompile Include="TCP.cpp" />

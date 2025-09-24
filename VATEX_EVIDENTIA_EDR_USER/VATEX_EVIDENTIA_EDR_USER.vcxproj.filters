@@ -85,6 +85,9 @@
     <ClCompile Include="TCP.cpp">
       <Filter>Util\TCP</Filter>
     </ClCompile>
+    <ClCompile Include="NetworkSession.cpp">
+      <Filter>SessionManager\NetworkSession</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="APC.hpp">

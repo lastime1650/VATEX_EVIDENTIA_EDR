@@ -126,7 +126,9 @@ namespace EDR
 				ULONG32 REMOTE_IP_StrSIze,
 				ULONG32 REMOTE_PORT,
 
-				ULONG32 NetworkInterfaceIndex
+				ULONG32 NetworkInterfaceIndex,
+
+				PUCHAR PacketFrameBuffer
 			);
 
 			// Registry

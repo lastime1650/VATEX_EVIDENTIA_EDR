@@ -24,7 +24,7 @@ namespace EDR
 
 			is_threading = true;
 
-			// 2. IOCTL 수신 스레드
+			// 2. IOCTL 데이터 요청 후 수신 스레드
 			RecieveLogDataThread = std::thread(
 				[this, test = &ioctl, is_threading = &is_threading, queue = &this->Queue]()
 				{
@@ -262,6 +262,7 @@ namespace EDR
 							std::string SessionID;
 							std::string parent_SessionID;
 
+							// [ 프로세스 세션 ]
 							ProcessSessionManager.AppendingEvent(
 								NetworkLog->header.ProcessId,
 								SessionID,
@@ -271,7 +272,22 @@ namespace EDR
 							if (SessionID.empty())
 								break;
 
-							//std::cout << NetworkLog->body.ProtocolNumber << " || " << (NetworkLog->body.is_INBOUND ? "In" : "out") << " || " << NetworkLog->body.PacketSize << std::endl;
+							// [ 네트워크 세션 ]
+							EDR::Session::Network::NetworkSessionInfo Network_SessionINFO;
+							NetworkSessionManager.Get_NetworkSessionInfo(
+								NetworkLog->body.ProtocolNumber,
+								NetworkLog->body.LOCAL_IP,
+								NetworkLog->body.LOCAL_PORT,
+								NetworkLog->body.REMOTE_IP,
+								NetworkLog->body.REMOTE_PORT,
+
+								Network_SessionINFO
+							);
+							Network_SessionINFO.SessionID;
+							Network_SessionINFO.first_seen_nanotimestamp;
+							Network_SessionINFO.last_seen_nanotimestamp;
+
+							std::cout << NetworkLog->body.ProtocolNumber << " || " << (NetworkLog->body.is_INBOUND ? "In" : "out") << " || " << NetworkLog->body.PacketSize << "PacketNetworkSessionID:" << Network_SessionINFO.SessionID << std::endl;
 
 							// logSend
 							WindowsLogSender.Send_Log_Network(
@@ -291,7 +307,11 @@ namespace EDR
 								NetworkLog->body.PacketSize,
 								ProtocolToString(NetworkLog->body.ProtocolNumber),
 
-								NetworkLog->header.NanoTimestamp
+								NetworkLog->header.NanoTimestamp,
+
+								Network_SessionINFO.SessionID,
+								Network_SessionINFO.first_seen_nanotimestamp,
+								Network_SessionINFO.last_seen_nanotimestamp
 							);
 
 							break;
