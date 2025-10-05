@@ -1,0 +1,87 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="소스 파일">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="헤더 파일">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="리소스 파일">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="헤더 파일\Util">
+      <UniqueIdentifier>{510df039-3853-4422-87f8-5aa2250b75d0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\Util\Suspend">
+      <UniqueIdentifier>{f9594e61-241f-403d-a5ed-a6bea693a6f3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\Util\API_Hooking">
+      <UniqueIdentifier>{1ab3a709-c9c1-4ece-bed3-4f6bb46cd3fd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\Util\IOCTL">
+      <UniqueIdentifier>{aacfa73f-c4ef-40ab-b3d2-9117f69c5f5e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\Util\Queue">
+      <UniqueIdentifier>{1eaf7455-c546-4e2a-aeb8-22bdf34792cc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\Util\timestamp">
+      <UniqueIdentifier>{c059d18f-591a-48a8-89f0-1e8e24498699}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="framework.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="pch.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Suspends.hpp">
+      <Filter>헤더 파일\Util\Suspend</Filter>
+    </ClInclude>
+    <ClInclude Include="API_Hooker.hpp">
+      <Filter>헤더 파일\Util\API_Hooking</Filter>
+    </ClInclude>
+    <ClInclude Include="API_HOOK_STRUCTS.hpp">
+      <Filter>헤더 파일\Util\API_Hooking</Filter>
+    </ClInclude>
+    <ClInclude Include="Queue.hpp">
+      <Filter>헤더 파일\Util\Queue</Filter>
+    </ClInclude>
+    <ClInclude Include="Ioctl.hpp">
+      <Filter>헤더 파일\Util\IOCTL</Filter>
+    </ClInclude>
+    <ClInclude Include="ioctlcodes.hpp">
+      <Filter>헤더 파일\Util\IOCTL</Filter>
+    </ClInclude>
+    <ClInclude Include="API_HOOK_Handlers.hpp">
+      <Filter>헤더 파일\Util\API_Hooking</Filter>
+    </ClInclude>
+    <ClInclude Include="json.hpp">
+      <Filter>헤더 파일\Util</Filter>
+    </ClInclude>
+    <ClInclude Include="Manager.hpp">
+      <Filter>헤더 파일\Util</Filter>
+    </ClInclude>
+    <ClInclude Include="timestamp.hpp">
+      <Filter>헤더 파일\Util\timestamp</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="dllmain.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="pch.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="API_HOOK_Handlers.cpp">
+      <Filter>헤더 파일\Util\API_Hooking</Filter>
+    </ClCompile>
+    <ClCompile Include="Manager.cpp">
+      <Filter>헤더 파일\Util</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

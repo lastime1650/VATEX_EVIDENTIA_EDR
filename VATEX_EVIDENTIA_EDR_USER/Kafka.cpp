@@ -109,7 +109,21 @@ namespace EDR
 
             void Kafka::InsertMessage(std::string jsonMessage)
             {
-                MessageQueue.put(jsonMessage);
+
+                // 단일 '\'를 '\\'로 변환
+                std::string sanitizedMessage;
+                sanitizedMessage.reserve(jsonMessage.size()); // 성능 최적화
+
+                for (char c : jsonMessage) {
+                    if (c == '\\') {
+                        sanitizedMessage += "\\\\";
+                    }
+                    else {
+                        sanitizedMessage += c;
+                    }
+                }
+
+                MessageQueue.put(sanitizedMessage);
             }
         }
     }

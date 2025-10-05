@@ -64,7 +64,7 @@ namespace EDR
 
                     std::string OsVersion,
                     HANDLE pid,
-                    std::string interface_name,
+                    ULONG32 interface_index,
                     std::string ipSrc,
                     ULONG32 portSrc,
                     std::string ipDest,
@@ -131,6 +131,56 @@ namespace EDR
                     HANDLE Target_ProcessId,
                     std::string TargetProcess_Path,
                     std::vector < std::string >& DesiredAccess,
+                    ULONG64 nano_timestamp
+                );
+
+                /*
+                    레지스트리
+                */
+                void Send_Log_Registry(
+
+                    std::string SessionID,
+                    std::string root_SessionID,
+                    std::string parent_SessionID,
+
+                    std::string OsVersion,
+                    HANDLE pid,
+
+                    std::string RegistryKeyClass,
+                    std::string Target_Name,
+
+                    ULONG64 nano_timestamp
+                );
+                void Send_Log_Registry(
+
+                    std::string SessionID,
+                    std::string root_SessionID,
+                    std::string parent_SessionID,
+
+                    std::string OsVersion,
+                    HANDLE pid,
+
+                    std::string RegistryKeyClass,
+                    std::string Target_Name,
+                    std::string OldName,
+                    std::string NewName,
+
+                    ULONG64 nano_timestamp
+                );
+
+                /*
+                    API 후킹
+                */
+                void Send_Log_APICall(
+                    std::string SessionID,
+                    std::string root_SessionID,
+                    std::string parent_SessionID,
+
+                    std::string OsVersion,
+                    HANDLE pid,
+
+                    std::string API_Json,
+
                     ULONG64 nano_timestamp
                 );
 

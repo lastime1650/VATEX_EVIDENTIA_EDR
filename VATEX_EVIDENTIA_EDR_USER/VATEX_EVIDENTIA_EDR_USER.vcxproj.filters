@@ -46,6 +46,9 @@
     <Filter Include="Util\TCP">
       <UniqueIdentifier>{bc9a6f81-2988-44fb-a642-817f6d23b063}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Response">
+      <UniqueIdentifier>{12965021-c401-49fa-841d-be9c2437d772}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
@@ -128,6 +131,9 @@
     </ClInclude>
     <ClInclude Include="TCP.hpp">
       <Filter>Util\TCP</Filter>
+    </ClInclude>
+    <ClInclude Include="_Parent.hpp">
+      <Filter>Response</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

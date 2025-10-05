@@ -84,6 +84,21 @@ namespace EDR
 									LogSize = sizeof(EDR::EventLog::Struct::ObRegisterCallback::EventLog_Process_ObRegisterCallback);
 									break;
 								}
+								case EDR::EventLog::Enum::Registry_CompleteNameLog:
+								{
+									LogSize = sizeof(EDR::EventLog::Struct::Registry::EventLog_Process_Registry_CompleteorObjectNameLog);
+									break;
+								}
+								case EDR::EventLog::Enum::Registry_OldNewLog:
+								{
+									LogSize = sizeof(EDR::EventLog::Struct::Registry::EventLog_Process_Registry_OldNewNameLog);
+									break;
+								}
+								case EDR::EventLog::Enum::apicall:
+								{
+									LogSize = sizeof(EDR::EventLog::Struct::ApiCall::EventLog_ApiCall);
+									break;
+								}
 								default:
 								{
 									std::cout << "이해할 수 없는 로그" << std::endl;
@@ -298,7 +313,7 @@ namespace EDR
 								NetworkLog->header.Version,
 								NetworkLog->header.ProcessId,
 
-								NetworkLog->body.post.InterfaceName,
+								NetworkLog->body.ifindex,
 								NetworkLog->body.LOCAL_IP,
 								NetworkLog->body.LOCAL_PORT,
 								NetworkLog->body.REMOTE_IP,
@@ -470,6 +485,105 @@ namespace EDR
 
 							break;
 
+						}
+						case EDR::EventLog::Enum::Registry_CompleteNameLog:
+						{
+							EDR::EventLog::Struct::Registry::EventLog_Process_Registry_CompleteorObjectNameLog* RegistryCompleteNameLog = reinterpret_cast<EDR::EventLog::Struct::Registry::EventLog_Process_Registry_CompleteorObjectNameLog*>(Log.logData);
+
+							std::string root_SessionID;
+							std::string SessionID;
+							std::string parent_SessionID;
+
+							ProcessSessionManager.AppendingEvent(
+								RegistryCompleteNameLog->header.ProcessId,
+								SessionID,
+								root_SessionID,
+								parent_SessionID
+							);
+							if (SessionID.empty())
+								break;
+
+							WindowsLogSender.Send_Log_Registry(
+								SessionID,
+								root_SessionID,
+								parent_SessionID,
+
+								RegistryCompleteNameLog->header.Version,
+								RegistryCompleteNameLog->header.ProcessId,
+
+								RegistryCompleteNameLog->body.FunctionName,
+								RegistryCompleteNameLog->body.Name,
+
+								RegistryCompleteNameLog->header.NanoTimestamp
+							);
+
+							break;
+						}
+						case EDR::EventLog::Enum::Registry_OldNewLog:
+						{
+							EDR::EventLog::Struct::Registry::EventLog_Process_Registry_OldNewNameLog* RegistryOldNewNameLog = reinterpret_cast<EDR::EventLog::Struct::Registry::EventLog_Process_Registry_OldNewNameLog*>(Log.logData);
+
+							std::string root_SessionID;
+							std::string SessionID;
+							std::string parent_SessionID;
+
+							ProcessSessionManager.AppendingEvent(
+								RegistryOldNewNameLog->header.ProcessId,
+								SessionID,
+								root_SessionID,
+								parent_SessionID
+							);
+							if (SessionID.empty())
+								break;
+
+							WindowsLogSender.Send_Log_Registry(
+								SessionID,
+								root_SessionID,
+								parent_SessionID,
+
+								RegistryOldNewNameLog->header.Version,
+								RegistryOldNewNameLog->header.ProcessId,
+
+								RegistryOldNewNameLog->body.FunctionName,
+								RegistryOldNewNameLog->body.Name,
+								RegistryOldNewNameLog->body.OldName,
+								RegistryOldNewNameLog->body.NewName,
+
+								RegistryOldNewNameLog->header.NanoTimestamp
+							);
+							break;
+						}
+						case EDR::EventLog::Enum::apicall:
+						{
+							EDR::EventLog::Struct::ApiCall::EventLog_ApiCall* ApiCallLog = reinterpret_cast<EDR::EventLog::Struct::ApiCall::EventLog_ApiCall*>(Log.logData);
+
+							std::string root_SessionID;
+							std::string SessionID;
+							std::string parent_SessionID;
+
+							ProcessSessionManager.AppendingEvent(
+								ApiCallLog->header.ProcessId,
+								SessionID,
+								root_SessionID,
+								parent_SessionID
+							);
+							if (SessionID.empty())
+								break;
+
+							WindowsLogSender.Send_Log_APICall(
+								SessionID,
+								root_SessionID,
+								parent_SessionID,
+
+								ApiCallLog->header.Version,
+								ApiCallLog->header.ProcessId,
+
+								ApiCallLog->body.Json,
+
+								ApiCallLog->header.NanoTimestamp
+							);
+
+							break;
 						}
 						default:
 						{

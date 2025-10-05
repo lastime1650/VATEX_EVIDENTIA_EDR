@@ -11,6 +11,11 @@ namespace EDR
 				HANDLE ProcessId = NULL;
 				HANDLE ProcessHandle = NULL;
 			}
+
+			namespace API_HOOK
+			{
+				extern PCHAR HookDllPath = NULL;
+			}
 		}
 	}
 }

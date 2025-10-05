@@ -137,6 +137,7 @@
   <ItemGroup>
     <ClInclude Include="Account.hpp" />
     <ClInclude Include="API.hpp" />
+    <ClInclude Include="API_Hook.hpp" />
     <ClInclude Include="DriverUnload.hpp" />
     <ClInclude Include="EventLog.hpp" />
     <ClInclude Include="FileJob.hpp" />
@@ -150,6 +151,7 @@
     <ClInclude Include="NotifyRoutine_ImageLoad.hpp" />
     <ClInclude Include="NotifyRoutine_ProcessCreation.hpp" />
     <ClInclude Include="ObRegisterCallback.hpp" />
+    <ClInclude Include="PE_Logic.hpp" />
     <ClInclude Include="ProcessUtil.hpp" />
     <ClInclude Include="Registry.hpp" />
     <ClInclude Include="Response.hpp" />

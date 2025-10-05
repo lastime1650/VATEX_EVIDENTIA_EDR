@@ -161,18 +161,18 @@ namespace EDR
 					IN_ADDR addr;
 					if (isInbound) {
 
-						addr.S_un.S_addr = RtlUlongByteSwap(pIpHeader->SourceAddress);
+						addr.S_un.S_addr = (pIpHeader->SourceAddress);
 						RtlIpv4AddressToStringA(&addr, (*Output)->network_layer.LocalIp);
 
-						addr.S_un.S_addr = RtlUlongByteSwap(pIpHeader->DestinationAddress);
+						addr.S_un.S_addr = (pIpHeader->DestinationAddress);
 						RtlIpv4AddressToStringA(&addr, (*Output)->network_layer.RemoteIp);
 					}
 					else {
 
-						addr.S_un.S_addr = RtlUlongByteSwap(pIpHeader->SourceAddress);
+						addr.S_un.S_addr = (pIpHeader->SourceAddress);
 						RtlIpv4AddressToStringA(&addr, (*Output)->network_layer.LocalIp);
 
-						addr.S_un.S_addr = RtlUlongByteSwap(pIpHeader->DestinationAddress);
+						addr.S_un.S_addr = (pIpHeader->DestinationAddress);
 						RtlIpv4AddressToStringA(&addr, (*Output)->network_layer.RemoteIp);
 					}
 

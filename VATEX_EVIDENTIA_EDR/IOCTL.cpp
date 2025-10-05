@@ -109,6 +109,16 @@ namespace EDR
 						IoStatusInformation = sizeof(struct IOCTL_REQ_LOG_s);
 						break;
 					}
+					case IOCTL_API_CALLS:
+					{
+						struct IOCTL_API_CALLS_Data* parameter = (struct IOCTL_API_CALLS_Data*)Irp->AssociatedIrp.SystemBuffer;
+						if (!parameter) break;
+
+						//debug_break();
+						//debug_log("PID: %llu \n", parameter->ProcessId);
+
+						break;
+					}
 					default:
 					{
 						status = STATUS_UNSUCCESSFUL;

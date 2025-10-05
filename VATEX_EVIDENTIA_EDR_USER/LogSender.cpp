@@ -77,7 +77,7 @@ namespace EDR
                             {{
                                 "header": {{
                                     "agentid": "{}",
-                                    ""root_sessionid": "{}",
+                                    "root_sessionid": "{}",
                                     "parent_sessionid": "{}",
 								    "sessionid": "{}",
                                     "user": {{
@@ -117,7 +117,7 @@ namespace EDR
 
                 std::string OsVersion,
                 HANDLE pid,
-                std::string interface_name,
+                ULONG32 interface_index,
                 std::string ipSrc,
                 ULONG32 portSrc,
                 std::string ipDest,
@@ -149,7 +149,7 @@ namespace EDR
                             }},
                             "body": {{
                                 "network" : {{
-                                    "interface_name": "{}", 
+                                    "interface_index": {}, 
                                     "protocol": "{}",
                                     "packetsize" : {},
                                     "sourceip": "{}",
@@ -168,7 +168,7 @@ namespace EDR
                             
                         }}
                     )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp,
-                        interface_name, protocol, packetSize, ipSrc, portSrc, ipDest, portDest, is_INGRESS ? "in" : "out",
+                        interface_index, protocol, packetSize, ipSrc, portSrc, ipDest, portDest, is_INGRESS ? "in" : "out",
                         PacketSessionID, first_seen_nano_timestamp, last_seen_nano_timestamp)
                 );
             }
@@ -312,6 +312,227 @@ namespace EDR
                         }}
                     )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp,
                         CreateHandle, (ULONG64)Target_ProcessId, TargetProcess_Path, DesiredAccessJsonArrayString)
+                );
+            }
+
+            
+
+            void LogSender::Send_Log_APICall(
+                std::string SessionID,
+                std::string root_SessionID,
+                std::string parent_SessionID,
+
+                std::string OsVersion,
+                HANDLE pid,
+
+                std::string API_Json,
+
+                ULONG64 nano_timestamp
+            )
+            {
+
+                
+                Kafka.InsertMessage(
+                    fmt::format(R"(
+                        {{
+                            "header": {{
+                                "agentid": "{}",
+								"root_sessionid": "{}",
+                                "parent_sessionid": "{}",
+								"sessionid": "{}",
+                                "os": {{
+                                    "version": "{}",
+                                    "type": "{}"
+                                }},
+                                "pid": {},
+                                "nano_timestamp": {}
+                            }},
+                            "body": {{
+                                "apicall" : "{}"
+                            }}
+                            
+                        }}
+                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp,
+                        API_Json)
+                );
+            }
+
+            void LogSender::Send_Log_Registry(
+
+                std::string SessionID,
+                std::string root_SessionID,
+                std::string parent_SessionID,
+
+                std::string OsVersion,
+                HANDLE pid,
+
+                std::string RegistryKeyClass,
+                std::string Target_Name,
+
+                ULONG64 nano_timestamp
+            )
+            {
+                Kafka.InsertMessage(
+                    fmt::format(R"(
+                        {{
+                            "header": {{
+                                "agentid": "{}",
+								"root_sessionid": "{}",
+                                "parent_sessionid": "{}",
+								"sessionid": "{}",
+                                "os": {{
+                                    "version": "{}",
+                                    "type": "{}"
+                                }},
+                                "pid": {},
+                                "nano_timestamp": {}
+                            }},
+                            "body": {{
+                                "registry" : {{
+                                    "keyclass" : "{}",
+                                    "name": "{}"
+                                }}
+                            }}
+                            
+                        }}
+                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp,
+                        RegistryKeyClass, Target_Name)
+                );
+                /*
+                   ["body"]["reigstry"]["keyclass"] 에는 무슨 std::string값으로 오는가?
+                   
+                   실제 다음과 같은 enum값 이름으로 온다.
+                   typedef enum _REG_NOTIFY_CLASS {
+    RegNtDeleteKey,
+    RegNtPreDeleteKey = RegNtDeleteKey,
+    RegNtSetValueKey,
+    RegNtPreSetValueKey = RegNtSetValueKey,
+    RegNtDeleteValueKey,
+    RegNtPreDeleteValueKey = RegNtDeleteValueKey,
+    RegNtSetInformationKey,
+    RegNtPreSetInformationKey = RegNtSetInformationKey,
+    RegNtRenameKey,
+    RegNtPreRenameKey = RegNtRenameKey,
+    RegNtEnumerateKey,
+    RegNtPreEnumerateKey = RegNtEnumerateKey,
+    RegNtEnumerateValueKey,
+    RegNtPreEnumerateValueKey = RegNtEnumerateValueKey,
+    RegNtQueryKey,
+    RegNtPreQueryKey = RegNtQueryKey,
+    RegNtQueryValueKey,
+    RegNtPreQueryValueKey = RegNtQueryValueKey,
+    RegNtQueryMultipleValueKey,
+    RegNtPreQueryMultipleValueKey = RegNtQueryMultipleValueKey,
+    RegNtPreCreateKey,
+    RegNtPostCreateKey,
+    RegNtPreOpenKey,
+    RegNtPostOpenKey,
+    RegNtKeyHandleClose,
+    RegNtPreKeyHandleClose = RegNtKeyHandleClose,
+    //
+    // .Net only
+    //
+    RegNtPostDeleteKey,
+    RegNtPostSetValueKey,
+    RegNtPostDeleteValueKey,
+    RegNtPostSetInformationKey,
+    RegNtPostRenameKey,
+    RegNtPostEnumerateKey,
+    RegNtPostEnumerateValueKey,
+    RegNtPostQueryKey,
+    RegNtPostQueryValueKey,
+    RegNtPostQueryMultipleValueKey,
+    RegNtPostKeyHandleClose,
+    RegNtPreCreateKeyEx,
+    RegNtPostCreateKeyEx,
+    RegNtPreOpenKeyEx,
+    RegNtPostOpenKeyEx,
+    //
+    // new to Windows Vista
+    //
+    RegNtPreFlushKey,
+    RegNtPostFlushKey,
+    RegNtPreLoadKey,
+    RegNtPostLoadKey,
+    RegNtPreUnLoadKey,
+    RegNtPostUnLoadKey,
+    RegNtPreQueryKeySecurity,
+    RegNtPostQueryKeySecurity,
+    RegNtPreSetKeySecurity,
+    RegNtPostSetKeySecurity,
+    //
+    // per-object context cleanup
+    //
+    RegNtCallbackObjectContextCleanup,
+    //
+    // new in Vista SP2
+    //
+    RegNtPreRestoreKey,
+    RegNtPostRestoreKey,
+    RegNtPreSaveKey,
+    RegNtPostSaveKey,
+    RegNtPreReplaceKey,
+    RegNtPostReplaceKey,
+    //
+    // new to Windows 10
+    //
+    RegNtPreQueryKeyName,
+    RegNtPostQueryKeyName,
+    RegNtPreSaveMergedKey,
+    RegNtPostSaveMergedKey,
+
+    MaxRegNtNotifyClass //should always be the last enum
+} REG_NOTIFY_CLASS;
+
+                */
+            }
+
+            void LogSender::Send_Log_Registry(
+
+                std::string SessionID,
+                std::string root_SessionID,
+                std::string parent_SessionID,
+
+                std::string OsVersion,
+                HANDLE pid,
+
+                std::string RegistryKeyClass,
+                std::string Target_Name,
+                std::string OldName,
+                std::string NewName,
+
+                ULONG64 nano_timestamp
+            )
+            {
+                Kafka.InsertMessage(
+                    fmt::format(R"(
+                        {{
+                            "header": {{
+                                "agentid": "{}",
+								"root_sessionid": "{}",
+                                "parent_sessionid": "{}",
+								"sessionid": "{}",
+                                "os": {{
+                                    "version": "{}",
+                                    "type": "{}"
+                                }},
+                                "pid": {},
+                                "nano_timestamp": {}
+                            }},
+                            "body": {{
+                                "registry" : {{
+                                    "keyclass" : "{}",
+                                    "name": "{}",
+                                    "newold" : {{
+                                        "oldname": "{}",
+                                        "newname": "{}"
+                                    }}
+                                }}
+                            }}
+                            
+                        }}
+                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp,
+                        RegistryKeyClass, Target_Name, OldName, NewName)
                 );
             }
 

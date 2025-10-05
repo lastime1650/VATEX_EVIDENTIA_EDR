@@ -20,9 +20,12 @@ namespace EDR
 				Filesystem,
 
 				Registry_CompleteNameLog, // Registry - CompleteName
+				Registry_OldNewLog,		  // Registry - Old,New Name
 
 				ImageLoad,
-				ObRegisterCallback
+				ObRegisterCallback,
+
+				apicall
 
 			};
 
@@ -222,6 +225,11 @@ namespace EDR
 						CHAR FunctionName[256];
 						CHAR Name[2048];
 
+						struct
+						{
+							PWCH Name; // only kernel use 
+						}post;
+
 					}body;
 
 				};
@@ -238,6 +246,14 @@ namespace EDR
 
 						CHAR OldName[2048];
 						CHAR NewName[2048];
+
+						struct
+						{
+							PWCH Name;
+
+							PWCH OldName;
+							PWCH NewName;
+						}post;
 
 					}body;
 
@@ -257,6 +273,21 @@ namespace EDR
 						HANDLE Target_ProcessId;
 						CHAR TargetProcess_Path[4096];
 						ULONG32 DesiredAccess; // 접근권한
+					}body;
+
+				};
+			}
+
+			namespace ApiCall
+			{
+				// ObRegisterCallback
+				struct EventLog_ApiCall
+				{
+					struct EventLog_Header header;
+
+					struct
+					{
+						CHAR Json[8192]; // if TRUE, CreateHandle / else DuplicateHandleInformation
 					}body;
 
 				};

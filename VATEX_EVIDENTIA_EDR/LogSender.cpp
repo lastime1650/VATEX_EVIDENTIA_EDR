@@ -348,11 +348,11 @@ namespace EDR
 						SIZE_T logSize = 0;
 
 						// APC타겟 유저(USER AGENT 프로세스) PID 유효체크
-						HANDLE APC_Target_ProcessHandle = EDR::Util::Shared::USER_AGENT::ProcessHandle;
-						if (!APC_Target_ProcessHandle)
+						HANDLE UserAGENT_ProcessHandle = EDR::Util::Shared::USER_AGENT::ProcessHandle;
+						if (!UserAGENT_ProcessHandle)
 							goto CleanUp;
-						HANDLE APC_Target_ProcessId = EDR::Util::Shared::USER_AGENT::ProcessId;
-						if (!APC_Target_ProcessId)
+						HANDLE UserAGENT_ProcessId = EDR::Util::Shared::USER_AGENT::ProcessId;
+						if (!UserAGENT_ProcessId)
 							goto CleanUp;
 
 
@@ -375,7 +375,7 @@ namespace EDR
 							AllocatedUserSpaceSize = logSize;
 							// User 공간 Allocate
 							EDR::Util::UserSpace::Memory::AllocateMemory(
-								APC_Target_ProcessHandle,
+								UserAGENT_ProcessHandle,
 								&AllocatedUserSpace,
 								&AllocatedUserSpaceSize
 							);
@@ -402,7 +402,7 @@ namespace EDR
 							AllocatedUserSpaceSize = logSize;
 							// User 공간 Allocate
 							EDR::Util::UserSpace::Memory::AllocateMemory(
-								APC_Target_ProcessHandle,
+								UserAGENT_ProcessHandle,
 								&AllocatedUserSpace,
 								&AllocatedUserSpaceSize
 							);
@@ -418,7 +418,7 @@ namespace EDR
 							AllocatedUserSpaceSize = logSize;
 							// User 공간 Allocate
 							EDR::Util::UserSpace::Memory::AllocateMemory(
-								APC_Target_ProcessHandle,
+								UserAGENT_ProcessHandle,
 								&AllocatedUserSpace,
 								&AllocatedUserSpaceSize
 							);
@@ -448,7 +448,7 @@ namespace EDR
 							AllocatedUserSpaceSize = logSize;
 							// User 공간 Allocate
 							EDR::Util::UserSpace::Memory::AllocateMemory(
-								APC_Target_ProcessHandle,
+								UserAGENT_ProcessHandle,
 								&AllocatedUserSpace,
 								&AllocatedUserSpaceSize
 							);
@@ -512,7 +512,7 @@ namespace EDR
 							AllocatedUserSpaceSize = logSize;
 							// User 공간 Allocate
 							EDR::Util::UserSpace::Memory::AllocateMemory(
-								APC_Target_ProcessHandle,
+								UserAGENT_ProcessHandle,
 								&AllocatedUserSpace,
 								&AllocatedUserSpaceSize
 							);
@@ -522,6 +522,105 @@ namespace EDR
 
 							break;
 						}
+						case EDR::EventLog::Enum::Registry_CompleteNameLog:
+						{
+							EDR::EventLog::Struct::Registry::EventLog_Process_Registry_CompleteorObjectNameLog* log = (EDR::EventLog::Struct::Registry::EventLog_Process_Registry_CompleteorObjectNameLog*)CTX;
+							logSize = sizeof(EDR::EventLog::Struct::Registry::EventLog_Process_Registry_CompleteorObjectNameLog);
+
+							// 1. Name(wcs) -> Char
+							UNICODE_STRING NAME_UNICODE;
+							RtlInitUnicodeString(&NAME_UNICODE, log->body.post.Name);
+							if (!EDR::Util::helper::UNICODE_to_CHAR(&NAME_UNICODE, log->body.Name, sizeof(log->body.Name)))
+							{
+								ExFreePoolWithTag(log->body.post.Name, LogALLOC); // PWCH 동적할당 해제
+								goto CleanUp;
+							}
+
+
+							ExFreePoolWithTag(log->body.post.Name, LogALLOC); // PWCH 동적할당 해제
+
+							AllocatedUserSpaceSize = logSize;
+							// User 공간 Allocate
+							EDR::Util::UserSpace::Memory::AllocateMemory(
+								UserAGENT_ProcessHandle,
+								&AllocatedUserSpace,
+								&AllocatedUserSpaceSize
+							);
+
+							if (!AllocatedUserSpace)
+								goto CleanUp;
+
+							break;
+						}
+						case EDR::EventLog::Enum::Registry_OldNewLog:
+						{
+							EDR::EventLog::Struct::Registry::EventLog_Process_Registry_OldNewNameLog* log = (EDR::EventLog::Struct::Registry::EventLog_Process_Registry_OldNewNameLog*)CTX;
+							logSize = sizeof(EDR::EventLog::Struct::Registry::EventLog_Process_Registry_OldNewNameLog);
+
+							// 1. Name(wcs) -> Char
+							UNICODE_STRING NAME_UNICODE;
+							RtlInitUnicodeString(&NAME_UNICODE, log->body.post.Name);
+							if (!EDR::Util::helper::UNICODE_to_CHAR(&NAME_UNICODE, log->body.Name, sizeof(log->body.Name)))
+							{
+								ExFreePoolWithTag(log->body.post.Name, LogALLOC); // PWCH 동적할당 해제
+								goto CleanUp;
+							}
+							ExFreePoolWithTag(log->body.post.Name, LogALLOC); // PWCH 동적할당 해제
+
+							// 2. OldName(wcs) -> Char
+							UNICODE_STRING OldNAME_UNICODE;
+							RtlInitUnicodeString(&OldNAME_UNICODE, log->body.post.OldName);
+							if (!EDR::Util::helper::UNICODE_to_CHAR(&OldNAME_UNICODE, log->body.OldName, sizeof(log->body.OldName)))
+							{
+								ExFreePoolWithTag(log->body.post.OldName, LogALLOC); // PWCH 동적할당 해제
+								goto CleanUp;
+							}
+							ExFreePoolWithTag(log->body.post.OldName, LogALLOC); // PWCH 동적할당 해제
+
+							// 3. NewName(wcs) -> Char
+							UNICODE_STRING NewNAME_UNICODE;
+							RtlInitUnicodeString(&NewNAME_UNICODE, log->body.post.NewName);
+							if (!EDR::Util::helper::UNICODE_to_CHAR(&NewNAME_UNICODE, log->body.NewName, sizeof(log->body.NewName)))
+							{
+								ExFreePoolWithTag(log->body.post.NewName, LogALLOC); // PWCH 동적할당 해제
+								goto CleanUp;
+							}
+							ExFreePoolWithTag(log->body.post.NewName, LogALLOC); // PWCH 동적할당 해제
+
+
+
+							AllocatedUserSpaceSize = logSize;
+							// User 공간 Allocate
+							EDR::Util::UserSpace::Memory::AllocateMemory(
+								UserAGENT_ProcessHandle,
+								&AllocatedUserSpace,
+								&AllocatedUserSpaceSize
+							);
+
+							if (!AllocatedUserSpace)
+								goto CleanUp;
+
+							break;
+						}
+						case EDR::EventLog::Enum::apicall:
+						{
+							EDR::EventLog::Struct::ApiCall::EventLog_ApiCall* log = (EDR::EventLog::Struct::ApiCall::EventLog_ApiCall*)CTX;
+							logSize = sizeof(EDR::EventLog::Struct::ApiCall::EventLog_ApiCall);
+
+							AllocatedUserSpaceSize = logSize;
+							// User 공간 Allocate
+							EDR::Util::UserSpace::Memory::AllocateMemory(
+								UserAGENT_ProcessHandle,
+								&AllocatedUserSpace,
+								&AllocatedUserSpaceSize
+							);
+
+							if (!AllocatedUserSpace)
+								goto CleanUp;
+
+							break;
+						}
+
 						default:
 						{
 							goto CleanUp;
@@ -530,7 +629,7 @@ namespace EDR
 
 
 						// Copy to User 공간s
-						EDR::Util::UserSpace::Memory::Copy(APC_Target_ProcessId, AllocatedUserSpace, CTX, logSize);
+						EDR::Util::UserSpace::Memory::Copy(UserAGENT_ProcessId, AllocatedUserSpace, CTX, logSize);
 
 
 						// Producing Log
@@ -780,7 +879,16 @@ namespace EDR
 				EDR::Util::SysVersion::GetSysVersion(log->header.Version, sizeof(log->header.Version));
 
 				memcpy(log->body.FunctionName, KeyClass, strlen(KeyClass));
-				EDR::Util::helper::UNICODE_to_CHAR(CompleteName, log->body.Name, sizeof(log->body.Name));
+				log->body.post.Name = (PWCH)ExAllocatePool2(POOL_FLAG_NON_PAGED, CompleteName->MaximumLength + sizeof(WCHAR), LogALLOC);
+				if (!log->body.post.Name)
+				{
+					ExFreePoolWithTag(log, LogALLOC);
+					return FALSE;
+				}
+				RtlZeroMemory((PUCHAR)log->body.post.Name, (CompleteName->MaximumLength + sizeof(WCHAR)));
+				wcscpy(log->body.post.Name, CompleteName->Buffer);
+				//EDR::Util::helper::UNICODE_to_CHAR(CompleteName, log->body.Name, sizeof(log->body.Name));
+				
 
 				// 큐
 				LogPost::LogPut(log);
@@ -798,18 +906,47 @@ namespace EDR
 				if (!log)
 					return FALSE;
 				RtlZeroMemory(log, sizeof(EDR::EventLog::Struct::Registry::EventLog_Process_Registry_OldNewNameLog));
-				log->header.Type = EDR::EventLog::Enum::Registry_CompleteNameLog;
+				log->header.Type = EDR::EventLog::Enum::Registry_OldNewLog;
 				log->header.ProcessId = ProcessId;
 				log->header.NanoTimestamp = NanoTimestamp;
 				EDR::Util::SysVersion::GetSysVersion(log->header.Version, sizeof(log->header.Version));
 
-
-
-
+				// 1.
 				memcpy(log->body.FunctionName, KeyClass, strlen(KeyClass));
-				EDR::Util::helper::UNICODE_to_CHAR(Name, log->body.Name, sizeof(log->body.Name));
-				EDR::Util::helper::UNICODE_to_CHAR(Old, log->body.OldName, sizeof(log->body.OldName));
-				EDR::Util::helper::UNICODE_to_CHAR(New, log->body.NewName, sizeof(log->body.NewName));
+				
+
+				// 2.
+				log->body.post.Name = (PWCH)ExAllocatePool2(POOL_FLAG_NON_PAGED, Name->MaximumLength + sizeof(WCHAR), LogALLOC);
+				if (!log->body.post.Name)
+				{
+					ExFreePoolWithTag(log, LogALLOC);
+					return FALSE;
+				}
+
+				log->body.post.OldName = (PWCH)ExAllocatePool2(POOL_FLAG_NON_PAGED, Old->MaximumLength + sizeof(WCHAR), LogALLOC);
+				if (!log->body.post.OldName)
+				{
+					ExFreePoolWithTag(log->body.post.Name, LogALLOC);
+					ExFreePoolWithTag(log, LogALLOC);
+					return FALSE;
+				}
+
+				log->body.post.NewName = (PWCH)ExAllocatePool2(POOL_FLAG_NON_PAGED, New->MaximumLength + sizeof(WCHAR), LogALLOC);
+				if (!log->body.post.NewName)
+				{
+					ExFreePoolWithTag(log->body.post.OldName, LogALLOC);
+					ExFreePoolWithTag(log->body.post.Name, LogALLOC);
+					ExFreePoolWithTag(log, LogALLOC);
+					return FALSE;
+				}
+
+				RtlZeroMemory(log->body.post.Name, (Name->MaximumLength + sizeof(WCHAR)));
+				RtlZeroMemory(log->body.post.OldName, (Old->MaximumLength + sizeof(WCHAR)));
+				RtlZeroMemory(log->body.post.NewName, (New->MaximumLength + sizeof(WCHAR)));
+
+				wcscpy(log->body.post.Name, Name->Buffer);
+				wcscpy(log->body.post.OldName, Old->Buffer);
+				wcscpy(log->body.post.NewName, New->Buffer);
 
 
 				// 큐
@@ -860,6 +997,37 @@ namespace EDR
 
 				return TRUE;
 			}
+
+			// api call
+			BOOLEAN API_CallLog(
+				HANDLE ProcessId,
+				ULONG64 NanoTimestamp,
+
+				PCHAR JsonStr,
+				ULONG32 JsonStrStrLen
+			)
+			{
+				if (!JsonStr || !ProcessId || !NanoTimestamp)
+					return FALSE;
+
+				EDR::EventLog::Struct::ApiCall::EventLog_ApiCall* log = (EDR::EventLog::Struct::ApiCall::EventLog_ApiCall*)ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(EDR::EventLog::Struct::ApiCall::EventLog_ApiCall), LogALLOC);
+				if (!log)
+					return FALSE;
+				RtlZeroMemory(log, sizeof(EDR::EventLog::Struct::ApiCall::EventLog_ApiCall) );
+				log->header.Type = EDR::EventLog::Enum::apicall;
+				log->header.ProcessId = ProcessId;
+				log->header.NanoTimestamp = NanoTimestamp;
+				EDR::Util::SysVersion::GetSysVersion(log->header.Version, sizeof(log->header.Version));
+
+				// body
+				memcpy(log->body.Json, JsonStr, JsonStrStrLen+1 > (8192) ? 8192 : JsonStrStrLen);
+
+				// 큐
+				LogPost::LogPut(log);
+
+				return TRUE;
+			}
+
 		}
 	}
 }

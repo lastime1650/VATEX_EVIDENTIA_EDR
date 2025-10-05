@@ -18,44 +18,12 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="APC.cpp" />
-    <ClCompile Include="Hash.cpp" />
-    <ClCompile Include="IOCTL.cpp" />
-    <ClCompile Include="Kafka.cpp" />
-    <ClCompile Include="LogReceiver.cpp" />
-    <ClCompile Include="LogSender.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="NetworkSession.cpp" />
-    <ClCompile Include="ProcessSession.cpp" />
-    <ClCompile Include="queue.hpp" />
-    <ClCompile Include="TCP.cpp" />
-    <ClCompile Include="Timestamp.cpp" />
-    <ClCompile Include="Windows.cpp" />
-    <ClCompile Include="Windows.hpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="APC.hpp" />
-    <ClInclude Include="EventLog.hpp" />
-    <ClInclude Include="Hash.hpp" />
-    <ClInclude Include="IOCTL.hpp" />
-    <ClInclude Include="ioctlcodes.hpp" />
-    <ClInclude Include="Kafka.hpp" />
-    <ClInclude Include="LogReceiver.hpp" />
-    <ClInclude Include="LogSender.hpp" />
-    <ClInclude Include="NetworkSession.hpp" />
-    <ClInclude Include="ProcessSession.hpp" />
-    <ClInclude Include="TCP.hpp" />
-    <ClInclude Include="Timestamp.hpp" />
-    <ClInclude Include="Util.hpp" />
-    <ClInclude Include="_Parent.hpp" />
-  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{0763804c-a12b-4ce8-acb8-425cea05539b}</ProjectGuid>
-    <RootNamespace>VATEXEVIDENTIAEDRUSER</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
+    <ProjectGuid>{f7f59988-c93b-41d0-a9e5-0743b452d1cc}</ProjectGuid>
+    <RootNamespace>DLLTargetProcessTEST</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -102,10 +70,6 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <ExternalIncludePath>C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\shared;$(WindowsSDK_IncludePath);$(ExternalIncludePath)</ExternalIncludePath>
-    <IncludePath>$(VC_IncludePath);C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\shared;$(WindowsSDK_IncludePath);</IncludePath>
-  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -154,18 +118,17 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\Administrator\vcpkg\installed\x64-windows\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\Users\Administrator\vcpkg\installed\x64-windows\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

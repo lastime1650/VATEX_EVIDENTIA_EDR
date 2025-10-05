@@ -125,7 +125,7 @@ namespace EDR
 				_In_opt_ PVOID Argument2
 			)
 			{
-                if (!Argument2 || !Argument1)
+                if (!Argument2 || !Argument1 || !EDR::Util::Shared::USER_AGENT::ProcessId)
                     return STATUS_SUCCESS;
 
                 HANDLE ProcessId = PsGetCurrentProcessId();

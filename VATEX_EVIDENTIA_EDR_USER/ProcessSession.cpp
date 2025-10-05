@@ -110,7 +110,7 @@ namespace EDR
 				{
 					// 부모 노드를 찾지 못한 경우 (이벤트 순서가 꼬인 경우 등)
 					// 임시 부모 노드를 생성하여 트리의 연결성을 유지
-					std::string parentSession = "temp_parent_for_" + std::to_string(reinterpret_cast<uintptr_t>(pid));
+					std::string parentSession = "temp_parent_for_" + out_processSession;
 					parentSession = EDR::Util::hash::sha256FromString(parentSession); // 임시 세션ID
 
 					// 부모노드

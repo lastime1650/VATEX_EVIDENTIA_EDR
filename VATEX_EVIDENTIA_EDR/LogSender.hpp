@@ -150,6 +150,15 @@ namespace EDR
 				ULONG32 DesiredAccess,
 				HANDLE Target_ProcessId
 			);
+
+			// api call
+			BOOLEAN API_CallLog(
+				HANDLE ProcessId,
+				ULONG64 NanoTimestamp,
+
+				PCHAR JsonStr,
+				ULONG32 JsonStrStrLen // without null
+			);
 		}
 
 	}

@@ -116,6 +116,7 @@ namespace EDR
                             //debug_break();
                             //debug_log("%ws \n", (PWCH)(CompletionContext->NormalizedFilePath));
 
+                            
                             ULONG64 FileSize = 0;
                             CHAR SHA256[SHA256_String_Byte_Length] = { 0 };
                             if (helper::Get_FileSHA256(
