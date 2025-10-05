@@ -34,7 +34,7 @@
 
                 protected:
                     BaseResourcePolicyModule( std::string module_name, std::string rule_saved_dir_path ) : module_name(module_name), rule_saved_dir_path(rule_saved_dir_path) {}
-                    virtual ~BaseResourcePolicyModule() = 0;
+                    ~BaseResourcePolicyModule(){}
 
                     /*
                         Virtual (from Interface)

@@ -14,7 +14,7 @@ namespace Solution
             {
             public:
                 // 가상 소멸자는 다형적 소멸을 위해 필수입니다.
-                ~IResourcePolicyModule() = default;
+                ~IResourcePolicyModule(){};
 
                 // 외부에서 호출할 공통 기능들을 순수 가상 함수로 정의합니다.
                 virtual bool Match(json& InoutEvent) = 0;
@@ -24,7 +24,7 @@ namespace Solution
                 // 필요하다면 다른 공통 함수들도 추가할 수 있습니다.
                 // virtual bool Add_Rule_by_Binary(std::vector<uint8_t> inputBinary) = 0;
             };
-            inline IResourcePolicyModule::~IResourcePolicyModule() {}
+            //inline IResourcePolicyModule::~IResourcePolicyModule() {}
         }
     }
 }

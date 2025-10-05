@@ -1,6 +1,9 @@
 #include <iostream>
 #include "Server/EDRServer.hpp"
 
+#include <thread>   // std::this_thread::sleep_for
+#include <chrono>   // std::chrono::seconds
+
 int main()
 {
     EDR::Server::EDRServer Server(
@@ -21,7 +24,7 @@ int main()
             AgentTCP Server
         */
         "192.168.1.205",
-        61010,
+        6100,
 
         /*
             VATEX EVIDENTIA EDR API Server
@@ -36,13 +39,10 @@ int main()
         51034
     );
 
-    if( !Server.Run() )
-        return 0;
+    Server.Run();
     std::cout << "test" << std::endl;
-    while(1)
-    {
 
-    }
+    std::this_thread::sleep_for(std::chrono::seconds(9999));
 
     Server.Stop();
 

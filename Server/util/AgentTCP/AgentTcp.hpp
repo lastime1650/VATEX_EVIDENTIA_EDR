@@ -16,6 +16,7 @@ namespace EDR
             {
             public:
                 AgentTcp(std::string ServerIp, unsigned int ServerPort) : tcpServer(ServerIp, ServerPort){}
+                ~AgentTcp() { std::cout << "~AgentTcp" << std::endl; }
 
                 bool Run()
                 {

@@ -39,7 +39,7 @@ namespace EDR
                 using ClientHandler = std::function<void(int)>;  // 클라이언트 연결 시, 호출되는 콜백함수 인자: int -> clientfd
 				bool OpenServer(ClientHandler handler)
                 {
-
+                    std::cout << "OpenServer" << std::endl;
                     // Tcp 소켓 Open
                     serverfd = socket(AF_INET, SOCK_STREAM, 0);
                     if (serverfd == -1) {
@@ -74,7 +74,7 @@ namespace EDR
                             while (this->is_waiting_client) {
                                 sockaddr_in client_addr{};
                                 socklen_t addrlen = sizeof(client_addr);
-
+                                std::cout << "TCP SERVER {"<< this->Serverip << ":" << this->Serverport << "} openned" << std::endl;
                                 int clientfd = accept(this->serverfd, (struct sockaddr*)&client_addr, &addrlen);
                                 if (clientfd < 0) {
                                     perror("accept");
@@ -103,6 +103,7 @@ namespace EDR
                 }
                 bool Close_Server()
                 {
+                    std::cout << "Close TCP Server" << std::endl;
                     if(serverfd < 0 || !is_waiting_client)
                         return false;
                     
