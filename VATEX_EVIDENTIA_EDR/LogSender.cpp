@@ -716,7 +716,6 @@ namespace EDR
 
 				PCUNICODE_STRING ImagePath
 			) {
-				PAGED_CODE();
 
 				EDR::EventLog::Struct::ImageLoad::EventLog_ImageLoad* log = (EDR::EventLog::Struct::ImageLoad::EventLog_ImageLoad*)ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(EDR::EventLog::Struct::ImageLoad::EventLog_ImageLoad), LogALLOC);
 				if (!log)
@@ -733,7 +732,7 @@ namespace EDR
 					log->body.ImagePathAnsi,
 					sizeof(log->body.ImagePathAnsi)
 				);
-
+				
 
 				// 큐
 				LogPost::LogPut(log);
@@ -878,16 +877,24 @@ namespace EDR
 				log->header.NanoTimestamp = NanoTimestamp;
 				EDR::Util::SysVersion::GetSysVersion(log->header.Version, sizeof(log->header.Version));
 
-				memcpy(log->body.FunctionName, KeyClass, strlen(KeyClass));
-				log->body.post.Name = (PWCH)ExAllocatePool2(POOL_FLAG_NON_PAGED, CompleteName->MaximumLength + sizeof(WCHAR), LogALLOC);
+				if (CompleteName == NULL || CompleteName->Buffer == NULL) {
+					ExFreePoolWithTag(log, LogALLOC);
+					return FALSE;
+				}
+
+				log->body.post.Name = (PWCH)ExAllocatePool2(POOL_FLAG_NON_PAGED, CompleteName->Length + sizeof(WCHAR), LogALLOC);
 				if (!log->body.post.Name)
 				{
 					ExFreePoolWithTag(log, LogALLOC);
 					return FALSE;
 				}
-				RtlZeroMemory((PUCHAR)log->body.post.Name, (CompleteName->MaximumLength + sizeof(WCHAR)));
-				wcscpy(log->body.post.Name, CompleteName->Buffer);
-				//EDR::Util::helper::UNICODE_to_CHAR(CompleteName, log->body.Name, sizeof(log->body.Name));
+
+				// RtlCopyMemory를 사용하여 UNICODE_STRING의 Length만큼만 안전하게 복사
+				RtlCopyMemory(log->body.post.Name, CompleteName->Buffer, CompleteName->Length);
+
+				// 수동으로 NULL 종료 문자 추가
+				// CompleteName->Length가 바이트 단위이므로 WCHAR 크기로 나누어 인덱스 계산
+				log->body.post.Name[CompleteName->Length / sizeof(WCHAR)] = L'\0';
 				
 
 				// 큐
@@ -915,7 +922,15 @@ namespace EDR
 				memcpy(log->body.FunctionName, KeyClass, strlen(KeyClass));
 				
 
+
+
 				// 2.
+				if (Name == NULL || Name->Buffer == NULL) {
+					ExFreePoolWithTag(log, LogALLOC);
+					return FALSE;
+				}
+
+
 				log->body.post.Name = (PWCH)ExAllocatePool2(POOL_FLAG_NON_PAGED, Name->MaximumLength + sizeof(WCHAR), LogALLOC);
 				if (!log->body.post.Name)
 				{

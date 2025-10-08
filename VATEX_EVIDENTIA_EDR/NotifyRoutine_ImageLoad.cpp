@@ -12,11 +12,10 @@ namespace EDR
 				PIMAGE_INFO ImageInfo
 			)
 			{
-				if (!FullImageName)
+				if (!FullImageName || !FullImageName->Buffer)
 					return;
 				if (!EDR::Util::Shared::USER_AGENT::ProcessId)
 					return;
-				PAGED_CODE();
 
 				ULONG64 NanoTimestamp = EDR::Util::Timestamp::Get_LocalTimestamp_Nano();
 				

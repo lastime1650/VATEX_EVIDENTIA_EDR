@@ -91,9 +91,64 @@ namespace EDR
                 resource::gFilterHandle = NULL; // 핸들을 NULL로 설정하여 더 이상 사용되지 않음을 표시
             }
         }
-
+        
         namespace POST
         {
+            
+            namespace FltWorkItem
+            {
+                extern "C" VOID FltWorkItemThread(
+                    _In_ PFLT_GENERIC_WORKITEM FltWorkItem,
+                    _In_ PVOID FltObject,
+                    _In_opt_ PVOID Context
+                )
+                {
+
+                    debug_break();
+
+                    EDR::MiniFilter::resource::PHASH_WORK_ITEM_CONTEXT_DETAILS FltWorkItem_CTX = (EDR::MiniFilter::resource::PHASH_WORK_ITEM_CONTEXT_DETAILS)Context;
+
+                    CHAR SHA256[SHA256_String_Byte_Length] = { 0 };
+                    ULONG64 FileSize = 0;
+                    debug_break();
+                    // [핵심] 오래 걸리는 해싱 작업을 여기서 안전하게 수행
+                    if (helper::Get_FileSHA256(
+                        FltWorkItem_CTX->Instance,
+                        FltWorkItem_CTX->FileObject,
+                        SHA256,
+                        &FileSize
+                    ))
+                    {
+                        // 해싱 성공 시, 로그 전송 처리
+                        // 파일 경로는 Pre-Op 컨텍스트에서 복사해서 pWorkContext에 담아와야 합니다.
+                        // 이 예시에서는 생략합니다.
+
+                        UNICODE_STRING NormalizedFilePath;
+                        RtlInitUnicodeString(&NormalizedFilePath, FltWorkItem_CTX->NormalizedFilePath);
+
+                        EDR::LogSender::function::FilesystemLog(
+                            FltWorkItem_CTX->ProcessId,
+                            FltWorkItem_CTX->timestamp,
+                            FltWorkItem_CTX->Action,
+                            &NormalizedFilePath,
+                            NULL,
+                            SHA256
+                        );
+                    }
+
+                    if (FltWorkItem_CTX ->NormalizedFilePath)
+                        ExFreePoolWithTag(FltWorkItem_CTX->NormalizedFilePath, PretoPost_CTX_ALLOC_TAG);
+
+
+                    // [매우 중요] 사용 완료된 리소스 해제
+                    FltObjectDereference(FltWorkItem_CTX->Instance);   // Post-Op에서 증가시킨 참조 카운트 감소
+                    ObDereferenceObject(FltWorkItem_CTX->FileObject); // Post-Op에서 증가시킨 참조 카운트 감소
+
+
+                    ExFreePoolWithTag(FltWorkItem_CTX, FLT_WORKITEM_CTX_ALLOC_TAG); // Details 해제
+                    FltFreeGenericWorkItem(FltWorkItem); // 작업 아이템 자체를 해제
+                }
+            }
             extern "C" FLT_POSTOP_CALLBACK_STATUS
                 POST_filter_Handler(
                     PFLT_CALLBACK_DATA Data,
@@ -107,15 +162,62 @@ namespace EDR
                 //UNREFERENCED_PARAMETER(CompletionContext);
                 UNREFERENCED_PARAMETER(Flags);
 
+                BOOLEAN is_success_workitem = FALSE;
                 switch (Data->Iopb->MajorFunction)
                 {
                     case IRP_MJ_CREATE:
                     {
                         if (CompletionContext)
                         {
-                            //debug_break();
+                            debug_break();
+
+                            EDR::EventLog::Enum::FileSystem::Filesystem_enum Action;
+                            switch (Data->IoStatus.Information)
+                            {
+                            case FILE_CREATED:
+                                // 파일이 새로 생성되었습니다.
+                                Action = EDR::EventLog::Enum::FileSystem::create;
+                                break;
+
+                            case FILE_OPENED:
+                                // 기존 파일이 열렸습니다.
+                                Action = EDR::EventLog::Enum::FileSystem::open;
+                                break;
+                            
+                            case FILE_OVERWRITTEN:
+                                // 기존 파일 위에 덮어썼습니다. (예: CreateDisposition = FILE_OVERWRITE_IF)
+                                Action = EDR::EventLog::Enum::FileSystem::overwritten;
+                                break;
+
+                            case FILE_SUPERSEDED:
+                                // 기존 파일을 대체했습니다. (예: CreateDisposition = FILE_SUPERSEDE)
+                                Action = EDR::EventLog::Enum::FileSystem::superseded;
+                                break;
+
+                            case FILE_EXISTS:
+                                // 파일이 이미 존재하여 작업이 실패했습니다. (예: CreateDisposition = FILE_CREATE)
+                                // 이 경우는 NT_SUCCESS가 아니므로 위의 if문에서 걸러질 수 있습니다.
+                                // 상태 코드가 STATUS_OBJECT_NAME_COLLISION 일 때 이 값이 설정됩니다.
+                                Action = EDR::EventLog::Enum::FileSystem::exists;
+                                break;
+                            default:
+                            {
+                                if (CompletionContext->NormalizedFilePath)
+                                    ExFreePoolWithTag(CompletionContext->NormalizedFilePath, PretoPost_CTX_ALLOC_TAG);
+                                ExFreePoolWithTag(CompletionContext, PretoPost_CTX_ALLOC_TAG);
+                                return FLT_POSTOP_FINISHED_PROCESSING;
+                            }
+                            }
+
+
+                            //
                             //debug_log("%ws \n", (PWCH)(CompletionContext->NormalizedFilePath));
 
+                            /*
+                                파일 해싱을 하려면? 
+                                
+                                이 POST-LEVEL에서도 해싱이 실패하는 경우 ( 비안전 레벨 )가 있었으므로, 지연된 Flt 전용 WorkItem을 사용하여
+                                << 데드락 >> 없이 진행.ㅇㅇ
                             
                             ULONG64 FileSize = 0;
                             CHAR SHA256[SHA256_String_Byte_Length] = { 0 };
@@ -134,13 +236,48 @@ namespace EDR
                                 EDR::LogSender::function::FilesystemLog(
                                     CompletionContext->ProcessId,
                                     CompletionContext->timestamp,
-                                    CompletionContext->Action,
+                                    Action,
                                     &NormalizedFilePath,
                                     NULL,
                                     SHA256
                                 );
-                            }
+                            }*/
 
+                            PFLT_GENERIC_WORKITEM FltWorkItem = (PFLT_GENERIC_WORKITEM)FltAllocateGenericWorkItem();
+                            if (FltWorkItem)
+                            {
+                                EDR::MiniFilter::resource::PHASH_WORK_ITEM_CONTEXT_DETAILS FltWorkItem_CTX = (EDR::MiniFilter::resource::PHASH_WORK_ITEM_CONTEXT_DETAILS)ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(EDR::MiniFilter::resource::HASH_WORK_ITEM_CONTEXT_DETAILS), FLT_WORKITEM_CTX_ALLOC_TAG);
+                                if (FltWorkItem_CTX)
+                                {
+                                    FltWorkItem_CTX->ProcessId = CompletionContext->ProcessId;
+                                    FltWorkItem_CTX->timestamp = CompletionContext->timestamp;
+                                    FltWorkItem_CTX->Action = Action; // switch 문에서 결정된 Action
+                                    FltWorkItem_CTX->Instance = FltObjects->Instance;
+                                    FltWorkItem_CTX->FileObject = FltObjects->FileObject;
+                                    FltWorkItem_CTX->NormalizedFilePath = CompletionContext->NormalizedFilePath;
+
+                                    // Instance 참조카운트 증가하여 WorkItem에서 사용할 수 있도록 함.
+                                    FltObjectReference(FltWorkItem_CTX->Instance);
+                                    ObfReferenceObject(FltWorkItem_CTX->FileObject);
+
+                                    if (NT_SUCCESS(FltQueueGenericWorkItem(
+                                        FltWorkItem,               // 전달할 item 객체
+                                        EDR::MiniFilter::resource::gFilterHandle,      // 현재 필터 핸들
+                                        EDR::MiniFilter::POST::FltWorkItem::FltWorkItemThread,     // 실행할 함수
+                                        DelayedWorkQueue,           // 큐 우선순위
+                                        (PVOID)FltWorkItem_CTX                        // Context 
+                                    )))
+                                    {
+                                        // success
+                                        is_success_workitem = TRUE;
+                                    }
+                                }
+                                else
+                                {
+                                    FltFreeGenericWorkItem(FltWorkItem);
+                                }
+                            }
+                            
                         }
                         break;
                     }
@@ -153,8 +290,13 @@ namespace EDR
                 if (CompletionContext)
                 {
                     // 파일명 해제
-                    if(CompletionContext->NormalizedFilePath)
-                        ExFreePoolWithTag(CompletionContext->NormalizedFilePath, PretoPost_CTX_ALLOC_TAG); 
+                    if (!is_success_workitem)
+                    {
+                        if(CompletionContext->NormalizedFilePath)
+                            ExFreePoolWithTag(CompletionContext->NormalizedFilePath, PretoPost_CTX_ALLOC_TAG); 
+                    }
+                    
+
 
                     // CTX 해제
                     ExFreePoolWithTag(CompletionContext, PretoPost_CTX_ALLOC_TAG);
@@ -270,7 +412,11 @@ namespace EDR
                     }*/
                     
                     {
-                        Action = EDR::EventLog::Enum::FileSystem::create;
+                        /*
+                            0. Action
+                        */
+                        /* 알 수 없음 => POST에서 확인 */
+
                         /*
                         * 
                         * 1. 파일 해싱 구하는 방법
@@ -295,6 +441,9 @@ namespace EDR
                         PRE_to_POST_CTX->Action = Action;
                         PRE_to_POST_CTX->ProcessId = ProcessId;
                         PRE_to_POST_CTX->timestamp = Nano_Timestamp;
+
+                        
+
 
 
                         ReturnStatus = FLT_PREOP_SUCCESS_WITH_CALLBACK;
@@ -581,6 +730,8 @@ InstanceTeardownCallback(
 ) {
     UNREFERENCED_PARAMETER(FltObjects);
     UNREFERENCED_PARAMETER(Reason);
+
+    
 
 }
 

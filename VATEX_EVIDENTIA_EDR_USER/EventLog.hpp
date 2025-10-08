@@ -34,7 +34,12 @@ namespace EDR
 				// Filesystem
 				enum Filesystem_enum
 				{
-					create = 1,
+					open = 1,
+					create,
+					overwritten,
+					superseded,
+					exists,
+
 					remove,
 					rename,
 					read,

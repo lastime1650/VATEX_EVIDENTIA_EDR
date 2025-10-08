@@ -15,7 +15,7 @@ namespace EDR
 		namespace helper
 		{
 
-            static NTSTATUS GetObjectNameInfo(PVOID pObject, POBJECT_NAME_INFORMATION* ppNameInfo)
+            NTSTATUS GetObjectNameInfo(PVOID pObject, POBJECT_NAME_INFORMATION* ppNameInfo)
             {
                 NTSTATUS status;
                 ULONG returnedLength = 0;
@@ -47,7 +47,7 @@ namespace EDR
             }
 
             // GetObjectNameInfo로 할당된 메모리를 해제합니다.
-            static VOID FreeObjectNameInfo(POBJECT_NAME_INFORMATION pNameInfo)
+            VOID FreeObjectNameInfo(POBJECT_NAME_INFORMATION pNameInfo)
             {
                 if (pNameInfo) {
                     ExFreePoolWithTag(pNameInfo, 'mNsO');
@@ -66,10 +66,15 @@ namespace EDR
             )
             {
                 if (CompleteName) {
+
+                    if (!CompleteName->Buffer)
+                        return FALSE;
+
                     // 바로 문자열 사용 가능
                     return EDR::LogSender::function::Registry_by_CompleteorObjectNameLog(
                         KeyClass, ProcessId, NanoTimestamp, CompleteName);
                 }
+                
                 else if (Object && !Name) {
                     // Object 기반 (Key Path)
                     POBJECT_NAME_INFORMATION nameinfo = NULL;
@@ -94,13 +99,16 @@ namespace EDR
                     // 이 부분은 실제 구현에서 동적 버퍼 할당 필요
 
                     BOOLEAN status = EDR::LogSender::function::Registry_by_CompleteorObjectNameLog(
-                        KeyClass, ProcessId, NanoTimestamp, &nameinfo->Name /* + Name*/);
+                        KeyClass, ProcessId, NanoTimestamp, &nameinfo->Name );
 
                     FreeObjectNameInfo(nameinfo);
                     return status;
                 }
                 else if (Object && OldName && NewName)
                 {
+                    if (!OldName->Buffer || !OldName->Length || !NewName->Buffer || !NewName->Length)
+                        return FALSE;
+
                     POBJECT_NAME_INFORMATION nameinfo = NULL;
                     if (!NT_SUCCESS(GetObjectNameInfo(Object, &nameinfo)) || !nameinfo || !nameinfo->Name.Buffer)
                         return FALSE;
@@ -296,6 +304,7 @@ namespace EDR
                                 nullptr, pInfo->CompleteName, nullptr, nullptr, nullptr);
                         break;
                     }
+                    /*
                     case RegNtPostOpenKeyEx:
                     {
                         PREG_POST_OPEN_KEY_INFORMATION pInfo = (PREG_POST_OPEN_KEY_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
@@ -496,7 +505,7 @@ namespace EDR
                                 ProcessId, Nano_Timestamp,
                                 pInfo->Object, nullptr, nullptr, nullptr, nullptr);
                         break;
-                    }
+                    }*/
                 }
 
 				return status;

@@ -125,7 +125,7 @@ namespace EDR
 
 						VirtualFree(out_UserAllocatedFileBinaryAddress, 0, MEM_RELEASE);
 
-						Sleep(2000);
+						Sleep(1000);
 					}
 				}
 			);
@@ -234,13 +234,11 @@ namespace EDR
 						}
 						case EDR::EventLog::Enum::ImageLoad:
 						{
-							break;
 							EDR::EventLog::Struct::ImageLoad::EventLog_ImageLoad* ImageLoadLog = reinterpret_cast<EDR::EventLog::Struct::ImageLoad::EventLog_ImageLoad*>(Log.logData);
 
 							std::string root_SessionID;
 							std::string SessionID;
 							std::string parent_SessionID;
-
 
 							ProcessSessionManager.AppendingEvent(
 								ImageLoadLog->header.ProcessId,
@@ -302,7 +300,7 @@ namespace EDR
 							Network_SessionINFO.first_seen_nanotimestamp;
 							Network_SessionINFO.last_seen_nanotimestamp;
 
-							std::cout << NetworkLog->body.ProtocolNumber << " || " << (NetworkLog->body.is_INBOUND ? "In" : "out") << " || " << NetworkLog->body.PacketSize << "PacketNetworkSessionID:" << Network_SessionINFO.SessionID << std::endl;
+							//std::cout << NetworkLog->body.ProtocolNumber << " || " << (NetworkLog->body.is_INBOUND ? "In" : "out") << " || " << NetworkLog->body.PacketSize << "PacketNetworkSessionID:" << Network_SessionINFO.SessionID << std::endl;
 
 							// logSend
 							WindowsLogSender.Send_Log_Network(
@@ -351,27 +349,36 @@ namespace EDR
 							std::string FileAction;
 							switch (FileSystemLog->body.Action)
 							{
+							case EDR::EventLog::Enum::FileSystem::open:
+								FileAction = "open";
+								break;
 							case EDR::EventLog::Enum::FileSystem::create:
-								FileAction = "Create";
+								FileAction = "create";
+								break;
+							case EDR::EventLog::Enum::FileSystem::overwritten:
+								FileAction = "overwritten";
+								break;
+							case EDR::EventLog::Enum::FileSystem::superseded:
+								FileAction = "superseded";
+								break;
+							case EDR::EventLog::Enum::FileSystem::exists:
+								FileAction = "exists";
 								break;
 							case EDR::EventLog::Enum::FileSystem::write:
-								FileAction = "Write";
+								FileAction = "write";
 								break;
 							case EDR::EventLog::Enum::FileSystem::read:
-								FileAction = "Read";
+								FileAction = "read";
 								break;
 							case EDR::EventLog::Enum::FileSystem::remove:
-								FileAction = "Remove";
+								FileAction = "remove";
 								break;
 							case EDR::EventLog::Enum::FileSystem::rename:
-								FileAction = "Rename";
+								FileAction = "rename";
 								break;
 							default:
 							{
 								std::cout << "알 수 없는 파일 액션";
-								system("pause");
-								std::runtime_error("알 수 없는 파일 액션");
-								exit(-1);
 							}
 							}
 
@@ -486,6 +493,7 @@ namespace EDR
 							break;
 
 						}
+
 						case EDR::EventLog::Enum::Registry_CompleteNameLog:
 						{
 							EDR::EventLog::Struct::Registry::EventLog_Process_Registry_CompleteorObjectNameLog* RegistryCompleteNameLog = reinterpret_cast<EDR::EventLog::Struct::Registry::EventLog_Process_Registry_CompleteorObjectNameLog*>(Log.logData);
@@ -502,7 +510,7 @@ namespace EDR
 							);
 							if (SessionID.empty())
 								break;
-
+							//std::cout << "[Registry_CompleteNameLog] class: " << RegistryCompleteNameLog->body.FunctionName << " Name: " << RegistryCompleteNameLog->body.Name << std::endl;
 							WindowsLogSender.Send_Log_Registry(
 								SessionID,
 								root_SessionID,
@@ -560,7 +568,7 @@ namespace EDR
 							std::string root_SessionID;
 							std::string SessionID;
 							std::string parent_SessionID;
-
+							std::cout << "[ApiCall] Json: " << ApiCallLog->body.Json << std::endl;
 							ProcessSessionManager.AppendingEvent(
 								ApiCallLog->header.ProcessId,
 								SessionID,

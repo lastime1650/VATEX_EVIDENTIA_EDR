@@ -1,11 +1,53 @@
 #include "LogSender.hpp"
-
+#include <regex>
 namespace EDR
 {
     namespace LogSender
     {
         namespace Windows
         {
+
+            std::string double_slash(const std::string& Str)
+            {
+                // 단일 '\'를 '\\'로 변환
+                std::string sanitizedMessage;
+                sanitizedMessage.reserve(Str.size()); // 성능 최적화
+
+                for (char c : Str) {
+                    if (c == '\\') {
+                        sanitizedMessage += "\\\\";
+                    }
+                    else {
+                        sanitizedMessage += c;
+                    }
+                }
+
+                return sanitizedMessage;
+            }
+
+            bool IsValidByte(unsigned char c)
+            {
+                // 0x20 ~ 0x7E: ASCII printable
+                // 0xA1 ~ 0xFE: CP949 한글 첫/둘 바이트 가능 범위 (간단 예시)
+                if ((c >= 0x20 && c <= 0x7E) || (c >= 0xA1 && c <= 0xFE))
+                    return true;
+                return false;
+            }
+
+            std::string FilterValidBytes(const std::string& input)
+            {
+                std::string output;
+                output.reserve(input.size());
+
+                for (unsigned char c : input)
+                {
+                    if (IsValidByte(c))
+                        output.push_back(c);
+                }
+
+                return output;
+            }
+
             void LogSender::Send_Log_Process_Remove(
 
                 std::string SessionID,
@@ -71,6 +113,8 @@ namespace EDR
                 ULONG64 nano_timestamp
             )
             {
+                
+
                 Kafka.InsertMessage(
                     fmt::format(
                         R"(
@@ -80,14 +124,20 @@ namespace EDR
                                     "root_sessionid": "{}",
                                     "parent_sessionid": "{}",
 								    "sessionid": "{}",
-                                    "user": {{
-		                                "sid": "{}",
-                                        "username": "{}"
+                                    "os": {{
+                                        "version": "{}",
+                                        "type": "{}"
                                     }},
                                     "pid": {},
 									"nano_timestamp": {}
                                 }},
                                 "body": {{
+
+                                    "user": {{
+		                                "sid": "{}",
+                                        "username": "{}"
+                                    }},
+
                                     "process" : {{
                                         "action": "{}",
                                         "exe_path": "{}",
@@ -104,8 +154,9 @@ namespace EDR
                                 }}
                             }}
                     )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp,
-						"create", self_exe_path, self_exe_file_size, self_exe_bin_sha256, CommandLine,
-                        (ULONG64)ppid, parent_exe_path, parent_exe_file_size, parent_exe_bin_sha256
+                        double_slash(SID), double_slash(Username),
+                        "create", double_slash(self_exe_path), self_exe_file_size, self_exe_bin_sha256, std::regex_replace(double_slash(CommandLine), std::regex("\""), "\\\""),
+                        (ULONG64)ppid, double_slash(parent_exe_path), parent_exe_file_size, parent_exe_bin_sha256
                     )
                 );
             }
@@ -214,7 +265,7 @@ namespace EDR
                             
                         }}
                     )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp,
-                        Action, FilePath, filesize, FileSHA256)
+                        Action, double_slash(FilePath), filesize, FileSHA256)
                 );
             }
 
@@ -257,7 +308,7 @@ namespace EDR
                             
                         }}
                     )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp,
-                        FilePath, filesize, file_sha256)
+                        double_slash(FilePath), filesize, file_sha256)
                 );
             }
 
@@ -311,7 +362,7 @@ namespace EDR
                             
                         }}
                     )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp,
-                        CreateHandle, (ULONG64)Target_ProcessId, TargetProcess_Path, DesiredAccessJsonArrayString)
+                        CreateHandle, (ULONG64)Target_ProcessId, double_slash(TargetProcess_Path), DesiredAccessJsonArrayString)
                 );
             }
 
@@ -396,7 +447,7 @@ namespace EDR
                             
                         }}
                     )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp,
-                        RegistryKeyClass, Target_Name)
+                        double_slash(RegistryKeyClass), double_slash(FilterValidBytes(Target_Name)))
                 );
                 /*
                    ["body"]["reigstry"]["keyclass"] 에는 무슨 std::string값으로 오는가?
@@ -532,7 +583,7 @@ namespace EDR
                             
                         }}
                     )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp,
-                        RegistryKeyClass, Target_Name, OldName, NewName)
+                        RegistryKeyClass, double_slash(Target_Name), double_slash(OldName), double_slash(NewName) )
                 );
             }
 

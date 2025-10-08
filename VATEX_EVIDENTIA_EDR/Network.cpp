@@ -36,7 +36,7 @@ BOOLEAN Copy_Packet_Data(
 NTSTATUS NDIS_PacketFilter_Register(PDEVICE_OBJECT DeviceObject);
 NTSTATUS GenerateGUID(_Inout_ GUID* inout_guid);
 
-
+//#include <fwpsk.h>
 namespace EDR
 {
 	namespace WFP_Filter
@@ -47,7 +47,15 @@ namespace EDR
 			{
 				if (!Output || !layerData)
 					return FALSE;
-				
+				/*
+				FWPS_PACKET_LIST_INFORMATION0 packetInfo = { 0 };
+				if( !NT_SUCCESS( FwpsGetPacketListSecurityInformation0(
+					(NET_BUFFER_LIST*)layerData,
+					(isInbound ? FWPS_PACKET_LIST_INFORMATION_QUERY_ALL_INBOUND : FWPS_PACKET_LIST_INFORMATION_QUERY_ALL_OUTBOUND),
+					&packetInfo
+				) ) )
+					return FALSE;
+					*/
 				// 직접 바이트 체크
 				NET_BUFFER_LIST* netBufferList = (NET_BUFFER_LIST*)layerData;
 				NET_BUFFER* netBuffer = NET_BUFFER_LIST_FIRST_NB(netBufferList);

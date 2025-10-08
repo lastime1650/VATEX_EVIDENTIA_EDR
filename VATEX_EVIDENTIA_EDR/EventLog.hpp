@@ -34,7 +34,12 @@ namespace EDR
 				// Filesystem
 				enum Filesystem_enum
 				{
-					create = 1,
+					open = 1,
+					create,
+					overwritten,
+					superseded,
+					exists,
+
 					remove,
 					rename,
 					read,
@@ -185,7 +190,7 @@ namespace EDR
 					{
 
 						/*
-							厚悼扁 饶加贸府
+							饶加贸府
 						*/
 						struct
 						{

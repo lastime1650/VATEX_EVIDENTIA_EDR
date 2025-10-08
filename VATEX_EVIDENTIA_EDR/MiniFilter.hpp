@@ -24,6 +24,22 @@ namespace EDR
 				EDR::EventLog::Enum::FileSystem::Filesystem_enum Action; // recently ) create
 
 			}PretoPost_CTX, *PPretoPost_CTX;
+
+			#define FLT_WORKITEM_CTX_ALLOC_TAG 'FWCT'
+			typedef struct _HASH_WORK_ITEM_CONTEXT_DETAILS
+			{
+				PFLT_INSTANCE Instance;             // 파일 작업을 위한 인스턴스
+				PFILE_OBJECT FileObject;            // 해싱할 파일 객체
+				HANDLE ProcessId;                    // 요청 프로세스 ID
+				ULONG64 timestamp;            // 이벤트 타임스탬프
+				EDR::EventLog::Enum::FileSystem::Filesystem_enum Action; // 작업 종류 (open/create)
+				PWCH NormalizedFilePath;
+			}HASH_WORK_ITEM_CONTEXT_DETAILS, *PHASH_WORK_ITEM_CONTEXT_DETAILS;
+
+			typedef struct _HASH_WORK_ITEM_CONTEXT {
+				PFLT_GENERIC_WORKITEM  WorkItem;     // FltQueueGenericWorkItem에 필요한 구조체
+				PHASH_WORK_ITEM_CONTEXT_DETAILS Details;
+			} HASH_WORK_ITEM_CONTEXT, * PHASH_WORK_ITEM_CONTEXT;
 		}
 
 		namespace Handler
@@ -40,12 +56,17 @@ namespace EDR
 			}
 			namespace POST
 			{
-				// PRE -> POST 정보 전달을 위한 컨텍스트 구조체
-				typedef struct _PRE_TO_POST_CONTEXT {
-					PFLT_FILE_NAME_INFORMATION OriginalNameInfo; // 원본 파일 이름 정보
-					PUNICODE_STRING NewFileName;                 // 이름 변경 시 새 파일 이름 (동적 할당 필요)
-					CHAR Behavior[20];                           // 행위 (예: "rename", "delete")
-				} PRE_TO_POST_CONTEXT, * PPRE_TO_POST_CONTEXT;
+				namespace FltWorkItem
+				{
+					
+
+					extern "C"  VOID FltWorkItemThread(
+						_In_ PFLT_GENERIC_WORKITEM FltWorkItem,
+						_In_ PVOID FltObject,
+						_In_opt_ PVOID Context
+					);
+
+				}
 
 				extern "C" FLT_POSTOP_CALLBACK_STATUS 
 					POST_filter_Handler(
