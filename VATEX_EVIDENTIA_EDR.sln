@@ -14,6 +14,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Images", "Images", "{3EC8B65A-9932-4404-A51A-F069D4D525A1}"
 	ProjectSection(SolutionItems) = preProject
 		EDR-AGENT-A.png = EDR-AGENT-A.png
+		WIN_APICALL.png = WIN_APICALL.png
 		WIN_FILESYSTEM.png = WIN_FILESYSTEM.png
 		WIN_IMAGELOAD.png = WIN_IMAGELOAD.png
 		WIN_NETWORK.png = WIN_NETWORK.png
