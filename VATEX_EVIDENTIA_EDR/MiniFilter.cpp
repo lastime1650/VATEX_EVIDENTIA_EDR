@@ -258,7 +258,7 @@ namespace EDR
 
                                     // Instance 참조카운트 증가하여 WorkItem에서 사용할 수 있도록 함.
                                     FltObjectReference(FltWorkItem_CTX->Instance);
-                                    ObfReferenceObject(FltWorkItem_CTX->FileObject);
+                                    ObReferenceObject(FltWorkItem_CTX->FileObject);
 
                                     if (NT_SUCCESS(FltQueueGenericWorkItem(
                                         FltWorkItem,               // 전달할 item 객체

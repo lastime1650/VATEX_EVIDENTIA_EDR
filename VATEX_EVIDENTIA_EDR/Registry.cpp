@@ -163,7 +163,7 @@ namespace EDR
                     {
                         PREG_CREATE_KEY_INFORMATION pInfo = (PREG_CREATE_KEY_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
                         helper::SendRegistryEvent(
-                            "RegNtPreCreateKeyEx",
+                            "PreCreateKeyEx",
                             ProcessId, Nano_Timestamp,
                             nullptr, nullptr, pInfo->CompleteName, nullptr, nullptr);
                         break;
@@ -172,7 +172,7 @@ namespace EDR
                     {
                         PREG_QUERY_KEY_INFORMATION pInfo = (PREG_QUERY_KEY_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
                         helper::SendRegistryEvent(
-                            "RegNtPreQueryKey",
+                            "PreQueryKey",
                             ProcessId, Nano_Timestamp,
                             pInfo->Object, nullptr, nullptr, nullptr, nullptr);
                         break;
@@ -181,7 +181,7 @@ namespace EDR
                     {
                         PREG_QUERY_VALUE_KEY_INFORMATION pInfo = (PREG_QUERY_VALUE_KEY_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
                         helper::SendRegistryEvent(
-                            "RegNtPreQueryValueKey",
+                            "PreQueryValueKey",
                             ProcessId, Nano_Timestamp,
                             pInfo->Object, pInfo->ValueName, nullptr, nullptr, nullptr);
                         break;
@@ -190,7 +190,7 @@ namespace EDR
                     {
                         PREG_QUERY_MULTIPLE_VALUE_KEY_INFORMATION pInfo = (PREG_QUERY_MULTIPLE_VALUE_KEY_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
                         helper::SendRegistryEvent(
-                            "RegNtPreQueryMultipleValueKey",
+                            "PreQueryMultipleValueKey",
                             ProcessId, Nano_Timestamp,
                             pInfo->Object, nullptr, nullptr, nullptr, nullptr);
                         break;
@@ -199,7 +199,7 @@ namespace EDR
                     {
                         PREG_KEY_HANDLE_CLOSE_INFORMATION pInfo = (PREG_KEY_HANDLE_CLOSE_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
                         helper::SendRegistryEvent(
-                            "RegNtPreKeyHandleClose",
+                            "PreKeyHandleClose",
                             ProcessId, Nano_Timestamp,
                             pInfo->Object, nullptr, nullptr, nullptr, nullptr);
                         break;
@@ -271,7 +271,7 @@ namespace EDR
                     {
                         PREG_REPLACE_KEY_INFORMATION pInfo = (PREG_REPLACE_KEY_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
                         helper::SendRegistryEvent(
-                            "RegNtPreReplaceKey",
+                            "PreReplaceKey",
                             ProcessId, Nano_Timestamp,
                             pInfo->Object, nullptr, nullptr, pInfo->OldFileName, pInfo->NewFileName);
                         break;
@@ -280,7 +280,7 @@ namespace EDR
                     {
                         PREG_QUERY_KEY_NAME pInfo = (PREG_QUERY_KEY_NAME)KEY_INFORMATION_STRUCT_ADDRESS;
                         helper::SendRegistryEvent(
-                            "RegNtPreQueryKeyName",
+                            "PreQueryKeyName",
                             ProcessId, Nano_Timestamp,
                             pInfo->Object, nullptr, nullptr, nullptr, nullptr);
                         break;
@@ -289,7 +289,7 @@ namespace EDR
                     {
                         PREG_SAVE_MERGED_KEY_INFORMATION pInfo = (PREG_SAVE_MERGED_KEY_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
                         helper::SendRegistryEvent(
-                            "RegNtPreSaveMergedKey",
+                            "PreSaveMergedKey",
                             ProcessId, Nano_Timestamp,
                             pInfo->Object, nullptr, nullptr, nullptr, nullptr);
                         break;
@@ -299,7 +299,7 @@ namespace EDR
                         PREG_POST_CREATE_KEY_INFORMATION pInfo = (PREG_POST_CREATE_KEY_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
                         if (NT_SUCCESS(pInfo->Status) && pInfo->CompleteName)
                             helper::SendRegistryEvent(
-                                "RegNtPostCreateKeyEx",
+                                "PostCreateKeyEx",
                                 ProcessId, Nano_Timestamp,
                                 nullptr, pInfo->CompleteName, nullptr, nullptr, nullptr);
                         break;
