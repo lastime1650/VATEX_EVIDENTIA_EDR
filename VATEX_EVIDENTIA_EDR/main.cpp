@@ -10,6 +10,8 @@
 #include "ObRegisterCallback.hpp"
 #include "Response.hpp"
 
+#include "DLP.hpp"
+
 extern "C" NTSTATUS DriverEntry(PDRIVER_OBJECT driverobject, PUNICODE_STRING registerpath)
 {
 	UNREFERENCED_PARAMETER(registerpath);
@@ -25,6 +27,10 @@ extern "C" NTSTATUS DriverEntry(PDRIVER_OBJECT driverobject, PUNICODE_STRING reg
 	EDR::LogSender::INITIALIZE();
 	// 2. Response
 	EDR::Response::HashTable::Initialize();
+	// 3. Dlp
+	status = DLP::DLP_INITIALIZE();
+	if (!NT_SUCCESS(status))
+		return status;
 
 
 	// 언로드 설정

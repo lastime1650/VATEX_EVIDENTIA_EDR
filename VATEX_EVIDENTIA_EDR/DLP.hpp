@@ -4,8 +4,31 @@
 #include "util.hpp"
 /*
 
-	전역 정책은 < 해시 맵>
-	정책 별 { 화이트리스트 } 는 SLIST
+	1) 전역 정책은 < 해시 맵>			      <<DLP_INFO>>
+	2) 정책 별 { 화이트리스트 } 는 LIST_ENTRY <<WhiteList>>
+
+
+	```psuedo
+	{
+
+		BOOLEAN is_enable?
+		FILE_INFO {
+			Size : ULONG64,
+			File_Reference_Number : ULONG64
+		}
+
+		Policy {
+			Global : {},
+			WhiteList : LIST_ENTRY Header
+		}
+
+	}
+	```
+
+	?WhiteList
+	GLobal의 한계를 뛰어넘으며, GLobal 정책보다 우선순위를 가짐. 
+	MiniFilter에서 해당 파일에 대해 접근할 때, 주체(프로세스 리퀘스터)에 따라 개별적인 정책( Global과 같은 포맷)을 적용하는 개념 (동적이므로, LIST_ENTRY 사용해야함 ) 
+
 
 */
 namespace DLP
@@ -71,7 +94,7 @@ namespace DLP
 		}
 	}
 
-	BOOLEAN DLP_INITIALIZE();
+	NTSTATUS DLP_INITIALIZE();
 
 	/*
 		MiniFilter Use

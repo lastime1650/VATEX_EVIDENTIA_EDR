@@ -49,11 +49,55 @@ namespace DLP
 
             BOOLEAN InsertOrUpdate(PDLP_Info Info) {
                 if (!Info) return FALSE;
-                DLP_TABLE_ENTRY entry = { Info->FILE.FileReferenceNumber, Info };
+
+                DLP_TABLE_ENTRY entryToInsert = { Info->FILE.FileReferenceNumber, Info };
                 BOOLEAN newElement = FALSE;
 
                 ExAcquirePushLockExclusive(&g_DlpTableLock);
-                RtlInsertElementGenericTable(&g_DlpTable, &entry, sizeof(entry), &newElement);
+
+                // RtlInsertElementGenericTable은 기존 요소를 반환
+                PDLP_TABLE_ENTRY oldEntry = (PDLP_TABLE_ENTRY)RtlInsertElementGenericTable(
+                    &g_DlpTable,
+                    &entryToInsert,
+                    sizeof(entryToInsert),
+                    &newElement
+                );
+                if (oldEntry == nullptr) {
+                    // AllocateRoutine 실패 등 심각한 오류.
+                    ExReleasePushLockExclusive(&g_DlpTableLock);
+                    // 중요: 호출자는 NewInfo를 해제할 책임이 있음.
+                    return FALSE;
+                }
+
+                // newElement가 FALSE라는 것은 기존 요소가 oldEntry로 반환되었음을 의미 -> 이전에 이미 이 해당 키가 맵에 있었으며, 그 Entry주소를 반환함.
+                if (newElement == FALSE)
+                {
+                    // 기존 요소가 가리키던 Info와 화이트리스트를 해제해야 합니다.
+                    if (oldEntry->Info)
+                    {
+                        auto oldInfo = oldEntry->Info;
+                        PLIST_ENTRY pos, next;
+
+                        for (pos = oldInfo->Policy.WhiteListHeader.Flink;
+                            pos != &oldInfo->Policy.WhiteListHeader;
+                            pos = next)
+                        {
+                            next = pos->Flink;
+                            auto whiteListNode = CONTAINING_RECORD(pos, DLP_WhiteList_Node_Policy, Entry);
+                            RemoveEntryList(&whiteListNode->Entry);
+                            ExFreePoolWithTag(whiteListNode, 'LDPD');
+                        }
+                        ExFreePoolWithTag(oldInfo, 'LDPD');
+                    }
+
+                    // oldEntry 자체는 RtlInsertElementGenericTable에 의해 이미 해제되었습니다.
+                    // (정확히는, 새 entry 데이터가 oldEntry가 있던 메모리 공간에 덮어써졌습니다)
+                }
+                else
+                {
+                    // 새 요소로 Insert됨.
+                }
+
                 ExReleasePushLockExclusive(&g_DlpTableLock);
 
                 return TRUE;
@@ -70,22 +114,50 @@ namespace DLP
             }
 
             BOOLEAN Remove(ULONG64 FileRef) {
-                DLP_TABLE_ENTRY key = { FileRef, nullptr };
                 ExAcquirePushLockExclusive(&g_DlpTableLock);
-                BOOLEAN result = RtlDeleteElementGenericTable(&g_DlpTable, &key);
+
+                // 1. 삭제할 요소를 찾습니다.
+                DLP_TABLE_ENTRY key = { FileRef, nullptr };
+                PDLP_TABLE_ENTRY entry = (PDLP_TABLE_ENTRY)RtlLookupElementGenericTable(&g_DlpTable, &key);
+
+                if (!entry) {
+                    // 요소가 없으면 그냥 종료
+                    ExReleasePushLockExclusive(&g_DlpTableLock);
+                    return FALSE;
+                }
+
+                // 2. Info 및 내부 화이트리스트를 먼저 해제합니다. (CleanUp_DLP 로직과 동일)
+                if (entry->Info)
+                {
+                    auto info = entry->Info;
+                    PLIST_ENTRY pos, next;
+
+                    for (pos = info->Policy.WhiteListHeader.Flink;
+                        pos != &info->Policy.WhiteListHeader;
+                        pos = next)
+                    {
+                        next = pos->Flink;
+                        auto whiteListNode = CONTAINING_RECORD(pos, DLP_WhiteList_Node_Policy, Entry);
+                        RemoveEntryList(&whiteListNode->Entry);
+                        ExFreePoolWithTag(whiteListNode, 'LDPD');
+                    }
+
+                    ExFreePoolWithTag(info, 'LDPD');
+                }
+
+                // 3. 테이블에서 요소를 제거합니다. (이때 entry 자체도 FreeRoutine에 의해 해제됨)
+                BOOLEAN result = RtlDeleteElementGenericTable(&g_DlpTable, entry);
+
                 ExReleasePushLockExclusive(&g_DlpTableLock);
                 return result;
             }
 		}
 	}
 
-    BOOLEAN DLP_INITIALIZE()
+    NTSTATUS DLP_INITIALIZE()
     {
         // 해시맵 초기화
-        if (!resource::hashMap::Initialize_DLP_HashMap())
-            return FALSE;
-
-        return TRUE;
+        return resource::hashMap::Initialize_DLP_HashMap();
     }
 
     namespace Helper
