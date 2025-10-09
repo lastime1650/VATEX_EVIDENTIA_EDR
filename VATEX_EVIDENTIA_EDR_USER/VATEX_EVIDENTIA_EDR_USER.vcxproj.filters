@@ -49,6 +49,9 @@
     <Filter Include="Response">
       <UniqueIdentifier>{12965021-c401-49fa-841d-be9c2437d772}</UniqueIdentifier>
     </Filter>
+    <Filter Include="_DLP">
+      <UniqueIdentifier>{e5fb0059-ddf3-4491-9f08-142f1f9944dd}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
@@ -134,6 +137,9 @@
     </ClInclude>
     <ClInclude Include="_Parent.hpp">
       <Filter>Response</Filter>
+    </ClInclude>
+    <ClInclude Include="DLP.hpp">
+      <Filter>_DLP</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

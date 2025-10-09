@@ -8,6 +8,51 @@ namespace EDR
 	{
 		namespace Process
 		{
+			HANDLE GetParentProcess(HANDLE ProcessId)
+			{
+				PAGED_CODE();
+				if (!ProcessId)
+					return NULL;
+
+				HANDLE ParentProcessId = NULL;
+				HANDLE hProcess = NULL;
+				OBJECT_ATTRIBUTES objAttr;
+				CLIENT_ID clientId;
+				PROCESS_BASIC_INFORMATION pbi;
+				ULONG returnLength;
+
+				InitializeObjectAttributes(&objAttr, NULL, OBJ_KERNEL_HANDLE, NULL, NULL);
+				clientId.UniqueProcess = (HANDLE)(ULONG_PTR)ProcessId;
+				clientId.UniqueThread = NULL;
+
+				NTSTATUS status = ZwOpenProcess(&hProcess, PROCESS_QUERY_INFORMATION, &objAttr, &clientId);
+				if (!NT_SUCCESS(status)) {
+					// 프로세스가 이미 종료되었거나 접근 권한이 없는 경우
+					return NULL;
+				}
+
+				__try {
+					status = ZwQueryInformationProcess(
+						hProcess,
+						ProcessBasicInformation,   // PROCESS_BASIC_INFORMATION 얻기
+						&pbi,
+						sizeof(pbi),
+						&returnLength
+					);
+
+					if (NT_SUCCESS(status)) {
+						ParentProcessId = (HANDLE)((ULONG_PTR)pbi.InheritedFromUniqueProcessId);
+					}
+				}
+				__finally {
+					if (hProcess != NULL) {
+						ZwClose(hProcess);
+					}
+				}
+
+				return ParentProcessId;
+			}
+
 			namespace Terminate
 			{
 				#define QueryProcessTag 'QPAL'
@@ -103,7 +148,7 @@ namespace EDR
 					PVOID get_buffer = NULL;
 					ULONG process_FULL_NAME_info_len = 0;
 
-					while (ZwQueryInformationProcess(ProcessHandle, (SYSTEM_INFORMATION_CLASS)ProcessImageFileName, get_buffer, process_FULL_NAME_info_len, &process_FULL_NAME_info_len) == STATUS_INFO_LENGTH_MISMATCH) {
+					while (ZwQueryInformationProcess(ProcessHandle, ProcessImageFileName, get_buffer, process_FULL_NAME_info_len, &process_FULL_NAME_info_len) == STATUS_INFO_LENGTH_MISMATCH) {
 						if (get_buffer != NULL) {
 							break;
 						}

@@ -9,6 +9,7 @@
 #include "Registry.hpp"
 #include "ObRegisterCallback.hpp"
 #include "Response.hpp"
+#include "DLP.hpp"
 namespace EDR
 {
 	namespace UnLoad
@@ -40,6 +41,9 @@ namespace EDR
 
 			// ObRegisterCallback «ÿ¡¶
 			EDR::ObRegisterCallback::CleanUp_ObRegisterCallbacks();
+
+			// DLP
+			DLP::CleanUp_DLP();
 
 			return;
 		}

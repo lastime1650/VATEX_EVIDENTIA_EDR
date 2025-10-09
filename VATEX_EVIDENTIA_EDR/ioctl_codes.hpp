@@ -103,4 +103,37 @@ struct IOCTL_API_CALLS_Data {
 	CHAR Json[APIHooked_IOCTL_DATA_Json_Strlen_MaxSize];
 };
 
+
+#define IOCTL_DLP_ADD \
+	CTL_CODE(FILE_DEVICE_UNKNOWN, 0x2000, METHOD_BUFFERED, FILE_ANY_ACCESS) // DLP - 정책 추가
+struct IOCTL_DLP_WHITELIST_NODE
+{
+	struct { BOOLEAN is_block; } WRITE;
+	struct { BOOLEAN is_block; } READ;
+	struct { BOOLEAN is_block; } RENAME;
+	struct { BOOLEAN is_block; } OPEN;
+	struct { BOOLEAN is_block; } ACCESS_with_EXTERNAL_DEVICES;
+	ULONG64 ProcessEXE_FileReferenceNumber;
+};
+struct IOCTL_DLP_ADD_Data {
+
+	struct {
+		ULONG64 FileSize;
+		ULONG64 FileReferenceNumber;
+	} FILE;
+
+	struct {
+		struct {
+			struct { BOOLEAN is_block; } WRITE;
+			struct { BOOLEAN is_block; } READ;
+			struct { BOOLEAN is_block; } RENAME;
+			struct { BOOLEAN is_block; } OPEN;
+			struct { BOOLEAN is_block; } ACCESS_with_EXTERNAL_DEVICES;
+		} Global;
+
+		struct IOCTL_DLP_WHITELIST_NODE WhiteList[512]; // 최대 512개 노드까지
+	} Policy;
+};
+
+
 #endif

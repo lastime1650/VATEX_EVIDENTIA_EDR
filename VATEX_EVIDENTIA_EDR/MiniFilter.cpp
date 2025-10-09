@@ -104,13 +104,12 @@ namespace EDR
                 )
                 {
 
-                    debug_break();
+                    //debug_break();
 
                     EDR::MiniFilter::resource::PHASH_WORK_ITEM_CONTEXT_DETAILS FltWorkItem_CTX = (EDR::MiniFilter::resource::PHASH_WORK_ITEM_CONTEXT_DETAILS)Context;
 
                     CHAR SHA256[SHA256_String_Byte_Length] = { 0 };
                     ULONG64 FileSize = 0;
-                    debug_break();
                     // [핵심] 오래 걸리는 해싱 작업을 여기서 안전하게 수행
                     if (helper::Get_FileSHA256(
                         FltWorkItem_CTX->Instance,
@@ -126,14 +125,20 @@ namespace EDR
                         UNICODE_STRING NormalizedFilePath;
                         RtlInitUnicodeString(&NormalizedFilePath, FltWorkItem_CTX->NormalizedFilePath);
 
+
+                        PCHAR Sha256 = NULL;
+                        if (FileSize > 0)
+                            Sha256 = SHA256;
+
                         EDR::LogSender::function::FilesystemLog(
                             FltWorkItem_CTX->ProcessId,
                             FltWorkItem_CTX->timestamp,
                             FltWorkItem_CTX->Action,
                             &NormalizedFilePath,
                             NULL,
-                            SHA256
+                            Sha256
                         );
+                        
                     }
 
                     if (FltWorkItem_CTX ->NormalizedFilePath)
@@ -323,8 +328,6 @@ namespace EDR
                 ULONG64 Nano_Timestamp = EDR::Util::Timestamp::Get_LocalTimestamp_Nano();
 
 
-
-
                 // 시스템 프로세스 제외
                 if (PsIsSystemProcess(FltGetRequestorProcess(Data)))
                     return FLT_PREOP_SUCCESS_NO_CALLBACK;
@@ -332,6 +335,17 @@ namespace EDR
                 // AGENT Usermode Process는 제외
                 if( !EDR::Util::Shared::USER_AGENT::ProcessId || EDR::Util::Shared::USER_AGENT::ProcessId == ProcessId)
                     return FLT_PREOP_SUCCESS_NO_CALLBACK;
+
+                /*
+                if (Data->Iopb->Parameters.Create.Options & FILE_DIRECTORY_FILE) {
+                    // 폴더
+                }
+                else {
+                    // 파일
+                }*/
+
+                ULONG32 VolumeSerialNumber = 0;
+                helper::Get_VolumeSerialNumber(Data, &VolumeSerialNumber); // 패시브 레벨이 아니면 호출안함
 
                 // 파일 확인
                 PFLT_FILE_NAME_INFORMATION nameInfo = NULL;
@@ -388,29 +402,6 @@ namespace EDR
                     /*
                         IRP_MJ_CREATE시 에는 파일 상호작용을 위한 직전이므로, 이때 파일 해시를 구한다.
                     */
-
-
-
-                    /*
-                    if (KeGetCurrentIrql() == PASSIVE_LEVEL)
-                    {
-                        
-                        debug_break();
-
-                        
-                        SIZE_T FileSize = 0;
-						SHA256 = (PCHAR)ExAllocatePool2(POOL_FLAG_NON_PAGED, SHA256_String_Byte_Length, 'fSH2');
-                        RtlZeroMemory(SHA256, SHA256_String_Byte_Length);
-
-                        // 파일 해시 구하기 ( 단, 파일경로 기반으로 해야한다. )
-                        if (helper::Get_FileSHA256_by_FILEPATH(NormalizedFilePath, &FileSize, SHA256))
-                        {
-                            // 구하기 성공
-                            debug_break();
-
-                        }
-                    }*/
-                    
                     {
                         /*
                             0. Action
@@ -438,7 +429,7 @@ namespace EDR
                         /*
                              2. POST에 넘길 정보 저장
                         */
-                        PRE_to_POST_CTX->Action = Action;
+                        //PRE_to_POST_CTX->Action = Action;
                         PRE_to_POST_CTX->ProcessId = ProcessId;
                         PRE_to_POST_CTX->timestamp = Nano_Timestamp;
 
@@ -575,18 +566,55 @@ namespace EDR
 
             VOID Relase_Is_File_with_Get_File_Info(PFLT_FILE_NAME_INFORMATION fileNameInfo)
             {
-                if(fileNameInfo)
+                if (fileNameInfo)
                     FltReleaseFileNameInformation(fileNameInfo);
             }
 
+            // 파일 고유 Index값 가져오기
+            NTSTATUS Get_FileReferenceNumber(
+                _In_ PFLT_INSTANCE Instance,
+                _In_ PFILE_OBJECT FileObject,
+                _Out_ PULONG64 pFileReferenceNumber
+            )
+            {
+                PAGED_CODE(); // 이 함수는 PASSIVE_LEVEL에서만 호출되어야 함
+
+                NTSTATUS status;
+                FILE_INTERNAL_INFORMATION fileInternalInfo;
+                ULONG bytesReturned;
+
+                if (pFileReferenceNumber == NULL) {
+                    return STATUS_INVALID_PARAMETER;
+                }
+                *pFileReferenceNumber = 0; // 출력 파라미터 초기화
+
+                // FltQueryInformationFile을 사용하여 파일의 내부 정보를 요청
+                status = FltQueryInformationFile(
+                    Instance,
+                    FileObject,
+                    &fileInternalInfo,
+                    sizeof(fileInternalInfo),
+                    FileInternalInformation, // 정보 클래스 지정
+                    &bytesReturned
+                );
+
+                if (!NT_SUCCESS(status)) {
+                    return status;
+                }
+
+                // 성공 시, IndexNumber 필드(이것이 FRN)를 복사
+                *pFileReferenceNumber = fileInternalInfo.IndexNumber.QuadPart;
+
+                return STATUS_SUCCESS;
+            }
 
             // 파일 사이즈 구하기
             _Success_(return == TRUE)
-            BOOLEAN Get_FileSize(
-                _In_ PFLT_INSTANCE Instance,
-                _In_ PFILE_OBJECT FileObject,
-                _Inout_ ULONG64* Out_FIleSize
-            )
+                BOOLEAN Get_FileSize(
+                    _In_ PFLT_INSTANCE Instance,
+                    _In_ PFILE_OBJECT FileObject,
+                    _Inout_ ULONG64 * Out_FIleSize
+                )
             {
                 if (!Instance || !FileObject || !Out_FIleSize) return FALSE;
                 NTSTATUS status;
@@ -608,6 +636,49 @@ namespace EDR
                 *Out_FIleSize = fileInfo.EndOfFile.QuadPart;
 
                 return TRUE;
+            }
+
+            // 볼륨 넘버얻기
+            NTSTATUS Get_VolumeSerialNumber
+            (
+                _In_ PFLT_CALLBACK_DATA Data,
+                ULONG32 * OutVolumeSerial
+            )
+            {
+                if (!Data)
+                    return STATUS_INVALID_PARAMETER_1;
+
+                if (!OutVolumeSerial)
+                    return STATUS_INVALID_PARAMETER_2;
+
+                PAGED_CODE();
+
+                NTSTATUS status;
+                PFLT_VOLUME Volume = nullptr;
+
+                // 1. FLT_VOLUME 얻기
+                status = FltGetVolumeFromInstance(Data->Iopb->TargetInstance, &Volume);
+                if (!NT_SUCCESS(status) || !Volume)
+                    return status;
+
+                // 2. 볼륨 정보 가져오기
+                PFLT_INSTANCE instance = Data->Iopb->TargetInstance;
+                IO_STATUS_BLOCK iosb = { 0 };
+                FILE_FS_VOLUME_INFORMATION volumeInfo = { 0 };
+
+                status = FltQueryVolumeInformation(
+                    instance,
+                    &iosb,
+                    &volumeInfo,
+                    sizeof(volumeInfo),
+                    FileFsVolumeInformation
+                );
+                if (!NT_SUCCESS(status))
+                    return status;
+
+                *OutVolumeSerial = volumeInfo.VolumeSerialNumber;
+
+                return STATUS_SUCCESS;
             }
 
             BOOLEAN Get_FileSHA256(

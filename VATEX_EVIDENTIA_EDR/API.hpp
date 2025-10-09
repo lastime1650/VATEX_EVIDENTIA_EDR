@@ -4,7 +4,24 @@
 
 #include <ntifs.h>
 
+// 프로세스 접근 권한 (ACCESS_MASK)
+#define PROCESS_TERMINATE                 0x0001  // 프로세스 종료
+#define PROCESS_CREATE_THREAD             0x0002  // 새 스레드 생성
+#define PROCESS_SET_SESSIONID             0x0004  // 세션 ID 설정
+#define PROCESS_VM_OPERATION              0x0008  // VirtualAlloc/VirtualFree 등 메모리 작업
+#define PROCESS_VM_READ                   0x0010  // 프로세스 메모리 읽기
+#define PROCESS_VM_WRITE                  0x0020  // 프로세스 메모리 쓰기
+//#define PROCESS_DUP_HANDLE                0x0040  // 핸들 복제
+#define PROCESS_CREATE_PROCESS            0x0080  // 새 프로세스 생성
+#define PROCESS_SET_QUOTA                 0x0100  // 메모리 쿼터 설정
+#define PROCESS_SET_INFORMATION           0x0200  // 우선순위, CPU affinity 등 설정
+#define PROCESS_QUERY_INFORMATION         0x0400  // 프로세스 정보 조회
+#define PROCESS_SUSPEND_RESUME            0x0800  // 스레드 일시정지/재개
+#define PROCESS_QUERY_LIMITED_INFORMATION 0x1000  // 제한된 정보 조회 (Win7 이상)
+#define PROCESS_SET_LIMITED_INFORMATION   0x2000  // 제한된 정보 설정 (Win7 이상)
 
+// 모든 권한 OR 조합
+#define PROCESS_ALL_ACCESS (STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | 0xFFFF)
 
 // 인터럽트 벡터 번호 얻기
 extern "C" ULONG HalGetInterruptVector(
@@ -489,9 +506,9 @@ PsSetContextThread(
 
 extern "C" NTSTATUS ZwQueryInformationProcess(
     HANDLE ProcessHandle,
-    SYSTEM_INFORMATION_CLASS SystemInformationClass,
-    PVOID SystemInformation,
-    ULONG SystemInformationLength,
+    PROCESSINFOCLASS ProcessInformationClass,
+    PVOID ProcessInformation,
+    ULONG ProcessInformationLength,
     PULONG ReturnLength
 );
 

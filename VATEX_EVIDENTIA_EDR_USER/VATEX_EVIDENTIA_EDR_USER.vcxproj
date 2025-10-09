@@ -36,6 +36,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="APC.hpp" />
+    <ClInclude Include="DLP.hpp" />
     <ClInclude Include="EventLog.hpp" />
     <ClInclude Include="Hash.hpp" />
     <ClInclude Include="IOCTL.hpp" />

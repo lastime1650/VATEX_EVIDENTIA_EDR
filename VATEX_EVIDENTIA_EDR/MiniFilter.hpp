@@ -21,7 +21,7 @@ namespace EDR
 				ULONG64 timestamp;
 				HANDLE ProcessId;
 
-				EDR::EventLog::Enum::FileSystem::Filesystem_enum Action; // recently ) create
+				//EDR::EventLog::Enum::FileSystem::Filesystem_enum Action; // recently ) create
 
 			}PretoPost_CTX, *PPretoPost_CTX;
 
@@ -109,6 +109,20 @@ namespace EDR
 			);
 			VOID Relase_Is_File_with_Get_File_Info(PFLT_FILE_NAME_INFORMATION fileNameInfo);
 
+
+			// FRN추출
+			// 파일 고유 Index값 가져오기
+			NTSTATUS Get_FileReferenceNumber(
+				_In_ PFLT_INSTANCE Instance,
+				_In_ PFILE_OBJECT FileObject,
+				_Out_ PULONG64 pFileReferenceNumber
+			);
+
+			// 현 파일에 대한 볼륨 넘버 얻기
+			NTSTATUS Get_VolumeSerialNumber(
+				_In_ PFLT_CALLBACK_DATA Data,
+				ULONG32* OutVolumeSerial
+			);
 		}
 
 		

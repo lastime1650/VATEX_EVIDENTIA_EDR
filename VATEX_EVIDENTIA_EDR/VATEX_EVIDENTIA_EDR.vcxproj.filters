@@ -89,6 +89,9 @@
     <Filter Include="AGENT\Event\API_Hook">
       <UniqueIdentifier>{ab19da68-cdbf-49ab-8923-a4e345e5e66a}</UniqueIdentifier>
     </Filter>
+    <Filter Include="AGENT\Event\_DLP">
+      <UniqueIdentifier>{aa775e85-4a20-4741-82cd-bf5cde9b3758}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Inf Include="VATEX_EVIDENTIA_EDR.inf">
@@ -156,6 +159,9 @@
     </ClCompile>
     <ClCompile Include="Shared.cpp">
       <Filter>util\Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="DLP.cpp">
+      <Filter>AGENT\Event\_DLP</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -230,6 +236,9 @@
     </ClInclude>
     <ClInclude Include="PE_Logic.hpp">
       <Filter>util</Filter>
+    </ClInclude>
+    <ClInclude Include="DLP.hpp">
+      <Filter>AGENT\Event\_DLP</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

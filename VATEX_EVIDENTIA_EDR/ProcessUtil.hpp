@@ -30,6 +30,8 @@ namespace EDR
 				NTSTATUS TerminateProcess(HANDLE ProcessId);
 			}
 
+			HANDLE GetParentProcess( HANDLE ProcessId );
+
 		}
 	}
 }
