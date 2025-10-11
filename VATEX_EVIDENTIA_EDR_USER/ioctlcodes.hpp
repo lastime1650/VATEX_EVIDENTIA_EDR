@@ -19,7 +19,7 @@ struct IOCTL_INIT_s
 		BOOLEAN is_success;
 	}output;
 };
-
+/*
 #define IOCTL_REQ_FILE \
 	CTL_CODE(FILE_DEVICE_UNKNOWN, 0x1651, METHOD_BUFFERED, FILE_ANY_ACCESS) // 파일 바이너리 요청
 
@@ -72,7 +72,7 @@ struct IOCTL_REQ_RESPONSE_IP_s
 		BOOLEAN is_success;
 	}output;
 };
-
+*/
 #define IOCTL_REQ_LOG \
 	CTL_CODE(FILE_DEVICE_UNKNOWN, 0x1654, METHOD_BUFFERED, FILE_ANY_ACCESS) // [차단해시맵등록] IPaddress ( Ipv4/ipv6 )
 

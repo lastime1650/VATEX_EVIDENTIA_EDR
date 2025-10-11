@@ -22,6 +22,9 @@ namespace EDR
 
 					if (!NT_SUCCESS(RtlAnsiStringToUnicodeString(output_Unicode, &ansi, TRUE)))
 					{
+						output_Unicode->Buffer = NULL;
+						output_Unicode->Length = 0;
+						output_Unicode->MaximumLength = 0;
 						return FALSE;
 					}
 

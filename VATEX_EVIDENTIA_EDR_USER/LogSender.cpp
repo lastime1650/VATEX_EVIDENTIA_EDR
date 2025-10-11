@@ -169,6 +169,8 @@ namespace EDR
                 std::string OsVersion,
                 HANDLE pid,
                 ULONG32 interface_index,
+                std::string macSrc,
+                std::string macDest,
                 std::string ipSrc,
                 ULONG32 portSrc,
                 std::string ipDest,
@@ -203,6 +205,8 @@ namespace EDR
                                     "interface_index": {}, 
                                     "protocol": "{}",
                                     "packetsize" : {},
+                                    "sourcemac": "{}",
+                                    "destinationmac": "{}",
                                     "sourceip": "{}",
                                     "sourceport": {},
                                     "destinationip": "{}",
@@ -219,7 +223,7 @@ namespace EDR
                             
                         }}
                     )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp,
-                        interface_index, protocol, packetSize, ipSrc, portSrc, ipDest, portDest, is_INGRESS ? "in" : "out",
+                        interface_index, protocol, packetSize, macSrc, macDest, ipSrc, portSrc, ipDest, portDest, is_INGRESS ? "in" : "out",
                         PacketSessionID, first_seen_nano_timestamp, last_seen_nano_timestamp)
                 );
             }

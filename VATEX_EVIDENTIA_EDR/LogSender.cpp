@@ -744,6 +744,9 @@ namespace EDR
 				HANDLE ProcessId,
 				ULONG64 NanoTimestamp,
 
+				PUCHAR SourceMacAddress,
+				PUCHAR DestinationMacAddress,
+
 				ULONG32 ProtocolNumber,
 				BOOLEAN is_INBOUND,
 				ULONG32 PacketSize,
@@ -779,6 +782,20 @@ namespace EDR
 				log->body.ifindex = NetworkInterfaceIndex;
 
 				
+
+				RtlCopyMemory(
+					log->body.SourceMacAddress,
+					SourceMacAddress,
+					17
+				);
+				log->body.LOCAL_PORT = LOCAL_PORT;
+
+				RtlCopyMemory(
+					log->body.DestinationMacAddress,
+					DestinationMacAddress,
+					17
+				);
+				log->body.REMOTE_PORT = REMOTE_PORT;
 
 				RtlCopyMemory(
 					log->body.LOCAL_IP,

@@ -312,6 +312,8 @@ namespace EDR
 								NetworkLog->header.ProcessId,
 
 								NetworkLog->body.ifindex,
+								NetworkLog->body.SourceMacAddress,
+								NetworkLog->body.DestinationMacAddress,
 								NetworkLog->body.LOCAL_IP,
 								NetworkLog->body.LOCAL_PORT,
 								NetworkLog->body.REMOTE_IP,

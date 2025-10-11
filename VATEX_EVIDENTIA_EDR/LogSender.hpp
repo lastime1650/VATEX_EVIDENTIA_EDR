@@ -114,6 +114,9 @@ namespace EDR
 				HANDLE ProcessId,
 				ULONG64 NanoTimestamp,
 
+				PUCHAR SourceMacAddress,
+				PUCHAR DestinationMacAddress,
+
 				ULONG32 ProtocolNumber,
 				BOOLEAN is_INBOUND,
 				ULONG32 PacketSize,

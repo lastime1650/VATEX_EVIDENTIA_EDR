@@ -8,7 +8,7 @@
 #include "MiniFilter.hpp"
 #include "Registry.hpp"
 #include "ObRegisterCallback.hpp"
-#include "Response.hpp"
+//#include "Response.hpp"
 #include "DLP.hpp"
 namespace EDR
 {
@@ -25,7 +25,7 @@ namespace EDR
 			EDR::IOCTL::CleanUp_IOCTL();
 
 			// Response 해시테이블 해제
-			EDR::Response::HashTable::CleanUp();
+			//EDR::Response::HashTable::CleanUp();
 
 			// NotifyRoutines 해제
 			EDR::NotifyRoutines::CleanUp();

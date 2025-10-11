@@ -129,7 +129,6 @@
     <ClCompile Include="ObRegisterCallback.cpp" />
     <ClCompile Include="ProcessUtil.cpp" />
     <ClCompile Include="Registry.cpp" />
-    <ClCompile Include="Response.cpp" />
     <ClCompile Include="Shared.cpp" />
     <ClCompile Include="String_.cpp" />
     <ClCompile Include="User.cpp" />
@@ -156,7 +155,6 @@
     <ClInclude Include="PE_Logic.hpp" />
     <ClInclude Include="ProcessUtil.hpp" />
     <ClInclude Include="Registry.hpp" />
-    <ClInclude Include="Response.hpp" />
     <ClInclude Include="Shared.hpp" />
     <ClInclude Include="String_.hpp" />
     <ClInclude Include="User.hpp" />

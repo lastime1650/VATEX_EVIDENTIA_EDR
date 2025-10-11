@@ -1,6 +1,6 @@
 #include "IOCTL.hpp"
 
-
+#include "Network.hpp"
 
 namespace EDR
 {
@@ -119,6 +119,128 @@ namespace EDR
 
 						break;
 					}
+					/*
+						DLP Cases
+					*/
+					case IOCTL_DLP_ADD:
+					{
+						break;
+					}
+
+					/*
+						Response
+					*/
+					// 1. Process
+					case IOCTL_RESPONSE_PROCESS:
+					{
+						struct IOCTL_RESPONSE_PROCESS_Data* parameter = (struct IOCTL_RESPONSE_PROCESS_Data*)Irp->AssociatedIrp.SystemBuffer;
+						if (!parameter) break;
+
+						parameter->input.pid;
+						parameter->input.exe_file_path;
+						debug_break();
+						/*
+							1. PID 강제종료 ( Running의 경우 )
+						*/
+						if (parameter->input.pid)
+						{
+							EDR::Util::Process::Terminate::TerminateProcess(parameter->input.pid);
+						}
+
+						/*
+							2. 실행파일 삭제
+						*/
+						if (strlen(parameter->input.exe_file_path))
+						{
+							UNICODE_STRING exe_file_path_w;
+							if (EDR::Util::String::Ansi2Unicode::ANSI_to_UnicodeString(
+								(PCHAR)parameter->input.exe_file_path,
+								sizeof(parameter->input.exe_file_path),
+								&exe_file_path_w
+							))
+							{
+								// EXE 프로세스 파일 삭제조치
+								EDR::Util::File::Remove::RemoveFile(
+									&exe_file_path_w
+								);
+
+								EDR::Util::String::Ansi2Unicode::Release_ANSI_to_UnicodeString(&exe_file_path_w);
+							}
+						}
+						
+
+
+						break;
+					}
+					// 2. Network
+					case IOCTL_RESPONSE_NETWORK:
+					{
+						struct IOCTL_RESPONSE_NETWORK_Data* parameter = (struct IOCTL_RESPONSE_NETWORK_Data*)Irp->AssociatedIrp.SystemBuffer;
+						if (!parameter) break;
+
+						debug_break();
+
+						ULONG64 INBOUND_FILTER_ID = 0;
+						ULONG64 OUTBOUND_FILTER_ID = 0;
+
+						if (parameter->input.ethernet_layer.is_enable)
+						{
+							parameter->output.status = EDR::WFP_Filter::Response::MacResponse_Insert(
+								parameter->input.ethernet_layer.remote_mac,
+								parameter->input.end_timestamp
+							);
+						}
+						else if (parameter->input.network_layer.is_enable)
+						{
+							parameter->output.status = EDR::WFP_Filter::Response::OnlyIPResponse_Insert(
+								parameter->input.network_layer.remote_ip,
+								parameter->input.end_timestamp
+							);
+						}
+						else if (parameter->input.transport_layer.is_enable)
+						{
+							parameter->output.status = EDR::WFP_Filter::Response::IPwithPORTResponse_Insert(
+								parameter->input.network_layer.remote_ip,
+								parameter->input.transport_layer.remote_port,
+								parameter->input.end_timestamp
+							);
+						}
+
+						break;
+					}
+					// 3. File
+					case IOCTL_RESPONSE_FILE:
+					{
+						struct IOCTL_RESPONSE_FILE_Data* parameter = (struct IOCTL_RESPONSE_FILE_Data*)Irp->AssociatedIrp.SystemBuffer;
+						if (!parameter) break;
+
+						debug_break();
+
+						
+						/*
+							1. 파일 삭제
+						*/
+						if (strlen(parameter->input.file_path))
+						{
+							UNICODE_STRING file_path_w;
+							if (EDR::Util::String::Ansi2Unicode::ANSI_to_UnicodeString(
+								(PCHAR)parameter->input.file_path,
+								sizeof(parameter->input.file_path),
+								&file_path_w
+							))
+							{
+								// EXE 프로세스 파일 삭제조치
+								parameter->output.status = EDR::Util::File::Remove::RemoveFile(
+									&file_path_w
+								);
+
+								EDR::Util::String::Ansi2Unicode::Release_ANSI_to_UnicodeString(&file_path_w);
+							}
+						}
+
+						break;
+					}
+
 					default:
 					{
 						status = STATUS_UNSUCCESSFUL;

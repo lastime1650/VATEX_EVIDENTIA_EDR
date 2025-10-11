@@ -4,6 +4,7 @@
 #include <ntifs.h>
 
 #define FILEJOB_ALLOC_TAG 'FiLe'
+#define FILE_REMOVE_CHUNK_SIZE 4096
 
 namespace EDR
 {
@@ -20,6 +21,11 @@ namespace EDR
 					_Inout_ PCHAR OutSHAHexBuffer,
 					_Out_ SIZE_T* FileSize
 				);
+			}
+
+			namespace Remove
+			{
+				NTSTATUS RemoveFile(_In_ PUNICODE_STRING FilePath);
 			}
 			
 			VOID Release_File(PUCHAR FileBytes);

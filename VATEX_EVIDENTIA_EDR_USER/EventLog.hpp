@@ -154,6 +154,9 @@ namespace EDR
 					struct
 					{
 
+						CHAR SourceMacAddress[18];
+						CHAR DestinationMacAddress[18];
+
 						ULONG32 ProtocolNumber;
 						BOOLEAN is_INBOUND;
 						ULONG32 PacketSize;

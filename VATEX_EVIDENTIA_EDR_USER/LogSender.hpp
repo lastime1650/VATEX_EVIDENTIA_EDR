@@ -65,6 +65,8 @@ namespace EDR
                     std::string OsVersion,
                     HANDLE pid,
                     ULONG32 interface_index,
+                    std::string macSrc,
+                    std::string macDest,
                     std::string ipSrc,
                     ULONG32 portSrc,
                     std::string ipDest,

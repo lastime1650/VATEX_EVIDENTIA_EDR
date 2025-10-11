@@ -23,7 +23,77 @@ namespace EDR
 {
 	namespace WFP_Filter
 	{
+        namespace Response
+        {
+            // 네트워크 차단을 위한 namespace, 잠시 차단 목록이 저장되며, 해제순간은 localtime기준으로 잡는다.
+            extern LIST_ENTRY NetworkResponseListHeader;
+            extern EX_PUSH_LOCK lock;
+            #define NetworkResponseListAllocTag 'NetT'
+            typedef struct NETWORK_RESPONSE_LIST_NODE
+            {
+                LIST_ENTRY Entry;
 
+                ULONG64 INBOUND_filterid = 0;
+                ULONG64 OUTBOUND_filterid = 0;
+
+
+                ULONG64 end_timestamp = 0;		// end cahced response
+
+                struct
+                {
+                    PUCHAR AllocatedMacArray = NULL;
+                }Mac;
+
+            }NETWORK_RESPONSE_LIST_NODE, *PNETWORK_RESPONSE_LIST_NODE;
+
+            // Network Reponse 등록
+            BOOLEAN MacResponse_Insert(PCHAR MacAddress, ULONG64 end_timestamp);
+            BOOLEAN OnlyIPResponse_Insert(PCHAR RemoteIpAddress, ULONG64 end_timestamp);
+            BOOLEAN IPwithPORTResponse_Insert(PCHAR RemoteIpAddress, ULONG32 port, ULONG64 end_timestamp);
+
+            // Network Response 해제
+            VOID RemoveNetworkResponse(ULONG64 in_INBOUND_filterid, ULONG64 in_OUTBOUND_filterid);
+
+            VOID _NetworkResponse_Initialize();
+            VOID _Cleanup_NetworkResponse();
+
+            VOID Loop_Monitor_Network_Response(PVOID ctx);
+
+            namespace Filter
+            {
+                namespace MAC
+                {
+                    NTSTATUS Add_Response_net_filter_MAC(
+                        PCHAR MacAddress,
+                        ULONG64* out_inbound_response_filter_id,
+                        ULONG64* out_outbound_response_filter_id,
+                        PUCHAR* out_allocated_mac_uint8_value
+                    );
+                }
+                namespace IP
+                {
+                    NTSTATUS Add_Response_net_filter_IP(
+                        CHAR* in_ip,
+                        ULONG64* out_inbound_response_filter_id,
+                        ULONG64* out_outbound_response_filter_id
+                    );
+                }
+                namespace IPwithPORT
+                {
+                    NTSTATUS Add_Response_net_filter_IPwithPORT(
+                        CHAR* in_ip,
+                        ULONG32 in_port,
+
+                        ULONG64* out_inbound_response_filter_id,
+                        ULONG64* out_outbound_response_filter_id
+                    );
+                }
+
+                NTSTATUS Remove_Response_filter(
+                    _In_ ULONG64 filterId
+                );
+            }
+        }
 
 		namespace Handler
 		{
@@ -47,6 +117,13 @@ namespace EDR
                 ULONG   FrameSize;
 
                 // 파싱된 정보
+                struct
+                {
+                    CHAR SourceAddress[18];
+                    CHAR DestinationAddress[18];
+                }ethernet_layer;
+
+
                 struct
                 {
                     BOOLEAN IsIPv4; // if false, ipv6

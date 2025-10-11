@@ -35,8 +35,17 @@ BOOLEAN Copy_Packet_Data(
 
 NTSTATUS NDIS_PacketFilter_Register(PDEVICE_OBJECT DeviceObject);
 NTSTATUS GenerateGUID(_Inout_ GUID* inout_guid);
+void MacToString(UCHAR mac[ETHERNET_ADDRESS_LENGTH], CHAR outStr[18]); // 17 + NULL
+NTSTATUS StringToMac(
+	const CHAR* strMac,   // "00-11-22-33-44-55"
+	UCHAR mac[ETHERNET_ADDRESS_LENGTH]
+);
+NTSTATUS StringToInAddr(
+	_In_ CHAR* strIP,
+	_Out_ IN_ADDR* outAddr
+);
 
-//#include <fwpsk.h>
+
 namespace EDR
 {
 	namespace WFP_Filter
@@ -147,6 +156,19 @@ namespace EDR
 					return FALSE; // IPv4 및 해당 계층이상이 아니면 파싱 실패 ( 이더넷 패킷 혼자는 아직 지원 X )
 				}
 				
+				/*
+					MAC주소 추출
+				*/
+				MacToString(
+					pEthHeader->SourceAddress,
+					(*Output)->ethernet_layer.SourceAddress
+				);
+				MacToString(
+					pEthHeader->DestinationAddress,
+					(*Output)->ethernet_layer.DestinationAddress
+				);
+
+
 				(*Output)->network_layer.IsIPv4 = TRUE;
 
 				// 네트워크 계층 검증
@@ -373,6 +395,9 @@ namespace EDR
 					PID,
 					NanoTimestamp,
 
+					(PUCHAR)PACKET_INFO->ethernet_layer.SourceAddress,
+					(PUCHAR)PACKET_INFO->ethernet_layer.DestinationAddress,
+
 					PACKET_INFO->network_layer.ProtocolNumber,
 
 					is_inbound,
@@ -394,6 +419,536 @@ namespace EDR
 				Release_Parsed_Packet(PACKET_INFO);
 
 				return;
+			}
+		}
+
+		// response
+		namespace Response
+		{
+			LIST_ENTRY NetworkResponseListHeader;
+			EX_PUSH_LOCK lock;
+
+			BOOLEAN _append_node(
+				ULONG64 INBOUND_FILTER_ID, ULONG64 OUTBOUND_FILTER_ID, ULONG64 end_timestamp,
+
+
+				PUCHAR Allocated_macValue_p
+			)
+			{
+				auto node = (PNETWORK_RESPONSE_LIST_NODE)ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(NETWORK_RESPONSE_LIST_NODE), NetworkResponseListAllocTag);
+				if (!node)
+					return FALSE;
+
+				node->INBOUND_filterid = INBOUND_FILTER_ID;
+				node->OUTBOUND_filterid = OUTBOUND_FILTER_ID;
+				node->end_timestamp = end_timestamp;
+
+				node->Mac.AllocatedMacArray = Allocated_macValue_p;
+
+				ExAcquirePushLockExclusive(&lock);
+				InsertTailList(&NetworkResponseListHeader, &node->Entry);
+				ExReleasePushLockExclusive(&lock);
+				return TRUE;
+			}
+			BOOLEAN _remove_response(ULONG64 in_INBOUND_filterid, ULONG64 in_OUTBOUND_filterid)
+			{
+				ExAcquirePushLockExclusive(&lock);
+				LIST_ENTRY* current = NetworkResponseListHeader.Flink;
+				for (current; current != &NetworkResponseListHeader; current = current->Flink)
+				{
+					auto node = CONTAINING_RECORD(current, NETWORK_RESPONSE_LIST_NODE, Entry);
+					if (!node)
+						continue;
+
+
+
+					// 등록된 filter인지? 정확히 match
+					if (
+						node->INBOUND_filterid == in_INBOUND_filterid &&
+						node->OUTBOUND_filterid == in_OUTBOUND_filterid
+						)
+					{
+						RemoveEntryList(&node->Entry);
+						// 동적할당된 mac 값
+						if (node->Mac.AllocatedMacArray)
+							ExFreePoolWithTag(node->Mac.AllocatedMacArray, 'macF');
+						ExFreePoolWithTag(node, NetworkResponseListAllocTag);
+
+						ExReleasePushLockExclusive(&lock);
+						return TRUE;
+					}
+
+				}
+				ExReleasePushLockExclusive(&lock);
+				return FALSE;
+			}
+
+			BOOLEAN MacResponse_Insert(PCHAR MacAddress, ULONG64 end_nanotimestamp)
+			{
+				ULONG64 INBOUND_FILTER_ID = 0;
+				ULONG64 OUTBOUND_FILTER_ID = 0;
+
+				PUCHAR Allocated_macValue = NULL;
+				if (!NT_SUCCESS(
+						EDR::WFP_Filter::Response::Filter::MAC::Add_Response_net_filter_MAC(
+							MacAddress,
+							&INBOUND_FILTER_ID,
+							&OUTBOUND_FILTER_ID,
+
+							&Allocated_macValue
+						)
+					)
+				)
+				{
+					return FALSE;
+				}
+
+				return _append_node(
+					INBOUND_FILTER_ID,
+					OUTBOUND_FILTER_ID,
+					end_nanotimestamp,
+					Allocated_macValue
+				);
+			}
+			BOOLEAN OnlyIPResponse_Insert(PCHAR RemoteIpAddress, ULONG64 end_nanotimestamp)
+			{
+				ULONG64 INBOUND_FILTER_ID = 0;
+				ULONG64 OUTBOUND_FILTER_ID = 0;
+
+				if (!NT_SUCCESS(
+					EDR::WFP_Filter::Response::Filter::IP::Add_Response_net_filter_IP(
+						RemoteIpAddress,
+						&INBOUND_FILTER_ID,
+						&OUTBOUND_FILTER_ID
+					)
+				)
+					)
+				{
+					return FALSE;
+				}
+
+				return _append_node(
+					INBOUND_FILTER_ID,
+					OUTBOUND_FILTER_ID,
+					end_nanotimestamp,
+					NULL
+				);
+			}
+			BOOLEAN IPwithPORTResponse_Insert(PCHAR RemoteIpAddress, ULONG32 port, ULONG64 end_nanotimestamp)
+			{
+				ULONG64 INBOUND_FILTER_ID = 0;
+				ULONG64 OUTBOUND_FILTER_ID = 0;
+
+				if (!NT_SUCCESS(
+						EDR::WFP_Filter::Response::Filter::IPwithPORT::Add_Response_net_filter_IPwithPORT(
+							RemoteIpAddress,
+							port,
+							&INBOUND_FILTER_ID,
+							&OUTBOUND_FILTER_ID
+						)
+					)
+				)
+				{
+					return FALSE;
+				}
+
+				return _append_node(
+					INBOUND_FILTER_ID,
+					OUTBOUND_FILTER_ID,
+					end_nanotimestamp,
+					NULL
+				);
+			}
+
+			VOID RemoveNetworkResponse(ULONG64 in_INBOUND_filterid, ULONG64 in_OUTBOUND_filterid)
+			{
+				_remove_response(in_INBOUND_filterid, in_OUTBOUND_filterid);
+			}
+			
+
+
+
+			VOID _NetworkResponse_Initialize()
+			{
+				ExInitializePushLock(&lock);
+				InitializeListHead(&NetworkResponseListHeader);
+				HANDLE thread = NULL;
+				PsCreateSystemThread(
+					&thread,
+					THREAD_ALL_ACCESS,
+					NULL,
+					NULL,
+					NULL,
+					Loop_Monitor_Network_Response,
+					NULL
+				);
+				if (thread)
+					ZwClose(thread);
+			}
+			VOID _Cleanup_NetworkResponse()
+			{
+				ExAcquirePushLockExclusive(&lock);
+				LIST_ENTRY* current = NetworkResponseListHeader.Flink;
+				while (current != &NetworkResponseListHeader)
+				{
+					auto node = CONTAINING_RECORD(current, NETWORK_RESPONSE_LIST_NODE, Entry);
+					LIST_ENTRY* next = current->Flink; // 다음 노드를 미리 저장
+
+					ULONG64 current_nanotimestamp = EDR::Util::Timestamp::Get_LocalTimestamp_Nano();
+
+					EDR::WFP_Filter::Response::Filter::Remove_Response_filter(node->INBOUND_filterid);
+					EDR::WFP_Filter::Response::Filter::Remove_Response_filter(node->OUTBOUND_filterid);
+
+					RemoveEntryList(&node->Entry);
+
+					if (node->Mac.AllocatedMacArray)
+						ExFreePoolWithTag(node->Mac.AllocatedMacArray, 'macF');
+
+					ExFreePoolWithTag(node, NetworkResponseListAllocTag);
+
+					current = next; // 미리 저장해둔 다음 노드로 이동
+				}
+				ExReleasePushLockExclusive(&lock);
+			}
+			VOID Loop_Monitor_Network_Response(PVOID ctx)
+			{
+				UNREFERENCED_PARAMETER(ctx);
+				LARGE_INTEGER interval;
+				interval.QuadPart = -5LL * 10 * 1000 * 1000; // 5초
+
+				while (true)
+				{
+					ExAcquirePushLockExclusive(&lock);
+					LIST_ENTRY* current = NetworkResponseListHeader.Flink;
+					while (current != &NetworkResponseListHeader)
+					{
+						auto node = CONTAINING_RECORD(current, NETWORK_RESPONSE_LIST_NODE, Entry);
+						LIST_ENTRY* next = current->Flink; // 다음 노드를 미리 저장
+
+						ULONG64 current_nanotimestamp = EDR::Util::Timestamp::Get_LocalTimestamp_Nano();
+
+						if (current_nanotimestamp >= node->end_timestamp)
+						{
+							EDR::WFP_Filter::Response::Filter::Remove_Response_filter(node->INBOUND_filterid);
+							EDR::WFP_Filter::Response::Filter::Remove_Response_filter(node->OUTBOUND_filterid);
+
+							RemoveEntryList(&node->Entry);
+
+							if (node->Mac.AllocatedMacArray)
+								ExFreePoolWithTag(node->Mac.AllocatedMacArray, 'macF');
+
+							ExFreePoolWithTag(node, NetworkResponseListAllocTag);
+						}
+						current = next; // 미리 저장해둔 다음 노드로 이동
+					}
+					ExReleasePushLockExclusive(&lock);
+
+					KeDelayExecutionThread(KernelMode, FALSE, &interval);
+				}
+			}
+
+			namespace Filter
+			{
+#define BOUND_SIZE 2
+#define INBOUND_INDEX 0
+#define OUTBOUND_INDEX 1
+				namespace MAC
+				{
+					NTSTATUS Add_Response_net_filter_MAC(
+						PCHAR MacAddress, 
+						ULONG64* out_inbound_response_filter_id, 
+						ULONG64* out_outbound_response_filter_id,
+
+						PUCHAR* out_allocated_mac_uint8_value
+					)
+					{
+						if (!EngineHandle || !MacAddress)
+							return STATUS_INVALID_PARAMETER;
+
+						FWPM_FILTER0 filter[BOUND_SIZE];
+						FWPM_FILTER_CONDITION0 condition[BOUND_SIZE];
+
+						FWP_BYTE_ARRAY6* macValue = (FWP_BYTE_ARRAY6*)ExAllocatePoolWithTag(NonPagedPoolNx, sizeof(FWP_BYTE_ARRAY6), 'macF');
+						if (!macValue)
+							return STATUS_INSUFFICIENT_RESOURCES;
+
+						*out_allocated_mac_uint8_value = (PUCHAR)macValue;
+
+						NTSTATUS st = StringToMac(MacAddress, macValue->byteArray6);
+						if (!NT_SUCCESS(st))
+						{
+							ExFreePoolWithTag(macValue, 'macF');
+							return st;
+						}
+
+						{
+							// [1/2] INBOUND
+							filter[INBOUND_INDEX].layerKey = FWPM_LAYER_INBOUND_MAC_FRAME_ETHERNET;
+
+							filter[INBOUND_INDEX].displayData.name = (wchar_t*)L"Block_MAC_Filter";
+							filter[INBOUND_INDEX].providerKey = &g_providerKey;
+							filter[INBOUND_INDEX].action.type = FWP_ACTION_BLOCK;
+							filter[INBOUND_INDEX].weight.type = FWP_UINT8;
+							filter[INBOUND_INDEX].weight.uint8 = 15;
+
+							condition[INBOUND_INDEX].fieldKey = FWPM_CONDITION_MAC_LOCAL_ADDRESS;
+
+							condition[INBOUND_INDEX].matchType = FWP_MATCH_EQUAL;
+							condition[INBOUND_INDEX].conditionValue.type = FWP_BYTE_ARRAY6_TYPE;
+							condition[INBOUND_INDEX].conditionValue.byteArray6 = macValue;
+
+							filter[INBOUND_INDEX].numFilterConditions = 1;
+							filter[INBOUND_INDEX].filterCondition = &condition[INBOUND_INDEX];
+						}
+						
+						{
+							// [2/2] OUTBOUND
+							filter[OUTBOUND_INDEX].layerKey = FWPM_LAYER_OUTBOUND_MAC_FRAME_ETHERNET;
+
+							filter[OUTBOUND_INDEX].displayData.name = (wchar_t*)L"Block_MAC_Filter";
+							filter[OUTBOUND_INDEX].providerKey = &g_providerKey;
+							filter[OUTBOUND_INDEX].action.type = FWP_ACTION_BLOCK;
+							filter[OUTBOUND_INDEX].weight.type = FWP_UINT8;
+							filter[OUTBOUND_INDEX].weight.uint8 = 15;
+
+							condition[OUTBOUND_INDEX].fieldKey = FWPM_CONDITION_MAC_REMOTE_ADDRESS;
+
+							condition[OUTBOUND_INDEX].matchType = FWP_MATCH_EQUAL;
+							condition[OUTBOUND_INDEX].conditionValue.type = FWP_BYTE_ARRAY6_TYPE;
+							condition[OUTBOUND_INDEX].conditionValue.byteArray6 = macValue;
+
+							filter[OUTBOUND_INDEX].numFilterConditions = 1;
+							filter[OUTBOUND_INDEX].filterCondition = &condition[OUTBOUND_INDEX];
+						}
+
+						
+						NTSTATUS status; 
+						UINT64 INBOUND__filterId = 0;
+						UINT64 OUTBOUND__filterId = 0;
+
+						status = FwpmTransactionBegin(EngineHandle, 0);////////////////////////////////////////////////////////
+						if (!NT_SUCCESS(status))
+						{
+							ExFreePoolWithTag(macValue, 'macF');
+							return status;
+						}
+
+						
+						// INBOUND
+						status = FwpmFilterAdd(EngineHandle, &filter[INBOUND_INDEX], NULL, &INBOUND__filterId);
+						if (!NT_SUCCESS(status) )
+						{
+							ExFreePoolWithTag(macValue, 'macF');
+							FwpmTransactionAbort(EngineHandle);
+							return status;
+						}
+						// OUTBOUND
+						status = FwpmFilterAdd(EngineHandle, &filter[OUTBOUND_INDEX], NULL, &OUTBOUND__filterId);
+						if (!NT_SUCCESS(status) )
+						{
+							ExFreePoolWithTag(macValue, 'macF');
+							FwpmTransactionAbort(EngineHandle);
+							return status;
+						}
+						status = FwpmTransactionCommit(EngineHandle);////////////////////////////////////////////////////////////
+
+						*out_inbound_response_filter_id = INBOUND__filterId;
+						*out_outbound_response_filter_id = OUTBOUND__filterId;
+
+						return status;
+					}
+				}
+				namespace IP
+				{
+					NTSTATUS Add_Response_net_filter_IP(
+						CHAR* in_ip,
+						ULONG64* out_inbound_response_filter_id,
+						ULONG64* out_outbound_response_filter_id
+					)
+					{
+						if (!EngineHandle || !in_ip)
+							return STATUS_INVALID_PARAMETER;
+
+						IN_ADDR target_ip;
+						StringToInAddr(in_ip, &target_ip);
+
+						FWPM_FILTER0 filter[BOUND_SIZE];
+						FWPM_FILTER_CONDITION0 condition[BOUND_SIZE];
+
+						{
+							// INBOUND
+							filter[INBOUND_INDEX].layerKey = FWPM_LAYER_INBOUND_IPPACKET_V4;
+							filter[INBOUND_INDEX].displayData.name = (wchar_t*)L"Block_IP_Filter";
+							filter[INBOUND_INDEX].providerKey = &g_providerKey;
+							filter[INBOUND_INDEX].action.type = FWP_ACTION_BLOCK;
+							filter[INBOUND_INDEX].weight.type = FWP_UINT8;
+							filter[INBOUND_INDEX].weight.uint8 = 15;
+
+							condition[INBOUND_INDEX].fieldKey = FWPM_CONDITION_IP_LOCAL_ADDRESS;
+							condition[INBOUND_INDEX].matchType = FWP_MATCH_EQUAL;
+							condition[INBOUND_INDEX].conditionValue.type = FWP_UINT32;
+							condition[INBOUND_INDEX].conditionValue.uint32 = target_ip.S_un.S_addr;
+
+							filter[INBOUND_INDEX].numFilterConditions = 1;
+							filter[INBOUND_INDEX].filterCondition = &condition[INBOUND_INDEX];
+						}
+						
+						{
+							// OUTBOUND
+							filter[OUTBOUND_INDEX].layerKey = FWPM_LAYER_OUTBOUND_IPPACKET_V4;
+							filter[OUTBOUND_INDEX].displayData.name = (wchar_t*)L"Block_IP_Filter";
+							filter[OUTBOUND_INDEX].providerKey = &g_providerKey;
+							filter[OUTBOUND_INDEX].action.type = FWP_ACTION_BLOCK;
+							filter[OUTBOUND_INDEX].weight.type = FWP_UINT8;
+							filter[OUTBOUND_INDEX].weight.uint8 = 15;
+
+							condition[OUTBOUND_INDEX].fieldKey = FWPM_CONDITION_IP_REMOTE_ADDRESS;
+							condition[OUTBOUND_INDEX].matchType = FWP_MATCH_EQUAL;
+							condition[OUTBOUND_INDEX].conditionValue.type = FWP_UINT32;
+							condition[OUTBOUND_INDEX].conditionValue.uint32 = target_ip.S_un.S_addr;
+
+							filter[OUTBOUND_INDEX].numFilterConditions = 1;
+							filter[OUTBOUND_INDEX].filterCondition = &condition[OUTBOUND_INDEX];
+						}
+						
+
+						NTSTATUS status;
+						UINT64 INBOUND__filterId = 0;
+						UINT64 OUTBOUND__filterId = 0;
+
+						status = FwpmTransactionBegin(EngineHandle, 0);
+						if (!NT_SUCCESS(status))
+							return status;
+
+						status = FwpmFilterAdd(EngineHandle, &filter[INBOUND_INDEX], NULL, &INBOUND__filterId);
+						if (!NT_SUCCESS(status))
+						{
+							FwpmTransactionAbort(EngineHandle);
+							return status;
+						}
+
+						status = FwpmFilterAdd(EngineHandle, &filter[OUTBOUND_INDEX], NULL, &OUTBOUND__filterId);
+						if (!NT_SUCCESS(status))
+						{
+							FwpmTransactionAbort(EngineHandle);
+							return status;
+						}
+
+						status = FwpmTransactionCommit(EngineHandle);
+
+						*out_inbound_response_filter_id = INBOUND__filterId;
+						*out_outbound_response_filter_id = OUTBOUND__filterId;
+
+						return status;
+					}
+				}
+				namespace IPwithPORT
+				{
+					NTSTATUS Add_Response_net_filter_IPwithPORT(
+						CHAR* in_ip,
+						ULONG32 in_port,
+						ULONG64* out_inbound_response_filter_id,
+						ULONG64* out_outbound_response_filter_id
+					)
+					{
+						if (!EngineHandle || !in_ip)
+							return STATUS_INVALID_PARAMETER;
+
+						IN_ADDR target_ip;
+						StringToInAddr(in_ip, &target_ip);
+
+						FWPM_FILTER0 filter[BOUND_SIZE];
+						FWPM_FILTER_CONDITION0 condition[2 * BOUND_SIZE]; // IP + PORT 두 개 조건
+
+						NTSTATUS status;
+						UINT64 INBOUND__filterId = 0;
+						UINT64 OUTBOUND__filterId = 0;
+
+						{
+							// INBOUND
+							filter[INBOUND_INDEX].layerKey = FWPM_LAYER_INBOUND_TRANSPORT_V4;
+							filter[INBOUND_INDEX].displayData.name = (wchar_t*)L"Block_IPPort_Filter";
+							filter[INBOUND_INDEX].providerKey = &g_providerKey;
+							filter[INBOUND_INDEX].action.type = FWP_ACTION_BLOCK;
+							filter[INBOUND_INDEX].weight.type = FWP_UINT8;
+							filter[INBOUND_INDEX].weight.uint8 = 15;
+
+							// IP 조건
+							condition[INBOUND_INDEX * 2].fieldKey = FWPM_CONDITION_IP_LOCAL_ADDRESS;
+							condition[INBOUND_INDEX * 2].matchType = FWP_MATCH_EQUAL;
+							condition[INBOUND_INDEX * 2].conditionValue.type = FWP_UINT32;
+							condition[INBOUND_INDEX * 2].conditionValue.uint32 = target_ip.S_un.S_addr;
+
+							// PORT 조건
+							condition[INBOUND_INDEX * 2 + 1].fieldKey = FWPM_CONDITION_IP_LOCAL_PORT;
+							condition[INBOUND_INDEX * 2 + 1].matchType = FWP_MATCH_EQUAL;
+							condition[INBOUND_INDEX * 2 + 1].conditionValue.type = FWP_UINT16;
+							condition[INBOUND_INDEX * 2 + 1].conditionValue.uint16 = RtlUshortByteSwap((UINT16)in_port);
+
+							filter[INBOUND_INDEX].numFilterConditions = 2;
+							filter[INBOUND_INDEX].filterCondition = &condition[INBOUND_INDEX * 2];
+						}
+
+						{
+							// OUTBOUND
+							filter[OUTBOUND_INDEX].layerKey = FWPM_LAYER_OUTBOUND_TRANSPORT_V4;
+							filter[OUTBOUND_INDEX].displayData.name = (wchar_t*)L"Block_IPPort_Filter";
+							filter[OUTBOUND_INDEX].providerKey = &g_providerKey;
+							filter[OUTBOUND_INDEX].action.type = FWP_ACTION_BLOCK;
+							filter[OUTBOUND_INDEX].weight.type = FWP_UINT8;
+							filter[OUTBOUND_INDEX].weight.uint8 = 15;
+
+							// IP 조건
+							condition[OUTBOUND_INDEX * 2].fieldKey = FWPM_CONDITION_IP_REMOTE_ADDRESS;
+							condition[OUTBOUND_INDEX * 2].matchType = FWP_MATCH_EQUAL;
+							condition[OUTBOUND_INDEX * 2].conditionValue.type = FWP_UINT32;
+							condition[OUTBOUND_INDEX * 2].conditionValue.uint32 = target_ip.S_un.S_addr;
+
+							// PORT 조건
+							condition[OUTBOUND_INDEX * 2 + 1].fieldKey = FWPM_CONDITION_IP_REMOTE_PORT;
+							condition[OUTBOUND_INDEX * 2 + 1].matchType = FWP_MATCH_EQUAL;
+							condition[OUTBOUND_INDEX * 2 + 1].conditionValue.type = FWP_UINT16;
+							condition[OUTBOUND_INDEX * 2 + 1].conditionValue.uint16 = RtlUshortByteSwap((UINT16)in_port);
+
+							filter[OUTBOUND_INDEX].numFilterConditions = 2;
+							filter[OUTBOUND_INDEX].filterCondition = &condition[OUTBOUND_INDEX * 2];
+						}
+						
+
+						// 트랜잭션
+						status = FwpmTransactionBegin(EngineHandle, 0);
+						if (!NT_SUCCESS(status))
+							return status;
+
+						status = FwpmFilterAdd(EngineHandle, &filter[INBOUND_INDEX], NULL, &INBOUND__filterId);
+						if (!NT_SUCCESS(status))
+						{
+							FwpmTransactionAbort(EngineHandle);
+							return status;
+						}
+
+						status = FwpmFilterAdd(EngineHandle, &filter[OUTBOUND_INDEX], NULL, &OUTBOUND__filterId);
+						if (!NT_SUCCESS(status))
+						{
+							FwpmTransactionAbort(EngineHandle);
+							return status;
+						}
+
+						status = FwpmTransactionCommit(EngineHandle);
+
+						*out_inbound_response_filter_id = INBOUND__filterId;
+						*out_outbound_response_filter_id = OUTBOUND__filterId;
+
+						return status;
+					}
+				}
+
+				NTSTATUS Remove_Response_filter(
+					_In_ ULONG64 filterId
+				)
+				{
+					return FwpmFilterDeleteById(EngineHandle, filterId);
+				}
 			}
 		}
 
@@ -444,7 +999,10 @@ namespace EDR
 				FwpmProviderDeleteByKey(EngineHandle, &g_providerKey);
 			}
 
-			// 3. 필터 엔진 핸들 닫기
+			// 3.차단 풀 제거
+			EDR::WFP_Filter::Response::_Cleanup_NetworkResponse();
+
+			// 4. 필터 엔진 핸들 닫기
 			FwpmEngineClose(EngineHandle);
 			EngineHandle = NULL; // 핸들을 NULL로 설정하여 중복 해제 방지
 		}
@@ -731,8 +1289,68 @@ NTSTATUS NDIS_PacketFilter_Register(PDEVICE_OBJECT DeviceObject) {
 			return status;
 		}
 	}
+
+	// 차단등록
+	EDR::WFP_Filter::Response::_NetworkResponse_Initialize();
+
 	DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "패킷필터 등록 완료\n");
 	return status;
+}
+
+
+void MacToString(UCHAR mac[ETHERNET_ADDRESS_LENGTH], CHAR outStr[18]) // 17 + NULL
+{
+	RtlStringCchPrintfA(
+		(NTSTRSAFE_PSTR)outStr,
+		18,
+		"%02X-%02X-%02X-%02X-%02X-%02X",
+		mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]
+	);
+}
+
+NTSTATUS StringToInAddr(
+	_In_ CHAR* strIP,
+	_Out_ IN_ADDR* outAddr
+)
+{
+	if (!strIP || !outAddr)
+		return STATUS_INVALID_PARAMETER;
+
+	PCSTR terminator = NULL;
+	NTSTATUS status = RtlIpv4StringToAddressA(strIP, TRUE, &terminator, outAddr);
+	if (!NT_SUCCESS(status) )  // RtlIpv4StringToAddressA는 LONG 반환
+		return STATUS_INVALID_PARAMETER;
+
+	return STATUS_SUCCESS;
+}
+
+NTSTATUS StringToMac(
+	const CHAR* strMac,   // "00-11-22-33-44-55"
+	UCHAR mac[ETHERNET_ADDRESS_LENGTH]
+)
+{
+	if (!strMac || !mac)
+		return STATUS_INVALID_PARAMETER;
+
+	for (int i = 0; i < ETHERNET_ADDRESS_LENGTH; i++)
+	{
+		ULONG value = 0;
+		NTSTATUS status = RtlCharToInteger(strMac, 16, &value);
+		if (!NT_SUCCESS(status))
+			return status;
+
+		mac[i] = (UCHAR)value;
+
+		// 다음 옥텟으로 이동 ("-" 스킵)
+		strMac += 2;
+		if (i < ETHERNET_ADDRESS_LENGTH - 1)
+		{
+			if (*strMac != '-')
+				return STATUS_INVALID_PARAMETER;
+			strMac++;
+		}
+	}
+	return STATUS_SUCCESS;
 }
 
 

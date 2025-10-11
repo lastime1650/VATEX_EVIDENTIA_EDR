@@ -7,6 +7,81 @@ namespace EDR
 	{
 		namespace File
 		{
+            namespace Remove
+            {
+                // File 삭제.
+
+                /*
+                    [ 로직 흐름 ]
+                    // 1. 파일을 연다
+                    // 2. 0x00으로 싹다 덮어쓴다.
+                    // 3. 삭제. (DeleteFile)
+                */
+                NTSTATUS RemoveFile(_In_ PUNICODE_STRING FilePath)
+                {
+                    NTSTATUS status = STATUS_UNSUCCESSFUL;
+                    HANDLE fileHandle = NULL;
+                    OBJECT_ATTRIBUTES objAttr;
+                    IO_STATUS_BLOCK ioStatus = { 0 };
+                    FILE_STANDARD_INFORMATION fileInfo = { 0 };
+
+                    // 열기
+                    InitializeObjectAttributes(&objAttr,
+                        FilePath,
+                        OBJ_CASE_INSENSITIVE | OBJ_KERNEL_HANDLE,
+                        NULL,
+                        NULL);
+
+                    status = ZwOpenFile(&fileHandle,
+                        GENERIC_READ | GENERIC_WRITE | DELETE,
+                        &objAttr,
+                        &ioStatus,
+                        FILE_SHARE_READ | FILE_SHARE_WRITE,
+                        FILE_SYNCHRONOUS_IO_NONALERT);
+                    if (!NT_SUCCESS(status))
+                        return status;
+
+                    // 크기 확인
+                    status = ZwQueryInformationFile(
+                        fileHandle,
+                        &ioStatus,
+                        &fileInfo,
+                        sizeof(fileInfo),
+                        FileStandardInformation
+                    );
+                    ULONG64 get_fileSize = fileInfo.EndOfFile.QuadPart;
+
+                    // 0x00 으로 덮어쓰기
+                    if (get_fileSize)
+                    {
+                        UCHAR zeroBuf[FILE_REMOVE_CHUNK_SIZE];
+                        RtlZeroMemory(zeroBuf, FILE_REMOVE_CHUNK_SIZE); // 0x00
+
+                        LARGE_INTEGER offset;
+                        for (offset.QuadPart = 0; offset.QuadPart < get_fileSize; offset.QuadPart += FILE_REMOVE_CHUNK_SIZE) {
+                            ULONG toWrite = (ULONG)min(FILE_REMOVE_CHUNK_SIZE, fileInfo.EndOfFile.QuadPart - (ULONG64)offset.QuadPart);
+                            status = ZwWriteFile(fileHandle, NULL, NULL, NULL, &ioStatus, zeroBuf, toWrite, &offset, NULL);
+                            if (!NT_SUCCESS(status)) break;
+                        }
+                    }
+
+                    // 삭제 조치
+                    FILE_DISPOSITION_INFORMATION dispInfo = { TRUE };
+                    status = ZwSetInformationFile(
+                        fileHandle,
+                        &ioStatus,
+                        &dispInfo,
+                        sizeof(dispInfo),
+                        FileDispositionInformation
+                    );
+
+
+                    ZwClose(fileHandle);
+                    return status;
+
+                }
+            }
+
 			namespace Read
 			{
 

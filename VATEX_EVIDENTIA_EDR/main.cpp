@@ -8,7 +8,7 @@
 #include "MiniFilter.hpp"
 #include "Registry.hpp"
 #include "ObRegisterCallback.hpp"
-#include "Response.hpp"
+//#include "Response.hpp"
 
 #include "DLP.hpp"
 
@@ -26,7 +26,7 @@ extern "C" NTSTATUS DriverEntry(PDRIVER_OBJECT driverobject, PUNICODE_STRING reg
 	// 1. LogSender
 	EDR::LogSender::INITIALIZE();
 	// 2. Response
-	EDR::Response::HashTable::Initialize();
+	//EDR::Response::HashTable::Initialize();
 	// 3. Dlp
 	status = DLP::DLP_INITIALIZE();
 	if (!NT_SUCCESS(status))
