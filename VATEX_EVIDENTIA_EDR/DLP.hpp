@@ -108,7 +108,7 @@ namespace DLP
 	{
 		// Step 1
 		BOOLEAN Make_DLP_INFO(
-			_Out_ DLP::resource::PDLP_Info* Out_DLP_Info,
+			DLP::resource::PDLP_Info* Out_DLP_Info,
 
 			ULONG64 ProtectFile_FRN,
 			ULONG64 FileSize,

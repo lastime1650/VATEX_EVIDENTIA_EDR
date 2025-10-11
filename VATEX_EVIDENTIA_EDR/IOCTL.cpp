@@ -230,9 +230,7 @@ namespace EDR
 							))
 							{
 								// EXE 프로세스 파일 삭제조치
-								parameter->output.status = EDR::Util::File::Remove::RemoveFile(
-									&file_path_w
-								);
+								parameter->output.status = NT_SUCCESS( EDR::Util::File::Remove::RemoveFile(&file_path_w) );
 
 								EDR::Util::String::Ansi2Unicode::Release_ANSI_to_UnicodeString(&file_path_w);
 							}

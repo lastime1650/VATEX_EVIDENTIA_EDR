@@ -58,7 +58,7 @@ namespace EDR
                         RtlZeroMemory(zeroBuf, FILE_REMOVE_CHUNK_SIZE); // 0x00
 
                         LARGE_INTEGER offset;
-                        for (offset.QuadPart = 0; offset.QuadPart < get_fileSize; offset.QuadPart += FILE_REMOVE_CHUNK_SIZE) {
+                        for (offset.QuadPart = 0; (ULONG64)offset.QuadPart < get_fileSize; offset.QuadPart += FILE_REMOVE_CHUNK_SIZE) {
                             ULONG toWrite = (ULONG)min(FILE_REMOVE_CHUNK_SIZE, fileInfo.EndOfFile.QuadPart - (ULONG64)offset.QuadPart);
                             status = ZwWriteFile(fileHandle, NULL, NULL, NULL, &ioStatus, zeroBuf, toWrite, &offset, NULL);
                             if (!NT_SUCCESS(status)) break;
