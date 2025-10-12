@@ -20,18 +20,24 @@ namespace Solution
                     unsigned int API_ServerPORT = 51034
                 ) : API_ServerIP(API_ServerIP), API_ServerPORT(API_ServerPORT), APIClient(API_ServerIP, API_ServerPORT)
                 {
-                    
+                    std::cout << "[Intellina]{Notice} Intellina created" << std::endl;
                 }
-                ~Intellina() = default;
+                ~Intellina(){ std::cout << "[Intellina]{Notice} ~Intellina called" << std::endl; };
                 
                 bool ConnectionCheck()
                 {
+                    std::cout << "[Intellina]{Notice} ConnectionCheck() called" << std::endl;
+
                     std::string URL("/status");
                     auto res = APIClient.Get(
                         URL
                     );
                     if(!res || res->status != 200)
+                    {
+                        std::cout << "[Intellina]{Notice} ConnectionCheck() -> APIClient.Get('/status') Failed || res->status = " << res->status << std::endl;
                         return false;
+                    }
+                        
                     
                     // 응답 body 검사
                     try {

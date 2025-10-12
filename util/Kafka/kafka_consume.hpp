@@ -91,7 +91,7 @@ namespace EDR
                                     std::string message = msg.get_payload();
                                     unsigned long long offset = msg.get_offset();
                                     
-                                    std::cout << "[MESSAGE]: " << message << std::endl;
+                                    //std::cout << "[MESSAGE]: " << message << std::endl;
 
                                     json tojson_message;
                                     try{
@@ -99,7 +99,8 @@ namespace EDR
                                     }
                                     catch (json::parse_error &e)
                                     {
-                                        std::cerr << "[Kafka] Json parse failed: " << e.what() << std::endl;
+                                        std::cout << message << std::endl;
+                                        std::cout << "[Kafka] Json parse failed: " << e.what() << std::endl;
                                         continue;
                                     }
 

@@ -2,6 +2,7 @@
 #define ProcessTree_HPP
 
 #include "../../../util/util.hpp"
+#include "../Solution/_Manager/Manager.hpp" // Solution logics
 
 namespace EDR
 {
@@ -15,7 +16,7 @@ namespace EDR
                 class Event
                 {
                     public:
-                        Event(json event) : jsonEvent(event)
+                        Event(json event, Solution::Intelligence::Intellina& Intelligence) : jsonEvent(event), Intelligence(Intelligence)
                         {
                             // 이벤트 공통 필드 저장
                             this->AGENT_ID = jsonEvent["header"]["agentid"].get<std::string>();
@@ -32,9 +33,49 @@ namespace EDR
                         json get_header(){ return jsonEvent["header"]; }
                         json get_body(){ return jsonEvent["body"]; }
 
-                        //virtual bool send_to_intelligence() = 0;
 
+                        virtual void send_to_intelligence() = 0;
 
+                        bool append_intelligence(json& input_result)
+                        {
+                            if( !input_result.size() )
+                                return false;
+
+                            for (auto& [key, value] : input_result.items())
+                            {
+                                intelligence_response[key] = value;
+                            }
+
+                            return true;
+                        }
+                        bool output_intelligence(json& output)
+                        {
+                            /*
+                                {
+                                    "post": [ 
+                                        {
+                                            "intelligence module name A" : { ... }
+                                        },
+                                        {
+                                            "intelligence module name B" : { ... }
+                                        },,,
+                                    ]
+                                }
+                            */
+                            if(!intelligence_response.size())
+                                return false;
+                            
+                            output["post"] = json::array();
+                            for( auto& result : intelligence_response )
+                                output["post"].push_back(
+                                    {
+                                        { result.first, result.second }
+                                    }
+                                );
+
+                            return true;
+                        }
+                        
 
                         std::string AGENT_ID;
                         bool is_alive = true; // 노드 만료여부 
@@ -52,6 +93,11 @@ namespace EDR
                             std::string Platform;
                             std::string Version;
                         }os;
+                        
+
+
+                        Solution::Intelligence::Intellina& Intelligence;
+                        std::map<std::string, json> intelligence_response;
 
                     protected:
                         json jsonEvent;
@@ -63,45 +109,85 @@ namespace EDR
                 class ProcessCreateEvent : public Event
                 {
                     public:
-                        ProcessCreateEvent(json event) : Event(event) 
+                        ProcessCreateEvent(json event, Solution::Intelligence::Intellina& Intelligence) : Event(event, Intelligence) 
                         {
                             exe_path = event["body"]["process"]["exe_path"].get<std::string>();
-                            exe_size = event["body"]["process"]["exe_size"].get<std::string>();
+                            exe_size = event["body"]["process"]["exe_size"].get<unsigned long long>();
                             exe_sha256 = event["body"]["process"]["exe_sha256"].get<std::string>();
                             commandline = event["body"]["process"]["commandline"].get<std::string>();
 
                             ppid = event["body"]["process"]["ppid"].get<unsigned long long>();
                             parent_exe_path = event["body"]["process"]["parent_exe_path"].get<std::string>();
-                            parent_exe_size = event["body"]["process"]["parent_exe_size"].get<std::string>();
+                            parent_exe_size = event["body"]["process"]["parent_exe_size"].get<unsigned long long>();
                             parent_exe_sha256 = event["body"]["process"]["parent_exe_sha256"].get<std::string>();
 
+                            // User info
+                            SID = event["body"]["user"]["sid"].get<std::string>();
+                            Username = event["body"]["user"]["username"].get<std::string>();
+                            
                         }
 
                         std::string exe_path;
-                        std::string exe_size;
+                        unsigned long long exe_size;
                         std::string exe_sha256;
                         std::string commandline;
 
                         unsigned long long ppid;
                         std::string parent_exe_path;
-                        std::string parent_exe_size;
+                        unsigned long long parent_exe_size;
                         std::string parent_exe_sha256;
+
+                        std::string SID;
+                        std::string Username;
+                        
+
+                        void send_to_intelligence() override
+                        {
+                            if( exe_sha256.length() )
+                            {
+                                json output = json::object();
+                                // sha256
+                                if( Intelligence.Query_file_sha256(
+                                    exe_sha256,
+                                    output
+                                ) )
+                                    append_intelligence(output);
+                            }
+
+                            if( parent_exe_sha256.length() )
+                            {
+                                json output = json::object();
+                                // sha256
+                                if( Intelligence.Query_file_sha256(
+                                    parent_exe_sha256,
+                                    output
+                                ) )
+                                    append_intelligence(output);
+                                
+                            }
+
+                        }
+                        
                 };
                 class ProcessTerminateEvent : public Event
                 {
                     public:
-                        ProcessTerminateEvent(json event) : Event(event)
+                        ProcessTerminateEvent(json event, Solution::Intelligence::Intellina& Intelligence) : Event(event, Intelligence) 
                         {
                             ppid = event["body"]["process"]["ppid"].get<unsigned long long>();
                         }
 
-                    private:
-                        unsigned long long ppid;
+                        void send_to_intelligence()
+                        {
+                            throw std::runtime_error("ProcessTerminateEvent has no Intelligence override");
+                        }
+                        
+                    unsigned long long ppid;
                 };
                 class FileSystemEvent : public Event
                 {
                     public:
-                        FileSystemEvent(json event) : Event(event)
+                        FileSystemEvent(json event, Solution::Intelligence::Intellina& Intelligence) : Event(event, Intelligence) 
                         {
                             action = event["body"]["filesystem"]["action"].get<std::string>();
                             filepath = event["body"]["filesystem"]["filepath"].get<std::string>();
@@ -109,7 +195,21 @@ namespace EDR
                             filesha256 = event["body"]["filesystem"]["filesha256"].get<std::string>();
                         }
 
-                    private:
+                        void send_to_intelligence() override
+                        {
+                            if( filesha256.length() >= 64 )
+                            {
+                                json output = json::object();
+                                // sha256
+                                if( Intelligence.Query_file_sha256(
+                                    filesha256,
+                                    output
+                                ) )
+                                    append_intelligence(output);
+                            }
+
+                        }
+
                         std::string action;
                         
                         std::string filepath;
@@ -119,7 +219,7 @@ namespace EDR
                 class NetworkEvent : public Event
                 {
                     public:
-                        NetworkEvent(json event) : Event(event) 
+                        NetworkEvent(json event, Solution::Intelligence::Intellina& Intelligence) : Event(event, Intelligence) 
                         {
                             interface_index = event["body"]["network"]["interface_index"].get<unsigned int>();
                             protocol = event["body"]["network"]["protocol"].get<std::string>();
@@ -135,6 +235,65 @@ namespace EDR
                             network_sessionid = event["body"]["network"]["session"]["sessionid"].get<std::string>();
                             network_first_seen = event["body"]["network"]["session"]["first_seen"].get<unsigned long long>();
                             network_last_seen = event["body"]["network"]["session"]["last_seen"].get<unsigned long long>();
+                        }
+
+                        void send_to_intelligence() override
+                        {
+                            /*
+                                Source
+                            */
+                            if(sourceip.length())
+                            {
+                                // body/network/sourceip ip조회
+                                json output;
+                                // Only ip
+                                if( Intelligence.Query_network_only_ipv4(
+                                    sourceip,
+                                    output
+                                ) )
+                                    append_intelligence(output);
+                                
+                                if(sourceport)
+                                {
+                                    // ip with port
+                                    if( Intelligence.Query_network_ipv4_and_port(
+                                        sourceip,
+                                        sourceport,
+                                        output
+                                    ) )
+                                        append_intelligence(output);
+                                }
+                                
+                            }
+
+                             /*
+                                Destination
+                            */
+                            if(destinationip.length())
+                            {
+                                // body/network/destinationip ip조회
+                                json output;
+
+                                // Only ip
+                                if( Intelligence.Query_network_only_ipv4(
+                                    destinationip,
+                                    output
+                                ) )
+                                    append_intelligence(output);
+
+                                if(destinationport)
+                                {
+                                    // ip with port
+                                    if( Intelligence.Query_network_ipv4_and_port(
+                                        destinationip,
+                                        destinationport,
+                                        output
+                                    ) )
+                                        append_intelligence(output);
+                                }
+
+                            }
+
                         }
 
                     private:
@@ -155,7 +314,7 @@ namespace EDR
                 class API_Call_Event : public Event
                 {
                     public:
-                        API_Call_Event(json event) : Event(event)
+                        API_Call_Event(json event, Solution::Intelligence::Intellina& Intelligence) : Event(event, Intelligence) 
                         {
                             APIName = event["body"]["apicall"]["function"].get<std::string>();
 
@@ -169,7 +328,11 @@ namespace EDR
                                 ReturnValue = event["body"]["apicall"]["return"].get<std::string>();
                             }
                         }
+                        void send_to_intelligence() override
+                        {
+                            throw std::runtime_error("API CALL has no intelligence");
 
+                        }
                     private:
                         std::string APIName;
                         std::vector< std::string > Args;
@@ -181,31 +344,46 @@ namespace EDR
                     class ImageLoadEvent : public Event
                     {
                         public:
-                            ImageLoadEvent(json event) : Event(event)
+                            ImageLoadEvent(json event, Solution::Intelligence::Intellina& Intelligence) : Event(event, Intelligence) 
                             {
-                                action = event["body"]["imageload"]["action"].get<std::string>();
                                 filepath = event["body"]["imageload"]["filepath"].get<std::string>();
-                                filesize = event["body"]["imageload"]["filesize"].get<std::string>();
+                                filesize = event["body"]["imageload"]["filesize"].get<unsigned long long>();
                                 filesha256 = event["body"]["imageload"]["filesha256"].get<std::string>();
                             }
+                            void send_to_intelligence() override
+                            {
+                                if( filesha256.length() >= 64 )
+                                {
+                                    json output = json::object();
+                                    // sha256
+                                    if( Intelligence.Query_file_sha256(
+                                        filesha256,
+                                        output
+                                    ) )
+                                        append_intelligence(output);
+                                }
 
+                            }
                         private:
-                            std::string action;
-                            
                             std::string filepath;
-                            std::string filesize;
+                            unsigned long long filesize;
                             std::string filesha256;
                     };
 
                     class ProcessAccessEvent : public Event
                     {
                         public:
-                            ProcessAccessEvent(json event) : Event(event)
+                            ProcessAccessEvent(json event, Solution::Intelligence::Intellina& Intelligence) : Event(event, Intelligence) 
                             {
                                 handletype = event["body"]["processaccess"]["handletype"].get<std::string>();
                                 filepath = event["body"]["processaccess"]["filepath"].get<std::string>();
                                 target_pid = event["body"]["processaccess"]["target_pid"].get<unsigned long long>();
                                 desiredaccesses = event["body"]["processaccess"]["desiredaccesses"].get<std::vector<std::string>>();
+                            }
+                            void send_to_intelligence() override
+                            {
+                                throw std::runtime_error("ProcessAccessEvent has no intelligence");
+
                             }
 
                         private:
@@ -219,7 +397,7 @@ namespace EDR
                     class RegistryEvent : public Event
                     {
                         public:
-                            RegistryEvent(json event) : Event(event)
+                            RegistryEvent(json event, Solution::Intelligence::Intellina& Intelligence) : Event(event, Intelligence) 
                             {
                                 KeyClass = event["body"]["registry"]["keyclass"].get<std::string>();
                                 Object_Complete_Name = event["body"]["registry"]["name"].get<std::string>();
@@ -230,6 +408,11 @@ namespace EDR
                                     newold.OldName = event["body"]["registry"]["newold"]["oldname"];
                                     newold.NewName = event["body"]["registry"]["newold"]["newname"];
                                 }
+                            }
+                            void send_to_intelligence() override
+                            {
+                                throw std::runtime_error("RegistryEvent has no intelligence");
+
                             }
 
                         private:

@@ -31,10 +31,10 @@ namespace EDR
                     std::string VATEX_INTELLINA_API_ServerIp,
                     unsigned int VATEX_INTELLINA_API_ServerPort = 51034
                 ) 
-                : //IntelligenceManager(VATEX_INTELLINA_API_ServerIp, VATEX_INTELLINA_API_ServerPort),
-                //BehaviorManager( KafkaBroker, Kafkagroup_id, Kafkatopic ),
-                AgentTCPManager(EDR_AgentTCPServerIp, EDR_AgentTCPServerPort)
-                //PolicyManager(Mitre_Attack_rule_dir_path, Scenario_rule_dir_path)
+                : IntelligenceManager(VATEX_INTELLINA_API_ServerIp, VATEX_INTELLINA_API_ServerPort),
+                BehaviorManager( KafkaBroker, Kafkagroup_id, Kafkatopic ),
+                AgentTCPManager(EDR_AgentTCPServerIp, EDR_AgentTCPServerPort),
+                PolicyManager(Mitre_Attack_rule_dir_path, Scenario_rule_dir_path)
                 {
                     
                 }   
@@ -55,8 +55,8 @@ namespace EDR
                         return false;
 
                     // Step 2. [에이전트 Kakfa기반 로그 관리 및 정책처리 ] Tree Behavior 수집 인스턴스 생성
-                    //if( !BehaviorManager.Run( PolicyManager, AgentTCPManager, IntelligenceManager ) )
-                    //    return false;
+                    if( !BehaviorManager.Run( PolicyManager, AgentTCPManager, IntelligenceManager ) )
+                        return false;
                    
 
                     
@@ -91,16 +91,16 @@ namespace EDR
                 
 
                 // 프로세스 행위 트리 추적 매니저
-                //EDR::Server::ProcessBehavior::ProcessBehaviorLogManager BehaviorManager;
+                EDR::Server::ProcessBehavior::ProcessBehaviorLogManager BehaviorManager;
 
                 // 에이전트 TCP
                 EDR::Server::AgentTcpManagement::AgentTcp AgentTCPManager;
 
                 // 탐지 정책
-                //Solution::Policy::EDRPolicy PolicyManager;
+                Solution::Policy::EDRPolicy PolicyManager;
 
                 // VATEX INTELLINA INTELLIGENCE API 호출 인스턴스
-                //Solution::Intelligence::Intellina IntelligenceManager;
+                Solution::Intelligence::Intellina IntelligenceManager;
                 
         };
 

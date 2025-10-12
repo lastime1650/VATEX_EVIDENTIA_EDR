@@ -36,10 +36,9 @@ namespace EDR
 				TcpServer(const std::string Serverip, int Serverport) : Serverip(Serverip), Serverport(Serverport){}
 				~TcpServer(){ Close_Server(); }
 
-                using ClientHandler = std::function<void(int)>;  // 클라이언트 연결 시, 호출되는 콜백함수 인자: int -> clientfd
+                using ClientHandler = std::function<void(int, std::string, int)>;  // 클라이언트 연결 시, 호출되는 콜백함수 인자: int -> clientfd
 				bool OpenServer(ClientHandler handler)
                 {
-                    std::cout << "OpenServer" << std::endl;
                     // Tcp 소켓 Open
                     serverfd = socket(AF_INET, SOCK_STREAM, 0);
                     if (serverfd == -1) {
@@ -94,7 +93,7 @@ namespace EDR
                                 /*
                                     clientfd 송수신 및 fd관리는 이제 callback() 스레드에서 처리해야한다
                                 */
-                                callback(clientfd);
+                                callback(clientfd, inet_ntoa(client_addr.sin_addr), htons(client_addr.sin_port));
                                 
                             }
                         }
@@ -142,8 +141,7 @@ namespace EDR
                         4바이트 고정 길이(다음 올 실제데이터 길이)를 먼저 전송하고,
                         실제 데이터를 전달
                     */
-                    uint32_t dataSize = static_cast<uint32_t>(inputdata.size());
-                    uint32_t netDataSize = htonl(dataSize);  // 네트워크 바이트 오더로 변환
+                    uint32_t netDataSize = static_cast<uint32_t>(inputdata.size());
 
                     // 1. 데이터 길이(4바이트) 전송
                     ssize_t sent = send(clientfd, &netDataSize, sizeof(netDataSize), 0);
@@ -154,8 +152,8 @@ namespace EDR
 
                     // 2. 실제 데이터 전송
                     size_t totalSent = 0;
-                    while (totalSent < dataSize) {
-                        ssize_t n = send(clientfd, inputdata.data() + totalSent, dataSize - totalSent, 0);
+                    while (totalSent < netDataSize) {
+                        ssize_t n = send(clientfd, inputdata.data() + totalSent, netDataSize - totalSent, 0);
                         if (n <= 0) {
                             perror("send data");
                             return false;
@@ -173,12 +171,12 @@ namespace EDR
                         return false;
                     }
 
-                    uint32_t dataSize = ntohl(netDataSize); // 네트워크 바이트 오더 → 호스트 바이트 오더
+                    // netDataSize 이 값은 "리틀 엔디언"
 
-                    outbuffer.resize(dataSize);
+                    outbuffer.resize(netDataSize);
                     size_t totalReceived = 0;
-                    while (totalReceived < dataSize) {
-                        ssize_t n = recv(clientfd, outbuffer.data() + totalReceived, dataSize - totalReceived, 0);
+                    while (totalReceived < netDataSize) {
+                        ssize_t n = recv(clientfd, outbuffer.data() + totalReceived, netDataSize - totalReceived, 0);
                         if (n <= 0) {
                             perror("recv data");
                             return false;

@@ -23,30 +23,40 @@ namespace EDR
                         std::string KafkaBroker,
                         std::string Kafkagroup_id,
                         std::string Kafkatopic
-                    ) : KafkaConsumer( KafkaBroker, Kafkagroup_id, Kafkatopic ){}
+                    ) : KafkaConsumer( KafkaBroker, Kafkagroup_id, Kafkatopic ){
+                        std::cout << "[ProcessBehaviorLogManager]{Notice} created" << std::endl;
+                    }
 
-                    ~ProcessBehaviorLogManager(){ Stop(); }
+                    ~ProcessBehaviorLogManager(){ std::cout << "[ProcessBehaviorLogManager]{Notice} ~ProcessBehaviorLogManager() called " << std::endl; Stop(); }
 
                     bool Run( Solution::Policy::EDRPolicy& EDRPolicyManager, EDR::Server::AgentTcpManagement::AgentTcp& AgentTCPManager, Solution::Intelligence::Intellina& IntelligenceManager )
                     {
                         is_working = true;
+                        std::cout << "[ProcessBehaviorLogManager]{Notice} ProcessBehaviorLogManager.Run() called" << std::endl;
 
 
                         // Kafka 컨슈밍 스레드 생성
                         // Kafka Consuming Run
                         if(!KafkaConsumer.Run())
+                        {
+                            std::cout << "[ProcessBehaviorLogManager]{Failed} KafkaConsumer.Run() Failed" << std::endl;
                             return false;
+                        }
+                            
 
 
 
                         kafka_consuming_agent_log_thread = std::thread(
                             [this, &EDRPolicyManager, &AgentTCPManager, &IntelligenceManager]()
                             {
+                                std::cout << "[ProcessBehaviorLogManager]{Notice} kafka_consuming_agent_log_thread Running" << std::endl;
                                 while(this->is_working)
                                 {
                                     auto message = this->KafkaConsumer.get_message_from_queue();
 
-
+                                    //std::cout << "offest: " << message.offset << "message: " << message.message.dump() << std::endl;
+                                    //std::cout << " ----- " << std::endl;
+                                    
                                     /*
                                         이벤트 별 전용 클래스(자식) 할당
 
@@ -54,72 +64,12 @@ namespace EDR
 
 s
                                     */
-                                   std::cout << message.original_message << std::endl;
+                                   
 
                                     std::shared_ptr< EDR::Server::Util::ProcessEvent::Event > ev = nullptr; // 부모 
                                     if( message.message["body"].contains("network") )
                                     {
-                                        ev = std::make_shared< EDR::Server::Util::ProcessEvent::NetworkEvent >(message.message);
-
-                                        /*
-                                        
-                                            << == Intelligence == >>
-
-                                        */
-                                        {
-                                            // Source
-                                            if(message.message["body"]["network"].contains("sourceip"))
-                                            {
-                                                // body/network/sourceip ip조회
-                                                json output;
-
-                                                // Only ip
-                                                if( IntelligenceManager.Query_network_only_ipv4(
-                                                    message.message["body"]["network"]["sourceip"].get<std::string>(),
-                                                    output
-                                                ) )
-                                                    message.message["post"]["query_network_source_only_ipv4"] = output;
-                                                
-                                                if(message.message["body"]["network"].contains("sourceip"))
-                                                {
-                                                    // ip with port
-                                                    if( IntelligenceManager.Query_network_ipv4_and_port(
-                                                        message.message["body"]["network"]["sourceip"].get<std::string>(),
-                                                        message.message["body"]["network"]["sourceport"].get<unsigned long long>(),
-                                                        output
-                                                    ) )
-                                                        message.message["post"]["query_network_source_ipv4_and_port"] = output;
-                                                }
-                                                
-                                            }
-
-                                            // Destination
-                                            if(message.message["body"]["network"].contains("destinationip"))
-                                            {
-                                                // body/network/destinationip ip조회
-                                                json output;
-
-                                                // Only ip
-                                                if( IntelligenceManager.Query_network_only_ipv4(
-                                                    message.message["body"]["network"]["destinationip"].get<std::string>(),
-                                                    output
-                                                ) )
-                                                    message.message["post"]["query_network_dest_only_ipv4"] = output;
-
-                                                if(message.message["body"]["network"].contains("destinationip"))
-                                                {
-                                                    // ip with port
-                                                    if( IntelligenceManager.Query_network_ipv4_and_port(
-                                                        message.message["body"]["network"]["destinationip"].get<std::string>(),
-                                                        message.message["body"]["network"]["destinationport"].get<unsigned long long>(),
-                                                        output
-                                                    ) )
-                                                        message.message["post"]["query_network_dest_ipv4_and_port"] = output;
-                                                }
-
-                                            }
-                                        }
-                                        
+                                        ev = std::make_shared< EDR::Server::Util::ProcessEvent::NetworkEvent >(message.message, IntelligenceManager);
                                         
                                     }
                                     else if ( message.message["body"].contains("process") )
@@ -129,30 +79,7 @@ s
                                             /*
                                                 프로세스 생성
                                             */
-                                            ev = std::make_shared< EDR::Server::Util::ProcessEvent::ProcessCreateEvent >(message.message);
-
-                                            {
-
-                                                /*
-                                        
-                                                    << == Intelligence == >>
-
-                                                */
-                                                json output;
-                                                // sha256
-                                                if( IntelligenceManager.Query_file_sha256(
-                                                    message.message["body"]["process"]["exe_sha256"].get<std::string>(),
-                                                    output
-                                                ) )
-                                                    message.message["post"]["query_file_self_sha256"] = output;
-
-
-                                                if( IntelligenceManager.Query_file_sha256(
-                                                    message.message["body"]["process"]["parent_exe_sha256"].get<std::string>(),
-                                                    output
-                                                ) )
-                                                    message.message["post"]["query_file_parent_sha256"] = output;
-                                            }
+                                            ev = std::make_shared< EDR::Server::Util::ProcessEvent::ProcessCreateEvent >(message.message, IntelligenceManager);
 
                                         }
                                         else if ( message.message["body"]["process"]["action"].get<std::string>() == "remove" )
@@ -160,24 +87,17 @@ s
                                             /*
                                                 프로세스 종료
                                             */
-                                            ev = std::make_shared< EDR::Server::Util::ProcessEvent::ProcessTerminateEvent >(message.message);
+                                            ev = std::make_shared< EDR::Server::Util::ProcessEvent::ProcessTerminateEvent >(message.message, IntelligenceManager);
                                         }
                                     }
                                     else if ( message.message["body"].contains("filesystem") )
                                     {
-                                        ev = std::make_shared< EDR::Server::Util::ProcessEvent::FileSystemEvent >(message.message);
-
-                                        {
-                                            /*
-                                        
-                                                << == Intelligence == >>
-
-                                            */
-                                        }
+                                        ev = std::make_shared< EDR::Server::Util::ProcessEvent::FileSystemEvent >(message.message, IntelligenceManager);
                                     }
                                     else if (message.message["body"].contains("apicall") )
                                     {
-                                        ev = std::make_shared< EDR::Server::Util::ProcessEvent::API_Call_Event >(message.message);
+                                        //std::cout << message.original_message << std::endl;
+                                        ev = std::make_shared< EDR::Server::Util::ProcessEvent::API_Call_Event >(message.message, IntelligenceManager);
                                     }
 
                                     /*
@@ -185,15 +105,16 @@ s
                                     */
                                     else if ( message.message["body"].contains("imageload") )
                                     {
-                                        ev = std::make_shared< EDR::Server::Util::ProcessEvent::windows::ImageLoadEvent >(message.message);
+                                        //std::cout << "offest: " << message.offset << "message: " << message.message.dump() << std::endl;
+                                        ev = std::make_shared< EDR::Server::Util::ProcessEvent::windows::ImageLoadEvent >(message.message, IntelligenceManager);
                                     }
                                     else if ( message.message["body"].contains("processaccess") )
                                     {
-                                        ev = std::make_shared< EDR::Server::Util::ProcessEvent::windows::ProcessAccessEvent >(message.message);
+                                        ev = std::make_shared< EDR::Server::Util::ProcessEvent::windows::ProcessAccessEvent >(message.message, IntelligenceManager);
                                     }
                                     else if (message.message["body"].contains("registry"))
                                     {
-                                        ev = std::make_shared< EDR::Server::Util::ProcessEvent::windows::RegistryEvent >(message.message); 
+                                        ev = std::make_shared< EDR::Server::Util::ProcessEvent::windows::RegistryEvent >(message.message, IntelligenceManager);
                                     }
                                     /*
                                         Linux
@@ -202,34 +123,51 @@ s
                                     
                                     if(ev)
                                     {
-                                        // Step1. 인텔리전스 + MITRE_ATTACK Mapping 매핑작업
-                                        // Step2. Node 추가
+                                        // Step1. Node 추가
                                         EDR::Server::Util::node::ProcessTreeNode* Mynode = nullptr;
                                         this->TreeManager.add_process_node(ev, Mynode);
                                         
                                         if(Mynode)
                                         {
                                             // 노드가 유효할 때, 후속 작업
-
+                                            
+                                            // Step2. 인텔리전스 + MITRE_ATTACK Mapping 매핑작업
+                                            /* ... */
+                                            
                                             // Step3. event 개수 측정 
                                         }
                                     }
                                         
                                 }
+                                std::cout << "[ProcessBehaviorLogManager]{Notice} kafka_consuming_agent_log_thread Stopped" << std::endl;
                             }
                         );
+                        std::cout << "[ProcessBehaviorLogManager]{Notice} Running" << std::endl;
+                        return true;
                     }
                     bool Stop()
                     {
                         {
+                            std::cout << "[ProcessBehaviorLogManager]{Notice} ProcessBehaviorLogManager.Stop() called" << std::endl;
+
                             if(!is_working)
+                            {
+                                std::cout << "[ProcessBehaviorLogManager]{Failed} Stopping -> is_working !" << std::endl;
                                 return false;
+                            }
+                                
 
                             if(!KafkaConsumer.Stop())
+                            {
+                                std::cout << "[ProcessBehaviorLogManager]{Failed} Stopping -> KafkaConsumer.Stop() Failed !" << std::endl;
                                 return false;
-
+                            }
+                                
+                            std::cout << "[ProcessBehaviorLogManager]{Notice} Stopping -> kafka_consuming_agent_log_thread joinable() waiting !" << std::endl;
                             if(kafka_consuming_agent_log_thread.joinable())
                                 kafka_consuming_agent_log_thread.join();
+
+                            std::cout << "[ProcessBehaviorLogManager]{Notice} Stopped" << std::endl;
                         }
                         
                         
