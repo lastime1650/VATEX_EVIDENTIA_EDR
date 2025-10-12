@@ -174,7 +174,7 @@ namespace EDR
                     {
                         if (CompletionContext)
                         {
-                            debug_break();
+                            //debug_break();
 
                             EDR::EventLog::Enum::FileSystem::Filesystem_enum Action;
                             switch (Data->IoStatus.Information)

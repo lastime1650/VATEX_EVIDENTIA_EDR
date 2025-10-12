@@ -43,10 +43,12 @@ namespace EDR
 			{
 				unsigned int totalSent = 0;
 				unsigned int dataSize = static_cast<int>(data.size());
+				std::cout << "dataSend... dataSize:" << dataSize << std::endl;
 
 				// 1. 길이값 전송 ( 고정 4바이트 )
 				int sent = send(sock, reinterpret_cast<const char*>(  & dataSize ), sizeof(dataSize), 0);
 				if (sent == SOCKET_ERROR) {
+					std::cout << "TcpManager::Send [1/2] length send failed" << std::endl;
 					return false;
 				}
 
@@ -54,6 +56,7 @@ namespace EDR
 				while (totalSent < dataSize) {
 					sent = send(sock, reinterpret_cast<const char*>(data.data() + totalSent), dataSize - totalSent, 0);
 					if (sent == SOCKET_ERROR) {
+						std::cout << "TcpManager::Send [2/2] data send failed" << std::endl;
 						return false;
 					}
 					totalSent += sent;

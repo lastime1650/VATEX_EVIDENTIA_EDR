@@ -8,6 +8,7 @@
 #include "ProcessSession.hpp"
 #include "NetworkSession.hpp"
 #include "LogSender.hpp"
+#include "EDR_C2C.hpp"
 
 namespace EDR
 {
@@ -26,15 +27,23 @@ namespace EDR
 		class LogManager
 		{
 			public:
-				LogManager(EDR::Util::Kafka::Kafka& kafka, std::string AGENT_ID) : kafka(kafka), AGENT_ID(AGENT_ID), WindowsLogSender(kafka, AGENT_ID) {}
+				LogManager(EDR::Util::Kafka::Kafka& kafka, std::string arg_AGENT_ID) 
+				: 
+					kafka(kafka), 
+					AGENT_ID(arg_AGENT_ID),
+					WindowsLogSender(kafka, AGENT_ID),
+					EDR_TCP(AGENT_ID, ioctl)
+				{}
 				~LogManager() {
 					Stop();
 				}
 
-				bool Run();
+				bool Run(std::string EDR_TCP_SERVER_IP, unsigned int EDR_TCP_SERVER_PORT);
 				void Stop() {
 					if (is_threading)
 						is_threading = false;
+
+					EDR_TCP.Stop();
 				}
 
 			private:
@@ -59,6 +68,9 @@ namespace EDR
 				
 				// queue 
 				EDR::Util::Queue::Queue<log_s> Queue;
+
+				// EDR TCP C2C
+				EDR::C2C::EDRC2C EDR_TCP;
 		};
 
 	}

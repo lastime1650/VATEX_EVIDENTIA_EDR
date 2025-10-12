@@ -37,10 +37,12 @@
   <ItemGroup>
     <ClInclude Include="APC.hpp" />
     <ClInclude Include="DLP.hpp" />
+    <ClInclude Include="EDR_C2C.hpp" />
     <ClInclude Include="EventLog.hpp" />
     <ClInclude Include="Hash.hpp" />
     <ClInclude Include="IOCTL.hpp" />
     <ClInclude Include="ioctlcodes.hpp" />
+    <ClInclude Include="json.hpp" />
     <ClInclude Include="Kafka.hpp" />
     <ClInclude Include="LogReceiver.hpp" />
     <ClInclude Include="LogSender.hpp" />

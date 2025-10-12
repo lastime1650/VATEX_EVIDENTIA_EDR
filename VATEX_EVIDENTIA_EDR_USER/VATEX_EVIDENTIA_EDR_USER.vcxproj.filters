@@ -141,5 +141,11 @@
     <ClInclude Include="DLP.hpp">
       <Filter>_DLP</Filter>
     </ClInclude>
+    <ClInclude Include="json.hpp">
+      <Filter>Util</Filter>
+    </ClInclude>
+    <ClInclude Include="EDR_C2C.hpp">
+      <Filter>EDR</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -9,12 +9,14 @@ namespace EDR
 	namespace LogReceiver
 	{
 
-		bool LogManager::Run()
+		bool LogManager::Run(std::string EDR_TCP_SERVER_IP, unsigned int EDR_TCP_SERVER_PORT)
 		{
 			if (is_threading) // 최초 1번 실행
 				return false; 
 
 			bool status = false;
+
+			
 
 			// 1. IOCTL 연결
 			if (!ioctl.INITIALIZE(
@@ -617,7 +619,8 @@ namespace EDR
 			);
 			RecieveQueueThread.detach();
 
-
+			// FIn. EDR 간 TCP 통신
+			EDR_TCP.Run(EDR_TCP_SERVER_IP, EDR_TCP_SERVER_PORT);
 
 			return status;
 		}

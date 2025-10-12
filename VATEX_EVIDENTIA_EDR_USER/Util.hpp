@@ -18,4 +18,7 @@
 #include <unordered_map>
 #include <string>
 
+#include "json.hpp"
+using namespace nlohmann;
+
 #endif

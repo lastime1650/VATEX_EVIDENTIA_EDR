@@ -26,15 +26,10 @@ int main()
 
 
 	/*
-		로그 수신부
+		에이전트
 	*/
 	EDR::LogReceiver::LogManager logman(kafkaInstance, AGENT_ID);
-	logman.Run();
-		
-	/*
-		EDR 연결 부
-	*/
-
+	logman.Run("192.168.1.205", 6100);
 
 	while(1){
 		Sleep(INFINITE);
