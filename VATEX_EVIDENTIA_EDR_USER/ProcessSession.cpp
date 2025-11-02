@@ -74,6 +74,16 @@ namespace EDR
 
 			// --- ProcessSession Class Implementation ---
 
+			/**
+ * @brief 프로세스 생성 이벤트를 처리하고 프로세스 트리에 새 노드를 추가합니다.
+ *        부모 프로세스를 찾을 수 없는 경우, 이 프로세스는 새로운 트리의 루트가 됩니다.
+ * @param pid 생성된 프로세스의 ID
+ * @param ppid 생성된 프로세스의 부모 프로세스 ID
+ * @param out_processSession 생성된 프로세스의 고유 세션 ID (출력)
+ * @param out_root_processSession 해당 프로세스가 속한 트리의 루트 세션 ID (출력)
+ * @param out_parent_processSession 해당 프로세스의 부모 세션 ID (출력)
+ * @return 성공 시 true, 실패 시 false
+ */
 			bool ProcessSession::ProcessCreate(HANDLE pid, HANDLE ppid, std::string& out_processSession, std::string& out_root_processSession, std::string& out_parent_processSession)
 			{
 				// 타임스탬프를 기반으로 고유한 세션 ID 생성
@@ -87,46 +97,27 @@ namespace EDR
 				// 새 프로세스 노드 생성
 				Session_node newNode{ sessionId, pid, true, {} };
 
-				// 부모가 없는 최상위 프로세스인 경우 (e.g. System Process)
-				if (ppid == (HANDLE)0 || ppid == (HANDLE)4)
+				// 부모가 최상위 프로세스(System 등)가 아닌 경우에만 부모를 탐색합니다.
+				if (ppid != (HANDLE)0 && ppid != (HANDLE)4)
 				{
-					out_root_processSession = sessionId;   // 자기 자신이 루트
-					out_parent_processSession = sessionId; // 부모가 없으므로 자기 자신을 부모 세션으로 설정
-					this->Root.push_back(newNode);
-					return true;
+					NodeContext parentContext = findNodeWithContext(this->Root, ppid);
+					if (parentContext.found)
+					{
+						// [CASE 1] 부모 노드를 찾은 경우: 해당 부모의 자식으로 추가합니다.
+						out_root_processSession = parentContext.root->SesssionID;
+						out_parent_processSession = parentContext.found->SesssionID;
+						parentContext.found->Child.push_back(newNode);
+						return true;
+					}
 				}
 
-				// 부모 노드 탐색
-				NodeContext parentContext = findNodeWithContext(this->Root, ppid);
-				if (parentContext.found)
-				{
-					// 부모 노드를 찾았으면 자식으로 추가
-					out_root_processSession = parentContext.root->SesssionID;
-					out_parent_processSession = parentContext.found->SesssionID;
-					parentContext.found->Child.push_back(newNode);
-					return true;
-				}
-				else
-				{
-					// 부모 노드를 찾지 못한 경우 (이벤트 순서가 꼬인 경우 등)
-					// 임시 부모 노드를 생성하여 트리의 연결성을 유지
-					std::string parentSession = "temp_parent_for_" + out_processSession;
-					parentSession = EDR::Util::hash::sha256FromString(parentSession); // 임시 세션ID
-
-					// 부모노드
-					Session_node placeholderParentNode{ parentSession, ppid, true, {} };
-
-					// 실제 생성된 노드를 임시 부모의 자식으로 추가
-					placeholderParentNode.Child.push_back(newNode);
-
-					// 새로 생성된 노드의 입장에서 부모와 루트는 이 임시 노드가 됨
-					out_root_processSession = parentSession;
-					out_parent_processSession = parentSession;
-
-					// 임시 부모 노드를 새로운 루트로 추가
-					this->Root.push_back(placeholderParentNode);
-					return true;
-				}
+				// [CASE 2] 아래의 경우는 모두 새로운 루트로 처리됩니다:
+				// 1. 부모가 최상위 프로세스인 경우 (ppid가 0 또는 4)
+				// 2. 추적 중인 트리에서 부모 프로세스를 찾지 못한 경우 (요청하신 변경사항)
+				out_root_processSession = sessionId;   // 자기 자신이 루트가 됩니다.
+				out_parent_processSession = sessionId; // 부모가 없으므로 자기 자신을 부모 세션으로 설정합니다.
+				this->Root.push_back(newNode);         // Root 벡터에 직접 추가합니다.
+				return true;
 			}
 
 			bool ProcessSession::AppendingEvent(HANDLE pid, std::string& out_processSession, std::string& out_root_processSession, std::string& out_parent_processSession)

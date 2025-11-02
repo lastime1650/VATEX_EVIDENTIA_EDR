@@ -60,7 +60,8 @@ namespace EDR
 								// initialize send to EDR
 								std::string msg = json(
 									{
-										{"agentid", agentid}
+										{"agentid", agentid},
+										{"os", "Windows"}
 									}
 								).dump();
 								if (!TM.Send(std::vector<uint8_t>(msg.begin(), msg.end())))

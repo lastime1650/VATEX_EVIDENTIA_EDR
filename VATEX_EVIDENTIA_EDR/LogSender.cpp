@@ -898,7 +898,11 @@ namespace EDR
 					ExFreePoolWithTag(log, LogALLOC);
 					return FALSE;
 				}
+				//
+				memcpy(log->body.FunctionName, KeyClass, strlen(KeyClass));
 
+
+				//
 				log->body.post.Name = (PWCH)ExAllocatePool2(POOL_FLAG_NON_PAGED, CompleteName->Length + sizeof(WCHAR), LogALLOC);
 				if (!log->body.post.Name)
 				{
@@ -937,9 +941,6 @@ namespace EDR
 
 				// 1.
 				memcpy(log->body.FunctionName, KeyClass, strlen(KeyClass));
-				
-
-
 
 				// 2.
 				if (Name == NULL || Name->Buffer == NULL) {

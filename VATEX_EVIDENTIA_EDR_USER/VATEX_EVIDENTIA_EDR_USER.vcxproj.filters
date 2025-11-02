@@ -52,6 +52,9 @@
     <Filter Include="_DLP">
       <UniqueIdentifier>{e5fb0059-ddf3-4491-9f08-142f1f9944dd}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Util\IAM">
+      <UniqueIdentifier>{aae95380-877e-4e17-ac7e-f8de2c4e58d9}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
@@ -146,6 +149,12 @@
     </ClInclude>
     <ClInclude Include="EDR_C2C.hpp">
       <Filter>EDR</Filter>
+    </ClInclude>
+    <ClInclude Include="IAMClient.hpp">
+      <Filter>Util\IAM</Filter>
+    </ClInclude>
+    <ClInclude Include="httplib.hpp">
+      <Filter>Util</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

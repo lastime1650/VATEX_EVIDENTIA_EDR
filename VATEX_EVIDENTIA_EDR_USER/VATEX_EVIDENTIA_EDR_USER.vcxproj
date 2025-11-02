@@ -40,6 +40,8 @@
     <ClInclude Include="EDR_C2C.hpp" />
     <ClInclude Include="EventLog.hpp" />
     <ClInclude Include="Hash.hpp" />
+    <ClInclude Include="httplib.hpp" />
+    <ClInclude Include="IAMClient.hpp" />
     <ClInclude Include="IOCTL.hpp" />
     <ClInclude Include="ioctlcodes.hpp" />
     <ClInclude Include="json.hpp" />

@@ -17,7 +17,7 @@ int main()
 		); 
 	std::cout << "AGENT_ID: " << AGENT_ID << std::endl;
 	
-	EDR::Util::Kafka::Kafka kafkaInstance("192.168.1.205", 29092, "edr_agent_windows");
+	EDR::Util::Kafka::Kafka kafkaInstance("192.168.1.205", 29092, "raw-edr-agent-windows");
 	if (!kafkaInstance.Initialize() )
 	{
 		std::runtime_error("Kafka Initialize Fail");
