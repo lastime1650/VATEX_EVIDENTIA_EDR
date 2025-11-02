@@ -1,0 +1,126 @@
+{
+    "id": "T1553.003-SIPAndTrustProviderHijacking",
+    "name": "SIP and Trust Provider Hijacking",
+    "description": "Detects attempts by adversaries to tamper with Windows Subject Interface Packages (SIPs) or Trust Provider components to subvert code signing and signature validation checks. This includes modifying specific registry keys related to SIPs or Trust Providers, or using regsvr32.exe to register/unregister malicious DLLs to achieve defense evasion or persistent code execution.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1553",
+        "subtechnique_id": "T1553.003",
+        "data_sources": [
+            "WindowsRegistry:WindowsRegistryKeyModification",
+            "Module:ModuleLoad",
+            "File:FileModification"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_reg_set_value_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    }
+                ]
+            },
+            "s2_reg_path_oid_get_signed_data_msg": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\\\SOFTWARE\\\\Microsoft\\\\Cryptography\\\\OID\\\\EncodingType 0\\\\CryptSIPDllGetSignedDataMsg\\\\"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\\\SOFTWARE\\\\WOW6432Node\\\\Microsoft\\\\Cryptography\\\\OID\\\\EncodingType 0\\\\CryptSIPDllGetSignedDataMsg\\\\"
+                    }
+                ]
+            },
+            "s3_reg_path_oid_verify_indirect_data": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\\\SOFTWARE\\\\Microsoft\\\\Cryptography\\\\OID\\\\EncodingType 0\\\\CryptSIPDllVerifyIndirectData\\\\"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\\\SOFTWARE\\\\WOW6432Node\\\\Microsoft\\\\Cryptography\\\\OID\\\\EncodingType 0\\\\CryptSIPDllVerifyIndirectData\\\\"
+                    }
+                ]
+            },
+            "s4_reg_path_trust_final_policy": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\\\SOFTWARE\\\\Microsoft\\\\Cryptography\\\\Providers\\\\Trust\\\\FinalPolicy\\\\"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\\\SOFTWARE\\\\WOW6432Node\\\\Microsoft\\\\Cryptography\\\\Providers\\\\Trust\\\\FinalPolicy\\\\"
+                    }
+                ]
+            },
+            "s5_proc_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s6_proc_exe_path_regsvr32": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "regsvr32.exe"
+                    }
+                ]
+            },
+            "s7_cmdline_contains_dll": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".dll"
+                    }
+                ]
+            },
+            "s8_cmdline_silent_or_unregister": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/s"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/u"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_reg_set_value_action and (s2_reg_path_oid_get_signed_data_msg or s3_reg_path_oid_verify_indirect_data or s4_reg_path_trust_final_policy)) or (s5_proc_create_action and s6_proc_exe_path_regsvr32 and s7_cmdline_contains_dll and s8_cmdline_silent_or_unregister)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Windows SIP 및 Trust Provider 컴포넌트 변조 시도를 탐지할 수 있습니다. 특히 CryptSIPDllGetSignedDataMsg, CryptSIPDllVerifyIndirectData, FinalPolicy와 관련된 레지스트리 키에 대한 RegNtSetValueKey 액션과, regsvr32.exe가 .dll 파일을 /s (silent) 또는 /u (unregister) 옵션과 함께 실행되는 프로세스 생성 이벤트를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 레지스트리 변경 및 프로세스 활동에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 이는 코드 서명 우회 및 방어 회피 전술의 핵심 지표입니다.",
+    "false_positive": "정상적인 소프트웨어 설치, 업데이트, 또는 시스템 관리 도구가 SIP 및 Trust Provider 관련 레지스트리 키를 합법적으로 수정하거나, regsvr32.exe를 사용하여 서명된 DLL을 등록/등록 해제하는 경우 오탐이 발생할 수 있습니다. 예를 들어, 보안 제품, 드라이버 설치 프로그램, 또는 특정 기업용 애플리케이션이 이러한 작업을 수행할 수 있습니다. 알려진 정상적인 레지스트리 변경 패턴이나 regsvr32.exe 호출 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

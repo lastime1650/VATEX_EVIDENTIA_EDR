@@ -1,0 +1,46 @@
+{
+    "id": "FEATURE-REG-Winlogon-Helper-DLL-Registered",
+    "name": "Winlogon Helper DLL Registered for Persistence",
+    "description": "Detects the registration of a Winlogon helper DLL. This is a powerful persistence mechanism that loads a malicious DLL into the high-privileged winlogon.exe process at logon.",
+    "severity": "high",
+    "mitre_attack": [
+        {
+            "tactic": "TA0003",
+            "technique_id": "T1547",
+            "subtechnique_id": "T1547.004",
+            "data_sources": ["Windows Registry"]
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "winlogon_notify",
+                "selections": {
+                    "selection_set_winlogon_notify": {
+                        "event_type": "registry",
+                        "condition_method": "and",
+                        "conditions": [
+                            {
+                                "field": "body.registry.keyclass", 
+                                "operator": "regex", 
+                                "value": "^RegNtPre(SetValueKey|CreateKeyEx)$"
+                            },
+                            {
+                                "field": "body.registry.name", 
+                                "operator": "regex", 
+                                "value": ".*\\\\SOFTWARE\\\\Microsoft\\\\Windows NT\\\\CurrentVersion\\\\Winlogon\\\\(Notify|Userinit|Shell)"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "A Winlogon-related key (Notify, Userinit, Shell) was modified, indicating a potential high-privilege persistence attempt."
+                }
+            }
+        ]
+    },
+    "operational_usage": "This is a high-confidence indicator of a sophisticated persistence technique. Legitimate modifications to these keys are extremely rare. SIEM should treat this as a critical alert and investigate the newly added DLL or executable path.",
+    "false_positive": "Very rare. Some remote access tools or specific authentication software might legitimately modify these keys, but it should be a known and documented behavior."
+}

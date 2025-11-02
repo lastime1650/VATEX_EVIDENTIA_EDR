@@ -1,0 +1,48 @@
+{
+    "id": "T1547.010-Persistence-via-Safe-Mode-Registry",
+    "name": "Persistence Attempt via Safe Mode Boot Configuration",
+    "description": "Detects the creation of new keys under the SafeBoot registry key. Adversaries may add entries to this key to persist malware that will run in Safe Mode.",
+    "severity": "medium",
+    "mitre_attack": [
+        {
+            "tactic": "TA0003",
+            "technique_id": "T1547",
+            "subtechnique_id": "T1547.010",
+            "data_sources": [
+                "Windows Registry:Windows Registry Key Creation"
+            ]
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "safeboot_modification",
+                "selections": {
+                    "selection_create_safeboot_key": {
+                        "event_type": "registry",
+                        "condition_method": "and",
+                        "conditions": [
+                            {
+                                "field": "body.registry.keyclass", 
+                                "operator": "regex", 
+                                "value": "^RegNtPreCreateKey(Ex)?$"
+                            },
+                            {
+                                "field": "body.registry.name", 
+                                "operator": "startswith", 
+                                "value": "\\Registry\\Machine\\SYSTEM\\CurrentControlSet\\Control\\SafeBoot\\"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "A new key was created under the SafeBoot configuration in the registry, indicating a potential persistence attempt in Safe Mode."
+                }
+            }
+        ]
+    },
+    "operational_usage": "Analyze the created key to identify which service or driver is being registered for Safe Mode execution. Correlate with file creation events for the associated binary.",
+    "false_positive": "Legitimate drivers and system services (especially for storage or networking) may register themselves to function in Safe Mode. These events should be baselined or whitelisted if they correspond to known good software installations."
+}

@@ -1,0 +1,157 @@
+{
+    "id": "T1583.007-ServerlessInfrastructureManagement",
+    "name": "Serverless Infrastructure Management on Endpoint",
+    "description": "Detects the execution of cloud provider CLI tools on an endpoint to manage or deploy serverless functions. While T1583.007 primarily focuses on the acquisition of serverless infrastructure (a resource development activity), this rule aims to detect an adversary leveraging a compromised endpoint to interact with or further develop serverless resources.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1583",
+        "subtechnique_id": "T1583.007",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Resource Development:Acquire Infrastructure:Serverless",
+            "Enterprise:Resource Development:Develop Capabilities:Tool"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "aws_cli_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "aws.exe"
+                    }
+                ]
+            },
+            "aws_lambda_create_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "lambda create-function"
+                    }
+                ]
+            },
+            "aws_lambda_update_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "lambda update-function-code"
+                    }
+                ]
+            },
+            "aws_lambda_invoke_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "lambda invoke"
+                    }
+                ]
+            },
+            "az_cli_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "az.exe"
+                    }
+                ]
+            },
+            "az_functionapp_create_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "functionapp create"
+                    }
+                ]
+            },
+            "az_functionapp_deploy_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "functionapp deployment"
+                    }
+                ]
+            },
+            "gcloud_cli_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "gcloud.cmd"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "gcloud.exe"
+                    }
+                ]
+            },
+            "gcp_functions_deploy_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "functions deploy"
+                    }
+                ]
+            },
+            "wrangler_cli_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "wrangler.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "wrangler.cmd"
+                    }
+                ]
+            },
+            "wrangler_deploy_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "deploy"
+                    }
+                ]
+            }
+        },
+        "condition": "(process_create_action and aws_cli_exe_path and (aws_lambda_create_cmdline or aws_lambda_update_cmdline or aws_lambda_invoke_cmdline)) or (process_create_action and az_cli_exe_path and (az_functionapp_create_cmdline or az_functionapp_deploy_cmdline)) or (process_create_action and gcloud_cli_exe_path and gcp_functions_deploy_cmdline) or (process_create_action and wrangler_cli_exe_path and wrangler_deploy_cmdline)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 클라우드 제공업체 CLI 도구를 사용하여 서버리스 함수를 관리하거나 배포하려는 시도를 탐지할 수 있습니다. 이는 공격자가 침해된 엔드포인트를 통해 서버리스 리소스를 조작하거나 추가적으로 개발하는 행위를 나타낼 수 있습니다. 탐지된 이벤트는 자동 알람을 트리거하고, 클라우드 환경에서의 비정상적인 활동에 대한 추가 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "합법적인 개발자, DevOps 엔지니어, 또는 자동화 스크립트가 클라우드 CLI 도구를 사용하여 서버리스 함수를 배포하거나 관리하는 과정에서 탐지될 수 있습니다. 알려진 정상 프로세스, 사용자 또는 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

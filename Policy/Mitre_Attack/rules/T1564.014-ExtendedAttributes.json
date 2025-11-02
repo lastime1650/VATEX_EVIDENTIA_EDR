@@ -1,0 +1,122 @@
+{
+    "id": "T1564.014-ExtendedAttributes",
+    "name": "Extended Attributes",
+    "description": "Detects attempts to abuse extended attributes (xattrs) on macOS and Linux to hide malicious data or payloads, or to retrieve such hidden data. This includes the execution of utilities like `xattr` (macOS) and `setfattr`/`getfattr` (Linux) to manipulate or query file and directory metadata that is not readily visible through standard file system tools.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1564",
+        "subtechnique_id": "T1564.014",
+        "data_sources": [
+            "Execution:Command and Scripting Interpreter:Unix Shell",
+            "Defense Evasion:Hide Artifacts:Extended Attributes",
+            "Process:ProcessCreation"
+        ]
+    },
+    "platform": [
+        "linux",
+        "macos"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_xattr_command_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "xattr"
+                    }
+                ]
+            },
+            "s3_xattr_write_flag": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-w"
+                    }
+                ]
+            },
+            "s4_xattr_read_flag": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-p"
+                    }
+                ]
+            },
+            "s5_setfattr_command_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "setfattr"
+                    }
+                ]
+            },
+            "s6_setfattr_name_flag": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--name"
+                    }
+                ]
+            },
+            "s7_setfattr_value_flag": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--value"
+                    }
+                ]
+            },
+            "s8_getfattr_command_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "getfattr"
+                    }
+                ]
+            },
+            "s9_getfattr_read_specific_flag": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--only-values"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-n"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and ( (s2_xattr_command_execution and (s3_xattr_write_flag or s4_xattr_read_flag)) or (s5_setfattr_command_execution and s6_setfattr_name_flag and s7_setfattr_value_flag) or (s8_getfattr_command_execution and s9_getfattr_read_specific_flag) )"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 macOS 및 Linux 시스템에서 확장 속성(xattrs)을 통한 데이터 은닉 또는 페이로드 삽입 시도를 탐지할 수 있습니다. `xattr`, `setfattr`, `getfattr`와 같은 명령줄 유틸리티의 실행 이벤트를 모니터링하며, 특히 `-w`, `--name`, `--value`와 같은 쓰기 관련 플래그 사용을 중점적으로 감시합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 파일에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 이는 방어 회피 전술의 핵심 지표가 될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 백업 소프트웨어, 개발 도구, 또는 특정 애플리케이션이 파일 메타데이터를 관리하기 위해 확장 속성을 사용하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 확장 속성 사용 패턴이나 특정 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

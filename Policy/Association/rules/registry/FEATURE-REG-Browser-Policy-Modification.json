@@ -1,0 +1,46 @@
+{
+    "id": "FEATURE-REG-Browser-Policy-Modification",
+    "name": "Browser Policies Modified via Registry",
+    "description": "Detects the creation or modification of registry keys that enforce policies on Google Chrome or Microsoft Edge. This is a common method for adversaries to force-install extensions or alter browser behavior.",
+    "severity": "medium",
+    "mitre_attack": [
+        {
+            "tactic": "TA0003",
+            "technique_id": "T1176",
+            "subtechnique_id": "",
+            "data_sources": ["Windows Registry"]
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "browser_policy_set",
+                "selections": {
+                    "selection_set_browser_policy": {
+                        "event_type": "registry",
+                        "condition_method": "and",
+                        "conditions": [
+                            {
+                                "field": "body.registry.keyclass", 
+                                "operator": "regex", 
+                                "value": "^RegNtPre(SetValueKey|CreateKeyEx)$"
+                            },
+                            {
+                                "field": "body.registry.name", 
+                                "operator": "regex", 
+                                "value": ".*\\\\SOFTWARE\\\\Policies\\\\(Google\\\\Chrome|Microsoft\\\\Edge)"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "A browser policy was set or modified in the registry. SIEM should inspect the policy being enforced and the responsible process."
+                }
+            }
+        ]
+    },
+    "operational_usage": "This feature is a strong indicator of browser tampering. Legitimate changes are typically made by Group Policy (gpupdate.exe) or enterprise management solutions. Any other process, especially from a user context, is highly suspicious.",
+    "false_positive": "Legitimate changes by system administrators or enterprise software are expected. Focus should be on the context of the change."
+}

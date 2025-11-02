@@ -1,0 +1,167 @@
+{
+    "id": "T1548.002-BypassUserAccountControl",
+    "name": "Bypass User Account Control",
+    "description": "Adversaries may bypass UAC mechanisms to elevate process privileges on system. Windows User Account Control (UAC) allows a program to elevate its privileges (tracked as integrity levels ranging from low to high) to perform a task under administrator-level permissions, possibly by prompting the user for confirmation. If the UAC protection level of a computer is set to anything but the highest level, certain Windows programs can elevate privileges or execute some elevated Component Object Model objects without prompting the user. Malicious software may also be injected into a trusted process to gain elevated privileges without prompting a user. Many methods have been discovered to bypass UAC, including modifying specific user-accessible Registry settings (e.g., for eventvwr.exe, sdclt.exe) or executing specific auto-elevating utilities.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0004",
+        "technique_id": "T1548",
+        "subtechnique_id": "T1548.002",
+        "data_sources": [
+            "WindowsRegistry:WindowsRegistryKeyModification",
+            "Command:CommandExecution",
+            "Process:ProcessCreation",
+            "Process:ProcessMetadata"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_reg_mod_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "SetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "CreateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "RenameKey"
+                    }
+                ]
+            },
+            "s2_eventvwr_reg_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "equals",
+                        "value": "HKEY_CURRENT_USER\\Software\\Classes\\mscfile\\shell\\open\\command"
+                    }
+                ]
+            },
+            "s3_sdclt_control_exe_reg_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "equals",
+                        "value": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\control.exe"
+                    }
+                ]
+            },
+            "s4_sdclt_isolated_cmd_reg_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "equals",
+                        "value": "HKEY_CURRENT_USER\\Software\\Classes\\exefile\\shell\\runas\\command\\isolatedCommand"
+                    }
+                ]
+            },
+            "s5_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s6_eventvwr_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "eventvwr.exe"
+                    }
+                ]
+            },
+            "s7_sdclt_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "sdclt.exe"
+                    }
+                ]
+            },
+            "s8_compmgmtlauncher_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "CompMgmtLauncher.exe"
+                    }
+                ]
+            },
+            "s9_fodhelper_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "fodhelper.exe"
+                    }
+                ]
+            },
+            "s10_computerdefaults_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ComputerDefaults.exe"
+                    }
+                ]
+            },
+            "s11_silentcleanup_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "SilentCleanup.exe"
+                    }
+                ]
+            },
+            "s12_systempropertiesadvanced_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "SystemPropertiesAdvanced.exe"
+                    }
+                ]
+            },
+            "s13_wsreset_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wsreset.exe"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_reg_mod_action and (s2_eventvwr_reg_path or s3_sdclt_control_exe_reg_path or s4_sdclt_isolated_cmd_reg_path)) or (s5_process_create_action and (s6_eventvwr_cmdline or s7_sdclt_cmdline or s8_compmgmtlauncher_cmdline or s9_fodhelper_cmdline or s10_computerdefaults_cmdline or s11_silentcleanup_cmdline or s12_systempropertiesadvanced_cmdline or s13_wsreset_cmdline))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 사용자 계정 컨트롤(UAC) 우회 시도를 탐지할 수 있습니다. 특히, UAC 자동 승격이 가능한 특정 레지스트리 키에 대한 비정상적인 수정/생성/이름 변경 활동이나, UAC 우회에 자주 사용되는 'eventvwr.exe', 'sdclt.exe', 'fodhelper.exe' 등의 시스템 유틸리티가 프로세스를 생성하는 이벤트를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스의 전체적인 행위와 연관된 다른 이벤트(예: 악성 DLL 로드, 추가적인 권한 상승 시도)에 대한 심층 조사를 시작하는 데 활용됩니다. 이는 권한 상승 및 방어 회피 전술에 대한 조기 경보를 제공합니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 소프트웨어 설치/업데이트, 또는 합법적인 애플리케이션이 UAC 관련 레지스트리 키를 수정하거나, 위에 언급된 시스템 유틸리티를 호출하는 과정에서 오탐이 발생할 수 있습니다. 예를 들어, 시스템 복원, 특정 설정 변경, 또는 진단 도구 실행 시 해당 유틸리티가 사용될 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

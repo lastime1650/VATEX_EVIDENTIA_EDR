@@ -1,0 +1,213 @@
+{
+    "id": "T1562.012-DisableModifyLinuxAuditSystem",
+    "name": "Disable or Modify Linux Audit System",
+    "description": "Detects attempts by adversaries to disable or modify the Linux audit system to hide malicious activity and avoid detection. This includes killing auditd processes, stopping the audit service via systemctl, or editing/deleting critical audit configuration files like /etc/audit/audit.rules and /etc/audit/audit.conf. Adversaries perform these actions to prevent logging of their subsequent activities, making forensic analysis and threat hunting significantly more difficult.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1562",
+        "subtechnique_id": "T1562.012",
+        "data_sources": [
+            "Command:Command Execution",
+            "File:File Modification",
+            "File:File Deletion",
+            "Process:Process Modification",
+            "Process:OS API Execution"
+        ]
+    },
+    "platform": [
+        "linux"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmdline_auditctl": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "auditctl"
+                    }
+                ]
+            },
+            "s3_cmdline_systemctl": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "systemctl"
+                    }
+                ]
+            },
+            "s4_cmdline_kill": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "kill"
+                    }
+                ]
+            },
+            "s5_cmdline_auditd_target_or_service": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "auditd"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "audit.service"
+                    }
+                ]
+            },
+            "s6_cmdline_disable_or_stop_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "disable"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-D"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "stop"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--purge"
+                    }
+                ]
+            },
+            "s7_cmdline_audit_config_file_references": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/etc/audit/audit.rules"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/etc/audit/audit.conf"
+                    }
+                ]
+            },
+            "s8_cmdline_file_manipulation_utilities": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "vi"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "nano"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "sed"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "echo"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "rm"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "mv"
+                    }
+                ]
+            },
+            "s9_filesystem_modify_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "superseded"
+                    }
+                ]
+            },
+            "s10_filesystem_delete_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "remove"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "rename"
+                    }
+                ]
+            },
+            "s11_filesystem_audit_file_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "equals",
+                        "value": "/etc/audit/audit.rules"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "equals",
+                        "value": "/etc/audit/audit.conf"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and ((s2_cmdline_auditctl and s6_cmdline_disable_or_stop_keywords) or (s3_cmdline_systemctl and s5_cmdline_auditd_target_or_service and s6_cmdline_disable_or_stop_keywords) or (s4_cmdline_kill and s5_cmdline_auditd_target_or_service) or (s8_cmdline_file_manipulation_utilities and s7_cmdline_audit_config_file_references)) or (s9_filesystem_modify_action and s11_filesystem_audit_file_path) or (s10_filesystem_delete_action and s11_filesystem_audit_file_path)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Linux 시스템에서 감사(audit) 시스템 무력화 또는 변경 시도를 탐지할 수 있습니다. 이는 auditctl, systemctl, kill 명령어를 사용한 auditd 서비스 중지/비활성화 시도, 또는 /etc/audit/audit.rules 및 /etc/audit/audit.conf와 같은 핵심 감사 설정 파일에 대한 수정/삭제 시도를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 잠재적인 방어 회피 활동에 대한 심층 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 자동화된 스크립트, 또는 보안 솔루션이 감사 시스템을 구성하거나 관리하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴, 관리자 활동에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

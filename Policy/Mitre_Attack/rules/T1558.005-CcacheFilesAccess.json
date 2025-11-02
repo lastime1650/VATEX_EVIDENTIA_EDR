@@ -1,0 +1,95 @@
+{
+    "id": "T1558.005-CcacheFilesAccess",
+    "name": "Kerberos Credential Cache File Access",
+    "description": "Detects attempts to access or manipulate Kerberos credential cache files (ccache) on a Windows system, which typically originate from Linux/macOS environments but may be transferred or processed on Windows. This includes monitoring for tools like Kekeo that can interact with ccache files for 'Pass the Ticket' or privilege escalation purposes.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0006",
+        "technique_id": "T1558",
+        "subtechnique_id": "T1558.005",
+        "data_sources": [
+            "Enterprise:Credential Access:Unsecured Credentials:Credentials In Files",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_kekeo_commandline_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "kekeo.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "kekeo"
+                    }
+                ]
+            },
+            "s3_filesystem_ccache_rw_actions": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "read"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "open"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "remove"
+                    }
+                ]
+            },
+            "s4_filesystem_ccache_filepath_pattern": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "krb5cc_"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "krb5.ccache"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_kekeo_commandline_execution) or (s3_filesystem_ccache_rw_actions and s4_filesystem_ccache_filepath_pattern)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 사용하여 Windows 환경에서 Kerberos ccache 파일에 대한 비정상적인 접근 또는 관련 도구 실행을 탐지할 수 있습니다. Kekeo와 같은 도구의 프로세스 생성 이벤트나, ccache 파일 명명 패턴을 포함하는 파일 시스템 읽기/쓰기/생성/삭제 이벤트를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 'Pass the Ticket' 또는 권한 상승 시도로 이어질 수 있는 침해사고 대응 및 포렌식 조사를 시작하는 데 활용됩니다.",
+    "false_positive": "합법적인 시스템 관리 도구, 백신 소프트웨어, 또는 개발/테스트 환경에서 Kerberos 관련 파일이나 Kekeo와 유사한 도구를 사용하는 경우 오탐이 발생할 수 있습니다. 특히, Linux/macOS에서 전송된 파일이 Windows에서 분석되거나 처리될 때 발생할 수 있습니다. 알려진 정상 프로세스, 특정 파일 경로, 또는 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

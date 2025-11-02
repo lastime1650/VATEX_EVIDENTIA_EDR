@@ -1,0 +1,177 @@
+{
+    "id": "T1027.016-JunkCodeInsertion",
+    "name": "Junk Code Insertion",
+    "description": "Detects attempts by processes to insert junk code or dead code into executables or memory to obfuscate functionality, making analysis more difficult. This includes activities like modifying executable files on disk, writing to memory regions of other processes with write permissions, or calling specific APIs for code manipulation.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1027",
+        "subtechnique_id": "T1027.016",
+        "data_sources": [
+            "Enterprise:Defense Evasion:Obfuscated Files or Information:Junk Code Insertion",
+            "Process:ProcessCreation",
+            "File:FileModification",
+            "Process:OSAPIExecution"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_obfuscation_tool": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "obfuscate"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "pack"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "inject-nop"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "deadcode"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "pe-patch"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "modify-binary"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "code-insert"
+                    }
+                ]
+            },
+            "s2_filesystem_write_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    }
+                ]
+            },
+            "s3_filesystem_target_is_binary_or_script": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".sys"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".ps1"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".bat"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".cmd"
+                    }
+                ]
+            },
+            "s4_processaccess_vm_write_permission": {
+                "event_type": "processaccess",
+                "conditions": [
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_VM_WRITE"
+                    },
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_VM_OPERATION"
+                    }
+                ]
+            },
+            "s5_processaccess_target_is_executable": {
+                "event_type": "processaccess",
+                "conditions": [
+                    {
+                        "field": "body.processaccess.targetprocess_path",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    },
+                    {
+                        "field": "body.processaccess.targetprocess_path",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.processaccess.targetprocess_path",
+                        "operator": "endswith",
+                        "value": ".sys"
+                    }
+                ]
+            },
+            "s6_apicall_memory_manipulation": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "WriteProcessMemory"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "NtWriteVirtualMemory"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "VirtualProtectEx"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_obfuscation_tool or (s2_filesystem_write_action and s3_filesystem_target_is_binary_or_script) or (s4_processaccess_vm_write_permission and s5_processaccess_target_is_executable) or s6_apicall_memory_manipulation"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 악성 코드 난독화를 위해 정크 코드를 삽입하려는 시도를 탐지할 수 있습니다. 난독화 도구 실행, 실행 파일 또는 스크립트 파일에 대한 쓰기/덮어쓰기 작업, 다른 프로세스의 메모리에 대한 쓰기 권한 요청, 또는 메모리 조작 API 호출 등을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 파일에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 다른 방어 회피 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 소프트웨어 설치 프로그램, 업데이트 유틸리티, 개발 도구(컴파일러, 디버거), 보안 솔루션(백신, 무결성 검사기), 또는 합법적인 시스템 관리 도구가 유사한 파일 및 메모리 조작 활동을 수행할 수 있어 오탐이 발생할 수 있습니다. 알려진 정상 프로세스, 파일 경로, 또는 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

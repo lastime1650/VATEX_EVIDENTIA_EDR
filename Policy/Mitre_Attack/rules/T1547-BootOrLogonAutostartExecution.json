@@ -1,0 +1,252 @@
+{
+    "id": "T1547-BootOrLogonAutostartExecution",
+    "name": "Boot or Logon Autostart Execution",
+    "description": "Detects attempts by adversaries to configure system settings to automatically execute programs during system boot or logon. This includes modifications to common Windows Registry Run/RunOnce keys, Shell Folders, BootExecute, or the creation/modification of executable/script files in Startup folders to achieve persistence. This technique allows adversaries to execute malware or other programs automatically when a user logs in or the system boots.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1547",
+        "subtechnique_id": "",
+        "data_sources": [
+            "WindowsRegistry:WindowsRegistryKeyCreation",
+            "WindowsRegistry:WindowsRegistryKeyModification",
+            "File:FileCreation",
+            "File:FileModification"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_registry_autostart_key_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnceEx"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\RunServicesOnce"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\RunServicesOnce"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\RunServices"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\RunServices"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer\\Run"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer\\Run"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "equals",
+                        "value": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows\\load"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "equals",
+                        "value": "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Control\\Session Manager\\BootExecute"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows\\Winlogon\\Shell"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows\\AppInit_DLLs"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\User Shell Folders"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\User Shell Folders"
+                    }
+                ]
+            },
+            "s2_registry_modification_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "SetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "CreateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "RenameKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "DeleteKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "SetInformationKey"
+                    }
+                ]
+            },
+            "s3_filesystem_create_or_write_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "superseded"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "rename"
+                    }
+                ]
+            },
+            "s4_filesystem_startup_folder_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\StartUp"
+                    }
+                ]
+            },
+            "s5_filesystem_suspicious_extension": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".ps1"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".bat"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".cmd"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".vbs"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".js"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".hta"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".lnk"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_registry_autostart_key_path and s2_registry_modification_action) or (s3_filesystem_create_or_write_action and s4_filesystem_startup_folder_path and s5_filesystem_suspicious_extension)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템 부팅 또는 사용자 로그인 시 자동 실행되는 프로그램의 등록 시도를 탐지할 수 있습니다. 이는 Windows 레지스트리의 Run/RunOnce 키, Shell Folders, BootExecute 설정 변경, 또는 Startup 폴더 내 의심스러운 실행 파일/스크립트 생성 및 수정 이벤트를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련된 프로세스 및 파일에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 다른 방어 회피 또는 실행 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 소프트웨어 설치 프로그램, 업데이트 프로세스, 시스템 관리 도구, 또는 기업 정책에 따라 시작 프로그램에 등록되는 합법적 실행 파일로 인해 오탐이 발생할 수 있습니다. 알려진 정상적인 레지스트리 및 파일 시스템 활동 패턴이나 특정 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

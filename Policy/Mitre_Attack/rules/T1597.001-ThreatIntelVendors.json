@@ -1,0 +1,132 @@
+{
+    "id": "T1597.001-ThreatIntelVendors",
+    "name": "Threat Intel Vendors (Indirect EDR Detection)",
+    "description": "Detects indirect indicators of an adversary interacting with external threat intelligence vendors or similar external data sources from a compromised system. This rule focuses on command-line tools used for web requests and potential data download, which could be part of reconnaissance activities if performed from an endpoint. Due to the 'PRE' (pre-compromise) nature of this technique, direct EDR detection is inherently difficult, and this rule aims to capture post-compromise activities that might be related.",
+    "severity": "low",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1597",
+        "subtechnique_id": "T1597.001",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Collection:Data from Local System",
+            "Enterprise:Command and Control:Application Layer Protocol:Web Protocols"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_curl_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "curl.exe"
+                    }
+                ]
+            },
+            "s3_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s4_cmdline_curl_web_request": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "https://"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "http://"
+                    }
+                ]
+            },
+            "s5_cmdline_curl_download": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--output"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-o "
+                    }
+                ]
+            },
+            "s6_cmdline_powershell_web_request_cmdlet": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-WebRequest"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iwr"
+                    }
+                ]
+            },
+            "s7_cmdline_powershell_uri_param": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-Uri"
+                    }
+                ]
+            },
+            "s8_cmdline_powershell_download_param": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-OutFile"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-o "
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and ((s2_curl_exe_path and s4_cmdline_curl_web_request and s5_cmdline_curl_download) or (s3_powershell_exe_path and s6_cmdline_powershell_web_request_cmdlet and s7_cmdline_powershell_uri_param and s8_cmdline_powershell_download_param))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템 내에서 외부 웹 서비스와 상호작용하며 데이터를 다운로드하는 명령줄 도구의 실행을 탐지할 수 있습니다. 이는 공격자가 침해된 시스템을 이용하여 추가적인 정찰 활동을 수행하거나, 외부 위협 인텔리전스 소스에서 정보를 수집하는 시도의 간접적인 지표가 될 수 있습니다. 탐지된 이벤트는 낮은 심각도로 분류되지만, 다른 의심스러운 활동과 결합될 경우 조사 우선순위를 높여야 합니다. 특히, 알려지지 않은 외부 도메인으로의 연결이나 비정상적인 파일 다운로드와 함께 발생할 때 중요도가 증가합니다.",
+    "false_positive": "이 규칙은 'curl.exe'나 'powershell.exe'를 이용한 일반적인 웹 요청 및 파일 다운로드를 탐지하므로, 정상적인 시스템 관리 스크립트, 소프트웨어 업데이트, 개발 도구, 또는 합법적인 애플리케이션의 동작으로 인해 높은 오탐이 발생할 수 있습니다. 특히, 내부 네트워크 자원 접근이나 신뢰할 수 있는 도메인으로의 연결은 화이트리스트에 추가하여 오탐을 줄여야 합니다."
+}

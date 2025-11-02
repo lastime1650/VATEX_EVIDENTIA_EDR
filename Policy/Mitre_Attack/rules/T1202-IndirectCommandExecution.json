@@ -1,0 +1,270 @@
+{
+    "id": "T1202-IndirectCommandExecution",
+    "name": "Indirect Command Execution",
+    "description": "Detects attempts by adversaries to abuse legitimate utilities (e.g., forfiles.exe, pcalua.exe, scriptrunner.exe, wsl.exe, ssh.exe) to execute commands indirectly, often to bypass security controls or obscure malicious activity. This technique is frequently used for defense evasion.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1202",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Process:Process Creation"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_forfiles_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "forfiles.exe"
+                    }
+                ]
+            },
+            "s3_forfiles_cmdline_suspicious": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/c"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "cmd.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".bat"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".ps1"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".vbs"
+                    }
+                ]
+            },
+            "s4_pcalua_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pcalua.exe"
+                    }
+                ]
+            },
+            "s5_pcalua_cmdline_suspicious": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-a"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-d"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "cmd.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".dll"
+                    }
+                ]
+            },
+            "s6_scriptrunner_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "scriptrunner.exe"
+                    }
+                ]
+            },
+            "s7_scriptrunner_cmdline_suspicious": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-appvscript"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-exec"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".js"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".vbs"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".ps1"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "cmd.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s8_wsl_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "wsl.exe"
+                    }
+                ]
+            },
+            "s9_wsl_cmdline_exec_option": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-e"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--exec"
+                    }
+                ]
+            },
+            "s10_wsl_cmdline_interpreter": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "cmd.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "bash"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "sh"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "python"
+                    }
+                ]
+            },
+            "s11_ssh_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "ssh.exe"
+                    }
+                ]
+            },
+            "s12_ssh_cmdline_proxycommand": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-o ProxyCommand"
+                    }
+                ]
+            },
+            "s13_ssh_cmdline_localcommand": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-o LocalCommand"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_forfiles_exe_path and s3_forfiles_cmdline_suspicious) or (s1_process_create_action and s4_pcalua_exe_path and s5_pcalua_cmdline_suspicious) or (s1_process_create_action and s6_scriptrunner_exe_path and s7_scriptrunner_cmdline_suspicious) or (s1_process_create_action and s8_wsl_exe_path and s9_wsl_cmdline_exec_option and s10_wsl_cmdline_interpreter) or (s1_process_create_action and s11_ssh_exe_path and (s12_ssh_cmdline_proxycommand or s13_ssh_cmdline_localcommand))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 forfiles.exe, pcalua.exe, scriptrunner.exe, wsl.exe, 또는 ssh.exe와 같은 합법적인 시스템 유틸리티를 통한 간접적인 명령 실행 시도를 탐지할 수 있습니다. 프로세스 생성 이벤트와 함께 비정상적이거나 악의적인 명령줄 인자를 모니터링하여 방어 회피 전술을 식별합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 명령줄 인수에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 다른 실행 또는 방어 회피 활동과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 스크립트, 소프트웨어 설치 프로그램, 호환성 도구, 또는 WSL 환경 및 SSH 클라이언트의 합법적인 사용으로 인해 오탐이 발생할 수 있습니다. 알려진 정상적인 명령줄 패턴이나 특정 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

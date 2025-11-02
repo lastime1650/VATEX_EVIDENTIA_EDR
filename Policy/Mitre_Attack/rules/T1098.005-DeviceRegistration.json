@@ -1,0 +1,91 @@
+{
+    "id": "T1098.005-DeviceRegistration",
+    "name": "Persistence via Device Registration",
+    "description": "Detects attempts by adversaries to register a device to an adversary-controlled account, often bypassing MFA or conditional access policies for persistent access. This includes execution of tools like dsregcmd.exe with specific parameters or PowerShell cmdlets to enroll devices in systems like Entra ID or Intune.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1098",
+        "subtechnique_id": "T1098.005",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Persistence:Device Registration"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_dsregcmd_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "dsregcmd.exe"
+                    }
+                ]
+            },
+            "s3_dsregcmd_join_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/join"
+                    }
+                ]
+            },
+            "s4_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s5_powershell_register_cmdlet": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Register-MsolDevice"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Add-MsolDevice"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Join-AADDevice"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_action_create and ((s2_dsregcmd_exe_path and s3_dsregcmd_join_command) or (s4_powershell_exe_path and s5_powershell_register_cmdlet))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 악의적인 장치 등록 시도를 탐지할 수 있습니다. dsregcmd.exe의 '/join' 옵션 사용 또는 PowerShell을 통한 'Register-MsolDevice', 'Add-MsolDevice', 'Join-AADDevice'와 같은 cmdlet 실행을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스의 사용자 계정, 부모 프로세스, 전체 명령줄 인자 등을 조사하여 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히, MFA 우회 또는 지속성 확보 목적으로 사용될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 작업, IT 부서의 장치 등록 스크립트, 또는 합법적인 클라우드 서비스 통합 도구가 장치를 등록하는 과정에서 오탐이 발생할 수 있습니다. 기업 환경에서 사용되는 특정 장치 등록 프로세스나 스크립트에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,168 @@
+{
+    "id": "T1557.001-LLMNR_NBT_NS_Poisoning_SMB_Relay",
+    "name": "LLMNR/NBT-NS Poisoning and SMB Relay",
+    "description": "Detects attempts by adversaries to spoof name resolution for LLMNR (UDP 5355) and NBT-NS (UDP 137) traffic to force communication with an adversary-controlled system, aiming to collect or relay authentication materials. This includes the execution of known poisoning/relay tools like Responder, NBNspoof, or Impacket's NTLMRelayX, and suspicious network traffic on relevant ports, as well as modifications or queries to the DNS Client registry settings related to LLMNR.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0006",
+        "technique_id": "T1557",
+        "subtechnique_id": "T1557.001",
+        "data_sources": [
+            "Enterprise:Persistence:Create or Modify System Process:Windows Service",
+            "Enterprise:Discovery:System Network Connections Discovery",
+            "Enterprise:Credential Access:Network Sniffing",
+            "Enterprise:Defense Evasion:Modify Registry",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmdline_responder_tool": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "responder.py"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "responder.exe"
+                    }
+                ]
+            },
+            "s3_cmdline_nbnspoof_tool": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "nbnspoof"
+                    }
+                ]
+            },
+            "s4_cmdline_impacket_ntlmrelayx_tool": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ntlmrelayx.py"
+                    }
+                ]
+            },
+            "s5_cmdline_metasploit_tool": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "msfconsole"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "metasploit"
+                    }
+                ]
+            },
+            "s6_cmdline_smb_relay_keyword": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "smb_relay"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ntlm_relay"
+                    }
+                ]
+            },
+            "s7_network_udp_protocol": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "UDP"
+                    }
+                ]
+            },
+            "s8_network_llmnr_port": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 5355
+                    },
+                    {
+                        "field": "body.network.sourceport",
+                        "operator": "equals",
+                        "value": 5355
+                    }
+                ]
+            },
+            "s9_network_nbtns_port": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 137
+                    },
+                    {
+                        "field": "body.network.sourceport",
+                        "operator": "equals",
+                        "value": 137
+                    }
+                ]
+            },
+            "s10_registry_llmnr_key_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\DNSClient"
+                    }
+                ]
+            },
+            "s11_registry_action_query_or_set": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "Query"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "SetValue"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create and (s2_cmdline_responder_tool or s3_cmdline_nbnspoof_tool or s4_cmdline_impacket_ntlmrelayx_tool or (s5_cmdline_metasploit_tool and s6_cmdline_smb_relay_keyword))) or (s7_network_udp_protocol and (s8_network_llmnr_port or s9_network_nbtns_port)) or (s10_registry_llmnr_key_path and s11_registry_action_query_or_set)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 LLMNR/NBT-NS 중독 및 SMB 릴레이 공격 시도를 탐지할 수 있습니다. Responder, NBNspoof, Impacket의 NTLMRelayX와 같은 알려진 공격 도구의 프로세스 생성 이벤트를 모니터링하고, LLMNR(UDP 5355) 및 NBT-NS(UDP 137) 포트를 통한 비정상적인 UDP 네트워크 트래픽을 감시합니다. 또한, LLMNR 관련 DNS 클라이언트 레지스트리 키에 대한 질의 또는 값 설정 시도를 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 시스템에 대한 네트워크 격리 및 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 다른 자격 증명 접근 또는 수집 활동과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "합법적인 네트워크 진단 도구, 시스템 관리 유틸리티, 또는 특정 애플리케이션이 LLMNR/NBT-NS 프로토콜을 사용하거나 관련 레지스트리 키를 조회/변경하는 경우 오탐이 발생할 수 있습니다. 특히, 레거시 시스템이나 특정 환경에서 LLMNR/NBT-NS가 여전히 사용될 수 있으므로, 알려진 정상적인 프로세스나 네트워크 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

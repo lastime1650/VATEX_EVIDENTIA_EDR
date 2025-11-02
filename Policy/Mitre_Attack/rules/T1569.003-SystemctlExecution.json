@@ -1,0 +1,135 @@
+{
+    "id": "T1569.003-SystemctlExecution",
+    "name": "Systemctl Execution or Service File Modification",
+    "description": "Detects attempts to abuse systemctl for executing commands or programs, including starting, enabling, stopping, or disabling systemd services. Also detects modifications or creations of systemd service unit files for persistence. Adversaries may leverage systemctl to execute malicious payloads, maintain persistence, or disrupt legitimate services on Linux systems.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1569",
+        "subtechnique_id": "T1569.003",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Unix Shell",
+            "Enterprise:Persistence:Create or Modify System Process:Systemd Service"
+        ]
+    },
+    "platform": [
+        "linux"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_systemctl": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_exe_path_systemctl": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "systemctl"
+                    }
+                ]
+            },
+            "s3_cmdline_service_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "start"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "enable"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "stop"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "disable"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "set-property"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "daemon-reload"
+                    }
+                ]
+            },
+            "s4_filesystem_service_file_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    }
+                ]
+            },
+            "s5_filesystem_service_file_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/etc/systemd/system/"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/usr/lib/systemd/system/"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/etc/systemd/user/"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/usr/lib/systemd/user/"
+                    }
+                ]
+            },
+            "s6_filesystem_service_file_extension": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".service"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_systemctl and s2_exe_path_systemctl and s3_cmdline_service_action) or (s4_filesystem_service_file_action and s5_filesystem_service_file_path and s6_filesystem_service_file_extension)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Linux 시스템에서 systemctl 유틸리티의 악용 시도를 탐지할 수 있습니다. systemctl 명령을 통한 서비스 시작/활성화/중지/비활성화 시도 또는 systemd 서비스 유닛 파일의 생성/수정/덮어쓰기 이벤트를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련된 프로세스 활동 및 파일 변경 사항에 대한 추가적인 조사를 시작하는 데 사용될 수 있습니다. 특히, 공격자가 권한 상승 또는 지속성 확보를 위해 시스템 서비스를 조작하는 경우에 중요한 탐지 지표가 됩니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 소프트웨어 설치/업데이트, 또는 합법적인 서비스 스크립트가 systemctl 명령을 사용하거나 systemd 서비스 파일을 수정하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 systemctl 호출 패턴, 특정 서비스 파일 경로, 또는 관리 도구의 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

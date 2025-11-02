@@ -1,0 +1,166 @@
+{
+    "id": "T1137.005-OutlookRules",
+    "name": "Persistence via Outlook Rules",
+    "description": "Detects attempts by adversaries to establish persistence by creating or modifying malicious Microsoft Outlook rules. These rules can trigger code execution when a specifically crafted email is received, or detect the use of tools like MFCMapi or PowerShell cmdlets to manipulate Outlook rules.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1137",
+        "subtechnique_id": "T1137.005",
+        "data_sources": [
+            "Enterprise:Persistence:Office Application Startup:Outlook Rules",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Native API"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_parent_is_outlook": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "endswith",
+                        "value": "outlook.exe"
+                    }
+                ]
+            },
+            "s3_child_is_suspicious_script_host": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "cmd.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "wscript.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "cscript.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "mshta.exe"
+                    }
+                ]
+            },
+            "s4_child_is_suspicious_proxy_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "rundll32.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "regsvr32.exe"
+                    }
+                ]
+            },
+            "s5_cmdline_suspicious_rundll32_args": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".dll,"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".cpl"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "javascript:"
+                    }
+                ]
+            },
+            "s6_mfcmapi_tool_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "MFCMapi.exe"
+                    }
+                ]
+            },
+            "s7_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s8_powershell_inbox_rule_cmdlet": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-InboxRule"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-InboxRule"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Remove-InboxRule"
+                    }
+                ]
+            },
+            "s9_ruler_tool_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "ruler.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ruler.exe"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_action_create and ((s2_parent_is_outlook and (s3_child_is_suspicious_script_host or (s4_child_is_suspicious_proxy_exe and s5_cmdline_suspicious_rundll32_args))) or s6_mfcmapi_tool_execution or (s7_powershell_exe_path and s8_powershell_inbox_rule_cmdlet) or s9_ruler_tool_execution)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Microsoft Outlook 규칙을 악용하는 지속성(Persistence) 시도를 탐지할 수 있습니다. Outlook 프로세스가 비정상적인 자식 프로세스(스크립트 호스트, 프록시 실행 파일 등)를 생성하는 경우, 또는 MFCMapi, PowerShell Cmdlet, Ruler와 같은 도구를 사용하여 Outlook 규칙을 생성/수정/삭제하는 행위를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 사용자 계정 및 시스템에 대한 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 Outlook 확장 기능, 시스템 관리 도구, 또는 합법적인 스크립트가 Outlook과 상호작용하거나 Outlook 규칙을 관리하는 과정에서 오탐이 발생할 수 있습니다. 특히 PowerShell을 통한 규칙 관리는 합법적인 경우도 많습니다. 알려진 정상 프로세스, 명령줄 패턴, 또는 특정 사용자 계정을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

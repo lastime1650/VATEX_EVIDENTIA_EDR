@@ -1,0 +1,110 @@
+{
+    "id": "T1055.009",
+    "name": "Proc Memory",
+    "description": "Detects attempts to inject malicious code into processes by directly writing to /proc/[pid]/mem or /proc/[pid]/maps on Linux systems. This technique allows adversaries to execute arbitrary code in the address space of a separate live process, often leveraging utilities like 'dd' to overwrite memory mappings within the /proc filesystem for defense evasion and privilege escalation.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0004",
+        "technique_id": "T1055",
+        "subtechnique_id": "T1055.009",
+        "data_sources": [
+            "Enterprise:Defense Evasion:File and Directory Permissions Modification:Linux and Mac File and Directory Permissions Modification",
+            "Enterprise:Execution:Command and Scripting Interpreter:Unix Shell"
+        ]
+    },
+    "platform": [
+        "linux"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_dd_executable": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "dd"
+                    }
+                ]
+            },
+            "s3_commandline_contains_of_proc": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "of=/proc/"
+                    }
+                ]
+            },
+            "s4_commandline_target_mem_or_maps": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/mem"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/maps"
+                    }
+                ]
+            },
+            "s5_filesystem_write_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    }
+                ]
+            },
+            "s6_filepath_contains_proc_dir": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/proc/"
+                    }
+                ]
+            },
+            "s7_filepath_target_mem_or_maps": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/mem"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/maps"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create and s2_dd_executable and s3_commandline_contains_of_proc and s4_commandline_target_mem_or_maps) or (s5_filesystem_write_action and s6_filepath_contains_proc_dir and s7_filepath_target_mem_or_maps)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Linux 시스템에서 /proc 파일시스템을 통한 프로세스 메모리 주입 시도를 탐지할 수 있습니다. 'dd' 명령어가 /proc/[pid]/mem 또는 /proc/[pid]/maps를 대상으로 사용되거나, 이러한 특수 파일에 직접 쓰기 작업이 발생하는 경우를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스의 활동 및 시스템 무결성에 대한 심층적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 이는 방어 회피 및 권한 상승의 핵심 전술이므로, 다른 의심스러운 활동과 결합될 때 더욱 중요도가 높아집니다.",
+    "false_positive": "정상적인 시스템 디버깅 도구, 성능 모니터링 유틸리티, 또는 특정 애플리케이션이 /proc 파일시스템을 합법적으로 조작하는 경우 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다. 특히, /proc/[pid]/maps 파일은 읽기 작업이 빈번할 수 있으므로, 쓰기/수정 작업에 초점을 맞춰야 합니다."
+}

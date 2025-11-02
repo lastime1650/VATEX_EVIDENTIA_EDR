@@ -1,0 +1,162 @@
+{
+    "id": "T1070.001-ClearWindowsEventLogs",
+    "name": "Clear Windows Event Logs",
+    "description": "Detects attempts by adversaries to clear Windows Event Logs (System, Application, Security) to hide their activity. This includes the use of 'wevtutil.exe', PowerShell cmdlets like 'Remove-EventLog', or direct deletion of event log files in 'C:\\Windows\\System32\\winevt\\logs\\', and relevant API calls.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1070",
+        "subtechnique_id": "T1070.001",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Defense Evasion:Indicator Removal:File Deletion",
+            "Enterprise:Execution:Native API"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_wevtutil_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "wevtutil.exe"
+                    }
+                ]
+            },
+            "s3_wevtutil_clear_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "cl"
+                    }
+                ]
+            },
+            "s4_wevtutil_target_logs": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "system"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "application"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "security"
+                    }
+                ]
+            },
+            "s5_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s6_powershell_remove_eventlog_cmdlet": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Remove-EventLog"
+                    }
+                ]
+            },
+            "s7_powershell_logname_param": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-LogName"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Security"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Application"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "System"
+                    }
+                ]
+            },
+            "s8_filesystem_action_remove": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "remove"
+                    }
+                ]
+            },
+            "s9_filesystem_event_log_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\Windows\\System32\\winevt\\logs\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".evtx"
+                    }
+                ]
+            },
+            "s10_apicall_clear_eventlog": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "ClearEventLog"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "RemoveEventLog"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create and s2_wevtutil_exe and s3_wevtutil_clear_command and s4_wevtutil_target_logs) or (s1_process_create and s5_powershell_exe and s6_powershell_remove_eventlog_cmdlet and s7_powershell_logname_param) or (s8_filesystem_action_remove and s9_filesystem_event_log_path) or s10_apicall_clear_eventlog"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 공격자가 침투 활동을 은폐하기 위해 Windows 이벤트 로그를 지우려는 시도를 탐지할 수 있습니다. 'wevtutil.exe' 또는 'powershell.exe'를 사용한 로그 삭제 명령 실행, 이벤트 로그 파일의 직접적인 삭제, 또는 관련 API 호출을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 추가적인 포렌식 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 보안 소프트웨어, 또는 시스템 유지보수 스크립트가 합법적으로 이벤트 로그를 지우거나 백업하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

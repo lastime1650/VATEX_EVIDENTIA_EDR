@@ -1,0 +1,274 @@
+{
+    "id": "T1574-HijackExecutionFlow",
+    "name": "Hijack Execution Flow",
+    "description": "Adversaries may execute their own malicious payloads by hijacking the way operating systems run programs. Hijacking execution flow can be for the purposes of persistence, since this hijacked execution may reoccur over time. Adversaries may also use these mechanisms to elevate privileges or evade defenses, such as application control or other restrictions on execution. There are many ways an adversary may hijack the flow of execution, including by manipulating how the operating system locates programs to be executed. How the operating system locates libraries to be used by a program can also be intercepted. Locations where the operating system looks for programs/resources, such as file directories and in the case of Windows the Registry, could also be poisoned to include malicious payloads.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003,TA0004,TA0005",
+        "technique_id": "T1574",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Defense Evasion:Modify Registry",
+            "Enterprise:Defense Evasion:Hide Artifacts:Hidden Files and Directories",
+            "Enterprise:Execution:Shared Modules",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Persistence:Create or Modify System Process:Windows Service",
+            "Enterprise:Defense Evasion:File and Directory Permissions Modification:Windows File and Directory Permissions Modification"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2a_cmdline_contains_regsvr32": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "regsvr32.exe"
+                    }
+                ]
+            },
+            "s2b_cmdline_contains_dll_for_regsvr32": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".dll"
+                    }
+                ]
+            },
+            "s3a_cmdline_contains_rundll32": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "rundll32.exe"
+                    }
+                ]
+            },
+            "s3b_cmdline_contains_dll_entrypoint_for_rundll32": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".dll,"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".dll#"
+                    }
+                ]
+            },
+            "s4_registry_modify_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtCreateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreCreateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtRenameKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreRenameKey"
+                    }
+                ]
+            },
+            "s5_registry_appinit_dlls_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Windows\\AppInit_DLLs"
+                    }
+                ]
+            },
+            "s6_registry_ifeo_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options"
+                    }
+                ]
+            },
+            "s7_registry_com_hijacking_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CLASSES_ROOT\\CLSID"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CLASSES_ROOT\\Interface"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CLASSES_ROOT\\AppID"
+                    }
+                ]
+            },
+            "s8a_registry_name_contains_services": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "\\Services\\"
+                    }
+                ]
+            },
+            "s8b_registry_name_ends_imagepath": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "endswith",
+                        "value": "\\ImagePath"
+                    }
+                ]
+            },
+            "s9_filesystem_dll_file_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "superseded"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "rename"
+                    }
+                ]
+            },
+            "s10_filesystem_dll_ocx_cpl_filepath": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".ocx"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".cpl"
+                    }
+                ]
+            },
+            "s11_filesystem_manifest_local_filepath": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".manifest"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".local"
+                    }
+                ]
+            },
+            "s12a_imageload_filepath_ends_dll": {
+                "event_type": "imageload",
+                "conditions": [
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    }
+                ]
+            },
+            "s12b_imageload_filepath_suspicious_location": {
+                "event_type": "imageload",
+                "conditions": [
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "\\AppData\\Local\\Temp\\"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "\\ProgramData\\"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "\\Users\\Public\\"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2a_cmdline_contains_regsvr32 and s2b_cmdline_contains_dll_for_regsvr32) or (s1_process_create_action and s3a_cmdline_contains_rundll32 and s3b_cmdline_contains_dll_entrypoint_for_rundll32) or (s4_registry_modify_action and (s5_registry_appinit_dlls_path or s6_registry_ifeo_path or s7_registry_com_hijacking_path or (s8a_registry_name_contains_services and s8b_registry_name_ends_imagepath))) or (s9_filesystem_dll_file_action and (s10_filesystem_dll_ocx_cpl_filepath or s11_filesystem_manifest_local_filepath)) or (s12a_imageload_filepath_ends_dll and s12b_imageload_filepath_suspicious_location)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템의 실행 흐름을 가로채는 악의적인 시도를 탐지할 수 있습니다. regsvr32.exe 또는 rundll32.exe를 이용한 DLL 실행, AppInit_DLLs, IFEO, COM/DCOM 하이재킹 관련 레지스트리 키 수정, 서비스 이미지 경로 변경, 시스템 또는 애플리케이션 디렉터리 내 DLL, OCX, CPL 파일 생성/수정/이름 변경, .manifest 또는 .local 파일 조작, 그리고 비정상적인 경로에서 DLL이 로드되는 이벤트를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 파일에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 이는 방어 회피 및 권한 상승 전술의 핵심 지표입니다.",
+    "false_positive": "정상적인 소프트웨어 설치, 업데이트, 또는 합법적인 시스템 관리 도구가 DLL을 등록하거나, 레지스트리 키를 수정하거나, 시스템 파일에 접근하는 과정에서 오탐이 발생할 수 있습니다. 특히 개발 환경이나 특정 레거시 애플리케이션에서 rundll32.exe 및 regsvr32.exe의 사용은 일반적일 수 있습니다. 알려진 정상적인 프로세스, 파일 경로, 또는 레지스트리 변경 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

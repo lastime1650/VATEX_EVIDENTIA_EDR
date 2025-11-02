@@ -1,0 +1,47 @@
+{
+    "id": "T1205.002-SocketFilters",
+    "name": "Socket Filters",
+    "description": "Detects attempts by adversaries to attach filters to network sockets using APIs like setsockopt or pcap_setfilter. These filters can be used to monitor network traffic and activate backdoors for persistence or command and control upon receiving crafted packets, often leveraging libraries like libpcap or Winpcap.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1205",
+        "subtechnique_id": "T1205.002",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "NetworkTraffic:NetworkConnectionCreation"
+        ]
+    },
+    "platform": [
+        "windows",
+        "linux",
+        "macos"
+    ],
+    "detection": {
+        "selections": {
+            "apicall_setsockopt": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "setsockopt"
+                    }
+                ]
+            },
+            "apicall_pcap_setfilter": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "pcap_setfilter"
+                    }
+                ]
+            }
+        },
+        "condition": "apicall_setsockopt or apicall_pcap_setfilter"
+    },
+    "operational_usage": "SOC는 이 룰을 사용하여 네트워크 소켓 필터 설치 시도를 탐지하고, 잠재적인 백도어 활성화 또는 C2 통신 채널 구축을 식별할 수 있습니다. 탐지된 이벤트는 즉시 경고를 발생시켜 관련 프로세스 및 네트워크 활동에 대한 심층 조사를 시작하고, 침해 사고 대응 우선순위를 높이는 데 활용됩니다.",
+    "false_positive": "Wireshark, Nmap과 같은 합법적인 네트워크 분석 도구나 사용자 정의 네트워크 애플리케이션이 네트워크 트래픽 모니터링을 위해 setsockopt 또는 pcap_setfilter와 같은 API를 사용할 수 있으므로 오탐이 발생할 수 있습니다. 이러한 경우, 해당 프로세스의 정당성을 확인해야 합니다."
+}

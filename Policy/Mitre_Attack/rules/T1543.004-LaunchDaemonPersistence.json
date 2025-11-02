@@ -1,0 +1,80 @@
+{
+    "id": "T1543.004-LaunchDaemonPersistence",
+    "name": "Launch Daemon Persistence",
+    "description": "Detects the creation or modification of Launch Daemon .plist files in sensitive system directories (/Library/LaunchDaemons/ or /System/Library/LaunchDaemons/) to establish persistence on macOS systems. Adversaries use this technique to execute malicious payloads automatically at system startup, often with elevated privileges, without requiring user interaction.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1543",
+        "subtechnique_id": "T1543.004",
+        "data_sources": [
+            "Enterprise:Persistence:Create or Modify System Process:Launch Daemon",
+            "Enterprise:Execution:Command and Scripting Interpreter:Unix Shell"
+        ]
+    },
+    "platform": [
+        "macos"
+    ],
+    "detection": {
+        "selections": {
+            "s1_file_action_modify": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "superseded"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "rename"
+                    }
+                ]
+            },
+            "s2_launchdaemon_dir_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/Library/LaunchDaemons/"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/System/Library/LaunchDaemons/"
+                    }
+                ]
+            },
+            "s3_plist_file_extension": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".plist"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_file_action_modify and s2_launchdaemon_dir_path and s3_plist_file_extension"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 macOS 시스템에서 Launch Daemon을 이용한 지속성(Persistence) 설정 시도를 탐지할 수 있습니다. /Library/LaunchDaemons/ 또는 /System/Library/LaunchDaemons/ 경로에 있는 .plist 파일의 생성, 수정, 이름 변경 등의 파일 시스템 활동을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 파일의 내용 및 관련 프로세스에 대한 추가적인 조사를 시작하여 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 소프트웨어 설치 프로그램, 시스템 업데이트, 또는 합법적인 관리 도구가 Launch Daemon .plist 파일을 생성하거나 수정하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상적인 프로세스나 특정 .plist 파일에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

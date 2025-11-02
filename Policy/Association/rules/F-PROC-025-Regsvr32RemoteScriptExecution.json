@@ -1,0 +1,36 @@
+{
+    "id": "F-PROC-025-Regsvr32RemoteScriptExecution",
+    "name": "Feature: Regsvr32 Executing Remote Script",
+    "description": "Identifies regsvr32.exe attempting to execute a script from a remote location (scrobj.dll). This is a well-known fileless attack technique.",
+    "severity": "high",
+    "mitre_attack": [
+        {
+            "tactic": "TA0005",
+            "technique_id": "T1218",
+            "subtechnique_id": "T1218.010"
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "regsvr32_squiblydoo_pattern",
+                "selections": {
+                    "selection_regsvr32_remote": {
+                        "event_type": "process",
+                        "condition_method": "and",
+                        "conditions": [
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "regsvr32.exe"},
+                            {"field": "body.process.commandline", "operator": "contains", "value": "/i:http"},
+                            {"field": "body.process.commandline", "operator": "contains", "value": "scrobj.dll"}
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "Feature Captured: Regsvr32 remote script execution attempt (Squiblydoo)."
+                }
+            }
+        ]
+    }
+}

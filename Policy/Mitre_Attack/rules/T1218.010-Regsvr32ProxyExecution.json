@@ -1,0 +1,121 @@
+{
+    "id": "T1218.010-Regsvr32ProxyExecution",
+    "name": "Regsvr32 Proxy Execution",
+    "description": "Detects attempts to abuse regsvr32.exe for proxy execution of malicious code, including COM scriptlets (.sct) and DLLs, often loaded from remote URLs. Adversaries leverage regsvr32.exe to evade security controls and obscure malicious activity by utilizing a legitimate signed system binary, sometimes without making registry modifications.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1218",
+        "subtechnique_id": "T1218.010",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Defense Evasion:Shared Modules",
+            "Enterprise:Command and Control:Application Layer Protocol:Web Protocols"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s_target_regsvr32_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "regsvr32.exe"
+                    }
+                ]
+            },
+            "s_cmdline_sct_extension": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".sct"
+                    }
+                ]
+            },
+            "s_cmdline_url_load_http": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "http://"
+                    }
+                ]
+            },
+            "s_cmdline_url_load_https": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "https://"
+                    }
+                ]
+            },
+            "s_cmdline_silent_switch": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/s"
+                    }
+                ]
+            },
+            "s_cmdline_install_switch": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/i:"
+                    }
+                ]
+            },
+            "s_cmdline_unregister_switch": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/u"
+                    }
+                ]
+            },
+            "s_cmdline_dll_or_ocx": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".ocx"
+                    }
+                ]
+            }
+        },
+        "condition": "s_process_create_action and s_target_regsvr32_exe and (s_cmdline_sct_extension or s_cmdline_url_load_http or s_cmdline_url_load_https or (s_cmdline_silent_switch and s_cmdline_install_switch) or (s_cmdline_unregister_switch and s_cmdline_dll_or_ocx))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 regsvr32.exe를 통한 악성 코드 프록시 실행 시도를 탐지할 수 있습니다. regsvr32.exe의 프로세스 생성 이벤트와 함께 비정상적인 명령줄 인자(스크립트릿 파일(.sct) 로드, 원격 URL을 통한 실행, /s 및 /i: 스위치를 사용한 자동 실행, 또는 비정상적인 DLL 등록/등록 해제 시도)를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 로드된 모듈에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 다른 방어 회피 또는 실행 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 소프트웨어 설치 또는 업데이트 프로세스, 합법적인 애플리케이션의 COM 객체 등록/해제 과정에서 regsvr32.exe가 사용될 수 있습니다. 특히, 레거시 애플리케이션이나 특정 개발 도구에서 이러한 패턴이 발생할 수 있습니다. 알려진 정상적인 regsvr32.exe 호출 패턴이나 특정 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

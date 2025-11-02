@@ -1,0 +1,34 @@
+{
+    "id": "F-PROC-010-BitsadminExecution",
+    "name": "Feature: File Transfer via bitsadmin.exe",
+    "description": "Identifies the use of bitsadmin.exe, which can be abused by adversaries to download or upload files and execute code.",
+    "severity": "info",
+    "mitre_attack": [
+        {
+            "tactic": "TA0002",
+            "technique_id": "T1197"
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "bitsadmin_process_started",
+                "selections": {
+                    "selection_bitsadmin_transfer": {
+                        "event_type": "process",
+                        "condition_method": "and",
+                        "conditions": [
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "bitsadmin.exe"},
+                            {"field": "body.process.commandline", "operator": "contains", "value": "transfer"}
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "Feature Captured: File transfer using bitsadmin.exe"
+                }
+            }
+        ]
+    }
+}

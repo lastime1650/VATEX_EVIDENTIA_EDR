@@ -1,0 +1,121 @@
+{
+    "id": "T1205-TrafficSignaling",
+    "name": "Traffic Signaling",
+    "description": "Adversaries may use traffic signaling to hide open ports or other malicious functionality used for persistence or command and control. This involves sending a magic value or sequence to trigger a special response, such as opening a closed port or executing a malicious task. This can include port knocking sequences or Wake-on-LAN magic packets. Detection focuses on identifying suspicious network traffic patterns or the execution of tools designed for such signaling.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005,TA0003,TA0011",
+        "technique_id": "T1205",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Command and Control:Traffic Signaling:Port Knocking",
+            "Enterprise:Discovery:System Network Connections Discovery",
+            "Enterprise:Execution:Process Creation"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_nmap_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "nmap.exe"
+                    }
+                ]
+            },
+            "s2_process_hping3_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "hping3.exe"
+                    }
+                ]
+            },
+            "s3_process_powershell_raw_packet": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Send-NetRawPacket"
+                    }
+                ]
+            },
+            "s4_network_wol_pattern_udp": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "UDP"
+                    },
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    },
+                    {
+                        "field": "body.network.packetsize",
+                        "operator": "equals",
+                        "value": 102
+                    }
+                ]
+            },
+            "s5_network_wol_pattern_broadcast_mac": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationmac",
+                        "operator": "equals",
+                        "value": "FF:FF:FF:FF:FF:FF"
+                    }
+                ]
+            },
+            "s6_network_wol_pattern_port": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 7
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 9
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_nmap_execution or s2_process_hping3_execution or s3_process_powershell_raw_packet) or (s4_network_wol_pattern_udp and s5_network_wol_pattern_broadcast_mac and s6_network_wol_pattern_port)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 트래픽 시그널링 시도를 탐지할 수 있습니다. Nmap, hping3와 같은 네트워크 스캐닝/패킷 조작 도구의 실행 또는 PowerShell을 통한 Raw Packet 전송 시도를 모니터링합니다. 또한, Wake-on-LAN(WoL) 매직 패킷과 유사한 특성(UDP 프로토콜, 특정 패킷 크기, 브로드캐스트 MAC 주소, 특정 대상 포트)을 가진 비정상적인 네트워크 트래픽 패턴을 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련된 프로세스 및 네트워크 통신에 대한 추가적인 조사를 시작하는 데 사용될 수 있습니다. 특히, 다른 방어 회피 또는 명령 및 제어 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 네트워크 모니터링 소프트웨어, 또는 합법적인 Wake-on-LAN 기능 사용으로 인해 오탐이 발생할 수 있습니다. 특히, WoL 패턴 감지는 패킷 내용이 아닌 헤더 정보에 기반하므로, 유사한 특성을 가진 다른 UDP 트래픽에 의해 오탐될 가능성이 있습니다. 알려진 정상 프로세스나 네트워크 활동에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,195 @@
+{
+    "id": "T1036.008-MasqueradeFileType",
+    "name": "Masquerade File Type",
+    "description": "Detects attempts by adversaries to disguise malicious payloads as legitimate files by altering file formatting, including signature, extension, icon, or contents. This often involves renaming executable files to benign extensions (e.g., .jpg, .txt) using command-line utilities like 'ren', 'move', or PowerShell's 'Rename-Item' cmdlet.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1036",
+        "subtechnique_id": "T1036.008",
+        "data_sources": [
+            "Enterprise:Defense Evasion:File and Directory Permissions Modification",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmdline_contains_ren_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ren "
+                    }
+                ]
+            },
+            "s3_cmdline_contains_move_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "move "
+                    }
+                ]
+            },
+            "s4_cmdline_contains_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s5_cmdline_contains_rename_item": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Rename-Item"
+                    }
+                ]
+            },
+            "s6_cmdline_contains_suspicious_exe_ext": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".exe"
+                    }
+                ]
+            },
+            "s7_cmdline_contains_suspicious_dll_ext": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".dll"
+                    }
+                ]
+            },
+            "s8_cmdline_contains_suspicious_ps1_ext": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".ps1"
+                    }
+                ]
+            },
+            "s9_cmdline_contains_suspicious_bat_ext": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".bat"
+                    }
+                ]
+            },
+            "s10_cmdline_contains_suspicious_cmd_ext": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".cmd"
+                    }
+                ]
+            },
+            "s11_cmdline_contains_benign_jpg_ext": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".jpg"
+                    }
+                ]
+            },
+            "s12_cmdline_contains_benign_txt_ext": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".txt"
+                    }
+                ]
+            },
+            "s13_cmdline_contains_benign_pdf_ext": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".pdf"
+                    }
+                ]
+            },
+            "s14_cmdline_contains_benign_doc_ext": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".doc"
+                    }
+                ]
+            },
+            "s15_cmdline_contains_benign_png_ext": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".png"
+                    }
+                ]
+            },
+            "s16_cmdline_contains_benign_gif_ext": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".gif"
+                    }
+                ]
+            },
+            "s17_cmdline_contains_benign_zip_ext": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".zip"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_action_create and (s2_cmdline_contains_ren_command or s3_cmdline_contains_move_command or (s4_cmdline_contains_powershell_exe and s5_cmdline_contains_rename_item)) and (s6_cmdline_contains_suspicious_exe_ext or s7_cmdline_contains_suspicious_dll_ext or s8_cmdline_contains_suspicious_ps1_ext or s9_cmdline_contains_suspicious_bat_ext or s10_cmdline_contains_suspicious_cmd_ext) and (s11_cmdline_contains_benign_jpg_ext or s12_cmdline_contains_benign_txt_ext or s13_cmdline_contains_benign_pdf_ext or s14_cmdline_contains_benign_doc_ext or s15_cmdline_contains_benign_png_ext or s16_cmdline_contains_benign_gif_ext or s17_cmdline_contains_benign_zip_ext)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 파일 확장자 위장 시도를 탐지할 수 있습니다. 특히 'ren', 'move', 'Rename-Item'과 같은 명령줄 유틸리티를 사용하여 실행 가능하거나 스크립트 파일 확장자(.exe, .dll, .ps1 등)를 일반적인 문서나 이미지 파일 확장자(.jpg, .txt, .pdf 등)로 변경하는 프로세스 생성 이벤트를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 파일에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 이는 방어 회피 및 초기 접근 단계에서 악성 코드의 은닉을 탐지하는 데 중요합니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 파일 정리 스크립트, 또는 사용자가 실수로 파일을 잘못된 확장자로 변경하는 경우 오탐이 발생할 수 있습니다. 특히 개발 환경에서 파일 확장자를 자주 변경하거나, 특정 애플리케이션이 내부적으로 파일을 변환하는 과정에서 유사한 명령이 실행될 수 있습니다. 알려진 정상적인 프로세스나 특정 파일 경로에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

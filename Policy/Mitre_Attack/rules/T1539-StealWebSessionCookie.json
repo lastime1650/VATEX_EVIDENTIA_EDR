@@ -1,0 +1,140 @@
+{
+    "id": "T1539-StealWebSessionCookie",
+    "name": "Steal Web Session Cookie",
+    "description": "Detects attempts by adversaries to steal web application or service session cookies. This includes monitoring for suspicious file access to browser cookie databases and unauthorized process memory access to browser processes, which could allow an attacker to bypass authentication and gain access to web services as an authenticated user.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0006",
+        "technique_id": "T1539",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Defense Evasion:Process Injection",
+            "Enterprise:Credential Access:Unsecured Credentials:Credentials In Files"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_fs_action_read_open": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "read"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "open"
+                    }
+                ]
+            },
+            "s2_fs_path_chrome_edge_cookies": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "Google\\Chrome\\User Data\\Default\\Cookies"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "Microsoft\\Edge\\User Data\\Default\\Cookies"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "Local\\Chromium\\User Data\\Default\\Cookies"
+                    }
+                ]
+            },
+            "s3_fs_path_firefox_cookies": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "Mozilla\\Firefox\\Profiles"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "cookies.sqlite"
+                    }
+                ]
+            },
+            "s4_fs_path_local_storage": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "Local Storage"
+                    }
+                ]
+            },
+            "s5_pa_handletype_create_duplicate": {
+                "event_type": "processaccess",
+                "conditions": [
+                    {
+                        "field": "body.processaccess.handletype",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.processaccess.handletype",
+                        "operator": "equals",
+                        "value": "duplicate"
+                    }
+                ]
+            },
+            "s6_pa_target_browser_exe": {
+                "event_type": "processaccess",
+                "conditions": [
+                    {
+                        "field": "body.processaccess.filepath",
+                        "operator": "endswith",
+                        "value": "chrome.exe"
+                    },
+                    {
+                        "field": "body.processaccess.filepath",
+                        "operator": "endswith",
+                        "value": "firefox.exe"
+                    },
+                    {
+                        "field": "body.processaccess.filepath",
+                        "operator": "endswith",
+                        "value": "msedge.exe"
+                    }
+                ]
+            },
+            "s7_pa_desired_access_memory_dump": {
+                "event_type": "processaccess",
+                "conditions": [
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_VM_READ"
+                    },
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_DUP_HANDLE"
+                    },
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_ALL_ACCESS"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_fs_action_read_open and (s2_fs_path_chrome_edge_cookies or s3_fs_path_firefox_cookies or s4_fs_path_local_storage)) or (s5_pa_handletype_create_duplicate and s6_pa_target_browser_exe and s7_pa_desired_access_memory_dump)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 웹 세션 쿠키 탈취 시도를 탐지할 수 있습니다. 브라우저의 쿠키 저장 경로에 대한 비정상적인 파일 읽기/열기 접근, 또는 브라우저 프로세스에 대한 메모리 덤프/읽기 권한을 요청하는 행위를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 파일 활동에 대한 추가적인 포렌식 조사를 시작하여 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 브라우저 확장 프로그램, 보안 소프트웨어, 백업 유틸리티, 또는 시스템 관리 도구가 브라우저 데이터나 프로세스 메모리에 접근하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 프로세스나 특정 파일 경로에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

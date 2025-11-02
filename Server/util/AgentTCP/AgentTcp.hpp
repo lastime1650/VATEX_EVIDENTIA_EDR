@@ -23,11 +23,38 @@ namespace EDR
                 };
             }
 
+            namespace SqliteStruct
+            {
+                struct AgentTcpSqliteStruct
+                {
+                    std::string AgentID;
+                    unsigned long long first_seen;
+                    unsigned long long last_seen;
+                    bool is_online;
+                };
+            }
+
             class AgentTcp
             {
             public:
-                AgentTcp(std::string ServerIp, unsigned int ServerPort) : tcpServer(ServerIp, ServerPort){
+                AgentTcp(std::string ServerIp, unsigned int ServerPort) 
+                : 
+                    tcpServer(ServerIp, ServerPort),
+                    AgentTcpSqlite("Sqlite_Databases/AgentTcp/AgentTcp.db")
+                {
                     std::cout << "[AgentTcp]{Notice} AgentTcp created" << std::endl;
+                    
+                    // Table 생성
+                    this->AgentTcpSqlite.Execute(
+                        R"( 
+                            CREATE TABLE IF NOT EXISTS AGENTS ( 
+                                agentid TEXT PRIMARY KEY,
+                                first_seen INT,
+                                last_seen INT,
+                                is_online INT
+                            ); 
+                        )"
+                    );
                 }
                 ~AgentTcp() { std::cout << "[AgentTcp]{Notice} ~AgentTcp called" << std::endl; Stop(); }
 
@@ -63,20 +90,39 @@ namespace EDR
                 // 1. 바이너리 요청 ( BASE64 )
                 bool Send_Command_Request_File( std::string AgentId, std::string filepath, std::vector<uint8_t>& binary )
                 {
+                    /*
+                        ```json
+                        {
+                            "agentid": "...",
+                            "cmd" : Enum::RequestResponse_PROCESS ,
+                            "parameter" :
+                            {
+                                "file_path" : ...
+                            }
+                        }
+                        ```
+
+                        ```json
+                        {
+                            "result" : bool,
+                            "output" : {
+                                "base64": ...
+                            }
+                        }
+                        ```
+                    */
                     json result;
                     if ( !SendCommand(
                         AgentId,
-                        json::parse(R"(
-                            {{
-                                "request": 
-                                    {{
-                                        "file" : 
-                                            {{
-                                                "path" : "{}"
-                                            }}
-                                    }}
-                            }}
-                        )", filepath.c_str()),
+                        {
+                            {"agentid", AgentId},
+                            {"cmd", (int)Enum::RequestFileBin },
+                            {"parameter",
+                                {
+                                    {"file_path", filepath.c_str()}
+                                }
+                            }
+                        },
                         result
                     ) ) 
                         return false;
@@ -84,10 +130,12 @@ namespace EDR
                     // valid check
                     if( !result.contains("result") )
                         return false;
-                    if( !result["result"].contains("base64") )
+                    if( !result["result"].get<bool>() )
+                        return false;
+                    if( !result["output"].contains("base64") )
                         return false;
                     
-                    std::string filebinary_base64( result["result"]["base64"].get<std::string>() );
+                    std::string filebinary_base64( result["output"]["base64"].get<std::string>() );
                     if(filebinary_base64.empty())
                         return true; // 
 
@@ -140,6 +188,42 @@ namespace EDR
                     return true;
                 }
                 // 2-2. 파일 차단
+                bool Response_FILE(std::string AgentId, std::string file_path)
+                {
+                    /*
+                        ```json
+                        {
+                            "agentid": "...",
+                            "cmd" : Enum::RequestResponse_PROCESS ,
+                            "parameter" :
+                            {
+                                "file_path" : ...
+                            }
+                        }
+                        ```
+                    */
+                    json result;
+                    if ( !SendCommand(
+                        AgentId,
+                        {
+                            {"agentid", AgentId},
+                            {"cmd", (int)Enum::RequestResponse_FILE },
+                            {"parameter",
+                                {
+                                    {"file_path", file_path.c_str()}
+                                }
+                            }
+                        },
+                        result
+                        ) 
+                    ) 
+                        return false;
+
+                    if( !result["result"].get<bool>() )
+                        return false;
+
+                    return true;
+                }
                 // 2-3. 네트워크 차단
 
                 // Helper
@@ -147,7 +231,10 @@ namespace EDR
                 {
                     auto it = Agent_ClientFd_Vec.find(AgentId);
                     if(it == Agent_ClientFd_Vec.end())
+                    {
+                        output = -1;
                         return false;
+                    }
                     
                     output = (it->second);
                     return true;
@@ -169,12 +256,28 @@ namespace EDR
                     auto ClientId = it->second;
                     tcpServer.Disconnect_Client(ClientId);
 
+                    unsigned long long seen = EDR::Util::timestamp::Get_Real_Timestamp();
+                    _sqlite_update_status_agent(
+                        AgentId,
+                        seen,
+                        false
+                    );
+
                     return true;
+                }
+                json Get_Information()
+                {
+                    return _sqlite_query_all_with_json();
                 }
 
             private:
                 EDR::Util::Tcp::TcpServer tcpServer;
                 bool is_working = false;
+
+                /*
+                    Sqlite 
+                */
+                EDR::Util::Sqlite::SqliteManager AgentTcpSqlite;
 
                 // Tcp Client Handler
                 // Tcp 에이전트 연결 검사
@@ -194,7 +297,6 @@ namespace EDR
                             this->tcpServer.Disconnect_Client(clientfd);
                             return;
                         }
-                        std::cout << "received_data_size: " << receiveBuffer.size() << std::endl;
 
                         // to stirng
                         std::string InitJsonMessage(receiveBuffer.begin(), receiveBuffer.end());
@@ -235,12 +337,16 @@ namespace EDR
                         Agent_ClientFd_Vec[Agent_Id] = clientfd;
                         std::cout <<"[AgentTcp]{Notice} Handler INITIALIZE Success" << std::endl;
 
-                        // TEST
-                        std::cout << "test: " << this->Response_PROCESS(
+                        // DB update
+                        unsigned long long seen = EDR::Util::timestamp::Get_Real_Timestamp();
+                        if( !_sqlite_update_status_agent(
                             Agent_Id,
-                            1234,
-                            "C:\\test.exe"
-                        ) << std::endl;
+                            seen,
+                            true
+                        ) )
+                            std::cout <<"[AgentTcp]{FAILED} INITIALIZE _sqlite_update_status_agent failed" << std::endl;
+
+                         std::cout <<"[AgentTcp]{NOTICE} INITIALIZE _sqlite_update_status_agent success" << std::endl;
                     };
 
                 // Agent
@@ -279,6 +385,111 @@ namespace EDR
 
                     return true;
                 }
+
+                /*
+                    SQLITE 
+                */
+                std::vector<SqliteStruct::AgentTcpSqliteStruct> _sqlite_query_all()
+                {
+                    json::array_t result = json::array();
+                    AgentTcpSqlite.Query(
+                        fmt::format(
+                            R"(
+                                SELECT * FROM AGENTS;
+                            )"
+                        ),
+                        result
+                    );
+                    if(result.empty())
+                        return {};
+
+
+                    std::vector<SqliteStruct::AgentTcpSqliteStruct> output;
+                    for(auto row : result)
+                    {
+                        SqliteStruct::AgentTcpSqliteStruct data = {
+                            .AgentID = row["agentid"].get<std::string>(),
+                            .first_seen = row["first_seen"].get<unsigned long long >(),
+                            .last_seen = row["last_seen"].get<unsigned long long >(),
+                            .is_online = row["is_online"].get<int>() ? true : false
+                        };
+
+                        output.push_back(data);
+                    }
+                    
+                    return output;
+                }
+                json::array_t _sqlite_query_all_with_json()
+                {
+                    json::array_t result = json::array();
+                    AgentTcpSqlite.Query(
+                        fmt::format(
+                            R"(
+                                SELECT * FROM AGENTS;
+                            )"
+                        ),
+                        result
+                    );
+                    if(result.empty())
+                        return {};
+                    
+                    return result;
+                }
+                bool _sqlite_query_agent(std::string AgentId)
+                {
+                    json::array_t result = json::array();
+                    AgentTcpSqlite.Query(
+                        fmt::format(
+                            R"(
+                                SELECT agentid FROM AGENTS WHERE agentid = '{}';
+                            )", AgentId
+                        ),
+                        result
+                    );
+                    if(result.empty())
+                        return false;
+
+                    return true;
+                }
+                bool _sqlite_update_status_agent( std::string AgentId, unsigned long long last_seen, bool is_online )
+                {
+
+                    if(!_sqlite_query_agent(AgentId))
+                    {
+                        // 새로 생성
+                        AgentTcpSqlite.Execute(
+                            fmt::format(
+                                R"(
+                                    REPLACE INTO AGENTS (
+                                        agentid, first_seen, last_seen, is_online
+                                    ) VALUES (
+                                        '{}', {}, {}, {} 
+                                    );
+                                )", AgentId, last_seen, last_seen, is_online
+                            )
+                        );
+                    }
+                    else
+                    {
+                        // 기존 업데이트
+                        AgentTcpSqlite.Execute(
+                            fmt::format(
+                                R"(
+                                    REPLACE INTO AGENTS (
+                                        agentid, last_seen, is_online
+                                    ) VALUES (
+                                        '{}', {}, {} 
+                                    );
+                                )", AgentId, last_seen, is_online ? 1 : 0
+                            )
+                        );
+                    }
+
+                    
+
+                    return true;
+                }
+
             };
         }
     }

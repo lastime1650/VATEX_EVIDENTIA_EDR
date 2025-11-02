@@ -1,0 +1,109 @@
+{
+    "id": "T1008-FallbackChannels",
+    "name": "Fallback Channels",
+    "description": "Detects attempts by adversaries to use fallback or alternate communication channels if the primary channel is compromised or inaccessible. This often involves unusual protocol-port combinations or protocols typically used for tunneling, to maintain reliable command and control and avoid data transfer thresholds.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0011",
+        "technique_id": "T1008",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Command and Control:Application Layer Protocol",
+            "Enterprise:Command and Control:Protocol Tunneling",
+            "Enterprise:Command and Control:Non-Standard Port"
+        ]
+    },
+    "platform": [
+        "windows",
+        "linux",
+        "macos",
+        "esxi"
+    ],
+    "detection": {
+        "selections": {
+            "s1_protocol_udp": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "UDP"
+                    }
+                ]
+            },
+            "s2_protocol_tcp": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "TCP"
+                    }
+                ]
+            },
+            "s3_protocol_icmp": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "ICMP"
+                    }
+                ]
+            },
+            "s4_port_http": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 80
+                    }
+                ]
+            },
+            "s5_port_https": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 443
+                    }
+                ]
+            },
+            "s6_port_dns": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 53
+                    }
+                ]
+            },
+            "s7_port_ntp": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 123
+                    }
+                ]
+            },
+            "s8_large_packet_size": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.packetsize",
+                        "operator": "gt",
+                        "value": 128
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_protocol_udp and (s4_port_http or s5_port_https)) or (s2_protocol_tcp and (s6_port_dns or s7_port_ntp)) or (s3_protocol_icmp and s8_large_packet_size)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 비정상적인 네트워크 프로토콜-포트 조합이나 ICMP 트래픽을 통한 잠재적인 C2 폴백 채널 시도를 탐지할 수 있습니다. 예를 들어, UDP가 HTTP/HTTPS 포트를 사용하거나 TCP가 DNS/NTP 포트를 사용하는 경우, 또는 일반적이지 않은 상위 포트 범위에서 발생하는 통신을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 추가적인 네트워크 트래픽 분석 및 관련 프로세스 조사를 통해 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 애플리케이션이나 서비스가 비표준 포트 또는 프로토콜을 사용하는 경우 오탐이 발생할 수 있습니다. 예를 들어, 특정 P2P 애플리케이션, 게임 클라이언트, VPN 솔루션, 또는 네트워크 진단 도구가 비표준 포트나 ICMP를 활용할 수 있습니다. 또한, 일부 합법적인 시스템 서비스나 소프트웨어 업데이트 메커니즘이 고유한 통신 패턴을 가질 수 있습니다. 알려진 정상 프로세스 및 특정 IP 주소/포트 조합에 대한 화이트리스트를 통해 오탐을 줄일 수 있습니다."
+}

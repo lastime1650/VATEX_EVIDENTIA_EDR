@@ -1,0 +1,100 @@
+{
+    "id": "T1596.002-WHOISDiscovery",
+    "name": "WHOIS Discovery",
+    "description": "Adversaries may search public WHOIS data for information about victims that can be used during targeting. WHOIS data is stored by regional Internet registries (RIR) responsible for allocating and assigning Internet resources such as domain names. Anyone can query WHOIS servers for information about a registered domain, such as assigned IP blocks, contact information, and DNS nameservers. Adversaries may search WHOIS data to gather actionable information. Threat actors can use online resources or command-line utilities to pillage through WHOIS data for information about potential victims.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0043",
+        "technique_id": "T1596",
+        "subtechnique_id": "T1596.002",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Network:NetworkConnection"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_whois_exe_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "whois.exe"
+                    }
+                ]
+            },
+            "s3_powershell_exe_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s4_powershell_whois_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "whois"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-WebRequest"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "System.Net.WebClient"
+                    }
+                ]
+            },
+            "s5_network_outbound_tcp": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "TCP"
+                    },
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    }
+                ]
+            },
+            "s6_network_whois_port": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 43
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_whois_exe_cmdline) or (s1_process_create_action and s3_powershell_exe_cmdline and s4_powershell_whois_keywords) or (s5_network_outbound_tcp and s6_network_whois_port)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 WHOIS 정보 수집 시도를 탐지할 수 있습니다. 'whois.exe'와 같은 전용 도구 실행, PowerShell을 이용한 WHOIS API 호출 또는 웹 스크래핑 시도, 그리고 표준 WHOIS 포트(TCP 43)로의 직접적인 아웃바운드 네트워크 연결 등을 모니터링합니다. 탐지된 이벤트는 정찰 활동의 지표로 간주되어 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히 다른 Discovery 또는 Initial Access 활동과 결합될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 네트워크 진단 유틸리티, 개발자 도구, 또는 합법적인 애플리케이션이 도메인 또는 IP 정보를 조회하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 IP 주소/도메인을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

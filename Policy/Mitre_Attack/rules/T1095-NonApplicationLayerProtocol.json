@@ -1,0 +1,35 @@
+{
+    "id": "T1095-NonApplicationLayerProtocol",
+    "name": "Non-Application Layer Protocol Usage",
+    "description": "Detects communication between a host and a C2 server or among infected hosts within a network using OSI non-application layer protocols. This includes protocols like ICMP or UDP, which may carry abnormal data or be used in ways not typically seen, allowing adversaries to hide communications from standard monitoring.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0011",
+        "technique_id": "T1095",
+        "subtechnique_id": "",
+        "data_sources": [
+            "NetworkTraffic:NetworkTrafficContent",
+            "NetworkTraffic:NetworkTrafficFlow"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_icmp_protocol_traffic": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "ICMP"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_icmp_protocol_traffic"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 ICMP와 같은 비표준 애플리케이션 계층 프로토콜을 통한 C2 통신 시도를 탐지할 수 있습니다. 네트워크 이벤트에서 ICMP 프로토콜 사용을 모니터링하여, 비정상적인 트래픽 패턴이나 예상치 못한 ICMP 통신을 식별합니다. 탐지된 이벤트는 잠재적인 악성 활동으로 분류되어 즉각적인 알람을 트리거하고, 추가적인 네트워크 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, ICMP 터널링과 같은 기법이 사용될 경우 중요한 탐지 지점이 됩니다.",
+    "false_positive": "정상적인 네트워크 진단 도구(예: ping, traceroute) 또는 시스템 관리 활동으로 인해 ICMP 트래픽이 발생하여 오탐이 발생할 수 있습니다. 알려진 정상적인 ICMP 사용 패턴이나 특정 소스/목적지 IP 주소에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다. 또한, 일부 애플리케이션은 네트워크 연결 상태 확인을 위해 ICMP를 사용할 수 있습니다."
+}

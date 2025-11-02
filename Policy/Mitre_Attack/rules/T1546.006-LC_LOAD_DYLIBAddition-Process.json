@@ -1,0 +1,120 @@
+{
+    "id": "T1546.006-LC_LOAD_DYLIBAddition-Process",
+    "name": "LC_LOAD_DYLIB Addition (Process Execution)",
+    "description": "Detects attempts by adversaries to modify Mach-O binary headers to load and execute malicious dynamic libraries (dylibs) at runtime, a technique used for persistence and privilege escalation on macOS. This rule specifically focuses on the execution of tools like 'install_name_tool' which are used to manipulate load commands.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1546",
+        "subtechnique_id": "T1546.006",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Unix Shell",
+            "Enterprise:Discovery:Process Discovery"
+        ]
+    },
+    "platform": [
+        "macos"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_install_name_tool_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "/usr/bin/install_name_tool"
+                    }
+                ]
+            },
+            "s3_add_dylib_option": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-add_dylib"
+                    }
+                ]
+            },
+            "s4_change_dylib_option": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-change"
+                    }
+                ]
+            },
+            "s5_insert_dylib_option": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-insert_dylib"
+                    }
+                ]
+            },
+            "s6_target_system_binary_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/usr/bin/"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/bin/"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/sbin/"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/usr/local/bin/"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/System/Library/Frameworks/"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/Applications/"
+                    }
+                ]
+            },
+            "s7_target_dylib_extension": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".dylib"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_action_create and s2_install_name_tool_execution and (s3_add_dylib_option or s4_change_dylib_option or s5_insert_dylib_option) and s6_target_system_binary_path and s7_target_dylib_extension"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 macOS 시스템에서 'install_name_tool'을 이용한 악성 dylib 로드 시도를 탐지할 수 있습니다. 특히, 시스템 바이너리 또는 애플리케이션 번들 내 실행 파일에 대한 '-add_dylib', '-change', '-insert_dylib'와 같은 옵션 사용을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스, 관련된 파일 변경 사항 및 로드된 모듈에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 소프트웨어 개발, 빌드 프로세스, 패키지 관리자, 또는 시스템 관리 도구가 'install_name_tool'을 사용하여 dylib 종속성을 관리하는 경우 오탐이 발생할 수 있습니다. 개발 환경이나 특정 관리 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,194 @@
+{
+    "id": "T1588.006-VulnerabilitiesOnHost",
+    "name": "On-Host Vulnerability Discovery or Exploit Preparation",
+    "description": "Detects attempts by an adversary on a compromised host to discover vulnerabilities (e.g., by running scanning tools, querying system information for vulnerable software versions) or to prepare for local exploitation. This rule focuses on on-host manifestations of the 'Vulnerabilities' resource development technique, which includes obtaining or developing exploits.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1588",
+        "subtechnique_id": "T1588.006",
+        "data_sources": [
+            "Enterprise:Resource Development:Obtain Capabilities:Vulnerabilities",
+            "Enterprise:Resource Development:Obtain Capabilities:Tool",
+            "Enterprise:Discovery:Software Discovery",
+            "Enterprise:Discovery:System Information Discovery",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_vuln_scanner_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "nmap.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "nessus.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "msfconsole"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "metasploit"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "nuclei.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wpscan"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "goby.exe"
+                    }
+                ]
+            },
+            "s3_powershell_vuln_enum_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-WmiObject -Class Win32_QuickFixEngineering"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-CimInstance -ClassName Win32_QuickFixEngineering"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-VulnerabilityScan"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Find-LocalVulnerability"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Sherlock.ps1"
+                    }
+                ]
+            },
+            "s4_apicall_software_enum_function": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "MsiEnumProductsW"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "MsiEnumPatchesW"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "EnumSystemFirmwareTables"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetSystemFirmwareTable"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "WNetEnumResourceW"
+                    }
+                ]
+            },
+            "s5_filesystem_exploit_file_creation": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    }
+                ]
+            },
+            "s6_filesystem_exploit_filepath_keywords": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "exploit.exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "shellcode.bin"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "poc.py"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "payload.dll"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "exploit-db"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "vuln_scan"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and (s2_vuln_scanner_cmdline or s3_powershell_vuln_enum_cmdline)) or s4_apicall_software_enum_function or (s5_filesystem_exploit_file_creation and s6_filesystem_exploit_filepath_keywords)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 침해된 호스트에서 취약점 탐색 또는 익스플로잇 준비 활동을 탐지할 수 있습니다. Nmap, Metasploit과 같은 취약점 스캐너나 익스플로잇 프레임워크의 실행, PowerShell을 이용한 패치 및 소프트웨어 버전 열거 시도, 시스템 펌웨어 정보 조회 API 호출, 또는 익스플로잇 관련 파일 생성 등을 모니터링합니다. 탐지된 이벤트는 중간 심각도로 분류되어 추가 조사를 트리거하고, 잠재적인 공격 준비 단계를 식별하는 데 사용될 수 있습니다. 특히, 다른 Discovery 또는 Execution 활동과 결합될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 보안 감사 소프트웨어, 개발/테스트 환경에서의 합법적인 취약점 스캐너 사용, 또는 소프트웨어 설치/업데이트 프로세스에 의해 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

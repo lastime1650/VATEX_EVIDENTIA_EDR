@@ -1,0 +1,158 @@
+{
+    "id": "T1200-HardwareAdditions",
+    "name": "Hardware Additions",
+    "description": "Detects attempts to introduce new computer accessories, networking hardware, or other computing devices into a system or network. This includes monitoring for the execution of device management utilities, creation or modification of registry entries related to new hardware enumeration, specific API calls for device installation, and the creation of driver-related files.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0001",
+        "technique_id": "T1200",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Persistence:Modify Registry",
+            "Enterprise:Persistence:Create or Modify System Process:Windows Service",
+            "Enterprise:Execution:Native API",
+            "Enterprise:Defense Evasion:Rootkit"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_pnputil_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "pnputil.exe"
+                    }
+                ]
+            },
+            "s2_devcon_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "devcon.exe"
+                    }
+                ]
+            },
+            "s3_registry_enum_create": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreCreateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPostCreateKey"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Enum\\"
+                    }
+                ]
+            },
+            "s4_registry_enum_set_value": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPostSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Enum\\"
+                    }
+                ]
+            },
+            "s5_apicall_setupdiinstall": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "contains",
+                        "value": "SetupDiInstallDevice"
+                    }
+                ]
+            },
+            "s6_apicall_cm_install": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "contains",
+                        "value": "CM_Install_DevNode"
+                    }
+                ]
+            },
+            "s7_filesystem_driver_file_create_sys": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "Windows\\System32\\drivers\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".sys"
+                    }
+                ]
+            },
+            "s8_filesystem_driver_file_create_inf": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "Windows\\INF\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".inf"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_pnputil_execution or s2_devcon_execution) or (s3_registry_enum_create or s4_registry_enum_set_value) or (s5_apicall_setupdiinstall or s6_apicall_cm_install) or (s7_filesystem_driver_file_create_sys or s8_filesystem_driver_file_create_inf)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에 새로운 하드웨어가 물리적으로 추가되는 시도를 탐지할 수 있습니다. pnputil.exe나 devcon.exe와 같은 장치 관리 도구의 실행, HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Enum 경로 하위의 레지스트리 키 생성/값 설정, SetupDiInstallDevice 또는 CM_Install_DevNode와 같은 장치 설치 관련 API 호출, 그리고 \\Windows\\System32\\drivers 또는 \\Windows\\INF 경로에 .sys 또는 .inf 파일이 생성되는 이벤트를 모니터링합니다. 탐지된 이벤트는 새로운 하드웨어 유입에 대한 알림을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 USB 장치(키보드, 마우스, 외장 드라이브 등) 연결, 합법적인 드라이버 설치, 또는 시스템 업데이트 과정에서 새로운 하드웨어 관련 이벤트가 발생하여 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 장치 ID를 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

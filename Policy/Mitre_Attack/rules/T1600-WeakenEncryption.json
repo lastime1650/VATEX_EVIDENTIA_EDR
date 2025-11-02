@@ -1,0 +1,94 @@
+{
+    "id": "T1600-WeakenEncryption",
+    "name": "Weaken Encryption",
+    "description": "Detects attempts to compromise a network device’s encryption capability or local system's cryptographic settings, which could bypass encryption protecting data communications. This includes modifications to registry keys related to TLS/SSL protocols, ciphers, or cryptographic providers on a Windows host.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1600",
+        "subtechnique_id": "",
+        "data_sources": [
+            "WindowsRegistry:WindowsRegistryKeyModification"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_registry_modify_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtDeleteValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreRenameKey"
+                    }
+                ]
+            },
+            "s2_schannel_protocol_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols"
+                    }
+                ]
+            },
+            "s3_schannel_cipher_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Ciphers"
+                    }
+                ]
+            },
+            "s4_schannel_keyexchange_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\KeyExchangeAlgorithms"
+                    }
+                ]
+            },
+            "s5_strongcrypto_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\Defaults\\StrongCrypto"
+                    }
+                ]
+            },
+            "s6_fips_policy_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Lsa\\FipsAlgorithmPolicy"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_registry_modify_action and (s2_schannel_protocol_path or s3_schannel_cipher_path or s4_schannel_keyexchange_path or s5_strongcrypto_path or s6_fips_policy_path)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Windows 시스템에서 암호화 약화 시도를 탐지할 수 있습니다. 특히 SCHANNEL 프로토콜, 암호화 알고리즘, 키 교환 알고리즘, StrongCrypto 설정, 또는 FIPS 정책과 관련된 레지스트리 키에 대한 수정, 삭제, 이름 변경 이벤트를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련된 시스템 설정 변경 시도를 조사하여 데이터 기밀성 및 무결성 침해 가능성을 평가하고, 추가적인 침해사고 대응 조치를 시작하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 업데이트, 보안 패치 적용, 합법적인 소프트웨어 설치 또는 구성 변경, 또는 시스템 관리자가 보안 정책을 조정하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상적인 레지스트리 변경 패턴이나 특정 관리 도구에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

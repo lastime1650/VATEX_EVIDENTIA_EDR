@@ -1,0 +1,192 @@
+{
+    "id": "T1070.007-ClearNetworkConnectionHistory",
+    "name": "Clear Network Connection History and Configurations",
+    "description": "Detects attempts by adversaries to clear or remove evidence of malicious network connections, including RDP history, firewall rules, and proxy configurations. This helps adversaries hide their tracks and impede defensive analysis.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1070",
+        "subtechnique_id": "T1070.007",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Defense Evasion:Modify Registry",
+            "Enterprise:Defense Evasion:Indicator Removal:File Deletion",
+            "Enterprise:Defense Evasion:Impair Defenses:Disable or Modify System Firewall"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_registry_action_modify_or_delete": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "DeleteKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "SetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "RenameKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "PreDeleteKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "PreSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "PreRenameKey"
+                    }
+                ]
+            },
+            "s3_filesystem_action_modify_or_delete": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "remove"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s4_rdp_registry_keys": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\Software\\Microsoft\\Terminal Server Client\\Default"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\Software\\Microsoft\\Terminal Server Client\\Servers"
+                    }
+                ]
+            },
+            "s5_rdp_filesystem_paths": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\Documents\\Default.rdp"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\AppData\\Local\\Microsoft\\Terminal Server Client\\Cache\\"
+                    }
+                ]
+            },
+            "s6_netsh_firewall_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "netsh advfirewall firewall"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "delete rule"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "set rule"
+                    }
+                ]
+            },
+            "s7_powershell_firewall_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Remove-NetFirewallRule"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-NetFirewallRule"
+                    }
+                ]
+            },
+            "s8_netsh_proxy_reset_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "netsh winhttp reset proxy"
+                    }
+                ]
+            },
+            "s9_proxy_registry_keys": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\ProxyEnable"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\ProxyServer"
+                    }
+                ]
+            }
+        },
+        "condition": "(s4_rdp_registry_keys and s2_registry_action_modify_or_delete) or (s5_rdp_filesystem_paths and s3_filesystem_action_modify_or_delete) or (s1_process_action_create and (s6_netsh_firewall_command or s7_powershell_firewall_command or s8_netsh_proxy_reset_command)) or (s9_proxy_registry_keys and s2_registry_action_modify_or_delete)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 공격자가 시스템에서 네트워크 연결 기록 및 구성을 지우려는 시도를 탐지할 수 있습니다. RDP 연결 기록과 관련된 레지스트리 키 또는 파일에 대한 수정/삭제, 'netsh' 또는 PowerShell을 사용한 방화벽 규칙 변경/삭제, 프록시 설정 초기화 명령 실행 등을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 사후 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 이는 방어 회피 전술의 핵심 지표입니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 네트워크 설정 유틸리티, VPN 소프트웨어, 또는 합법적인 애플리케이션이 네트워크 구성을 변경하거나 연결 기록을 정리하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

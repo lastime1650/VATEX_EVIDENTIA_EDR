@@ -1,0 +1,124 @@
+{
+    "id": "T1666-ModifyCloudResourceHierarchy",
+    "name": "Modify Cloud Resource Hierarchy",
+    "description": "Detects attempts to modify cloud resource hierarchical structures (e.g., AWS Organizations, Azure Management Groups/Subscriptions) via command-line tools from an endpoint, which could be used for defense evasion or resource hijacking.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1666",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Defense Evasion:Modify Cloud Compute Infrastructure:Modify Cloud Resource Hierarchy"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_aws_cli_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "aws.exe"
+                    }
+                ]
+            },
+            "s3_aws_leave_organization_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "organizations leave-organization"
+                    }
+                ]
+            },
+            "s4_aws_create_account_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "organizations create-account"
+                    }
+                ]
+            },
+            "s5_az_cli_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "az.exe"
+                    }
+                ]
+            },
+            "s6_az_account_update_tenant_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "account update"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--tenant-id"
+                    }
+                ]
+            },
+            "s7_az_management_group_ops_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "management-group create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "management-group delete"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "management-group update"
+                    }
+                ]
+            },
+            "s8_az_mg_subscription_ops_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "management-group subscription add"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "management-group subscription remove"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_action_create and ((s2_aws_cli_path and (s3_aws_leave_organization_cmd or s4_aws_create_account_cmd)) or (s5_az_cli_path and (s6_az_account_update_tenant_cmd or s7_az_management_group_ops_cmd or s8_az_mg_subscription_ops_cmd)))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 엔드포인트에서 AWS 또는 Azure CLI 도구를 통해 클라우드 리소스 계층 구조를 수정하려는 시도를 탐지할 수 있습니다. 특히 AWS Organizations에서 계정을 탈퇴하거나 생성하는 명령, 또는 Azure에서 구독의 테넌트 ID를 변경하거나 관리 그룹/구독을 추가/삭제/업데이트하는 명령을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 클라우드 환경의 무단 변경 및 방어 회피 시도에 대한 심층적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 클라우드 관리자, 자동화 스크립트, CI/CD 파이프라인, 또는 합법적인 클라우드 관리 도구가 AWS/Azure CLI를 사용하여 클라우드 리소스 계층 구조를 관리하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 명령 패턴, 사용자 계정, 또는 특정 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

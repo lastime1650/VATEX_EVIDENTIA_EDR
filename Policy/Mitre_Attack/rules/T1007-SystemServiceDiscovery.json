@@ -1,0 +1,252 @@
+{
+    "id": "T1007-SystemServiceDiscovery",
+    "name": "System Service Discovery",
+    "description": "Detects attempts to gather information about registered local system services using OS utility commands like 'sc query', 'tasklist /svc', 'net start', PowerShell cmdlets, WMIC, or direct API calls and registry access.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1007",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Native API",
+            "Enterprise:Discovery:Query Registry",
+            "Enterprise:Discovery:System Service Discovery"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s_sc_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "sc.exe"
+                    }
+                ]
+            },
+            "s_sc_query_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "query"
+                    }
+                ]
+            },
+            "s_tasklist_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "tasklist.exe"
+                    }
+                ]
+            },
+            "s_tasklist_svc_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/svc"
+                    }
+                ]
+            },
+            "s_net_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "net.exe"
+                    }
+                ]
+            },
+            "s_net_start_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "start"
+                    }
+                ]
+            },
+            "s_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s_powershell_get_service_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-Service"
+                    }
+                ]
+            },
+            "s_powershell_wmi_service_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-WmiObject -Class Win32_Service"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-CimInstance -ClassName Win32_Service"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "gwmi Win32_Service"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "gcim Win32_Service"
+                    }
+                ]
+            },
+            "s_wmic_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "wmic.exe"
+                    }
+                ]
+            },
+            "s_wmic_service_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "service get"
+                    }
+                ]
+            },
+            "s_apicall_enumservices": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "EnumServicesStatusExW"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "EnumServicesStatusExA"
+                    }
+                ]
+            },
+            "s_apicall_openscmanager": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "OpenSCManagerW"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "OpenSCManagerA"
+                    }
+                ]
+            },
+            "s_apicall_queryservicestatus": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "QueryServiceStatusEx"
+                    }
+                ]
+            },
+            "s_apicall_getservicekeyname": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetServiceKeyNameW"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetServiceKeyNameA"
+                    }
+                ]
+            },
+            "s_registry_services_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services"
+                    }
+                ]
+            },
+            "s_registry_service_query_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "QueryKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "OpenKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "EnumerateKey"
+                    }
+                ]
+            }
+        },
+        "condition": "(s_process_create_action and s_sc_exe_path and s_sc_query_cmdline) or (s_process_create_action and s_tasklist_exe_path and s_tasklist_svc_cmdline) or (s_process_create_action and s_net_exe_path and s_net_start_cmdline) or (s_process_create_action and s_powershell_exe_path and (s_powershell_get_service_cmdline or s_powershell_wmi_service_cmdline)) or (s_process_create_action and s_wmic_exe_path and s_wmic_service_cmdline) or (s_apicall_enumservices or s_apicall_openscmanager or s_apicall_queryservicestatus or s_apicall_getservicekeyname) or (s_registry_services_path and s_registry_service_query_action)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템 서비스 정보 수집 시도를 탐지할 수 있습니다. 'sc query', 'tasklist /svc', 'net start'와 같은 명령 실행, PowerShell cmdlets를 통한 서비스 열거 시도, 서비스 관련 API 호출, 또는 서비스 레지스트리 키 접근 등을 모니터링합니다. 탐지된 이벤트는 자동 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히 다른 Discovery 또는 Collection 활동과 결합될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 백신 소프트웨어, 또는 합법적인 애플리케이션이 시스템 서비스 정보를 조회하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

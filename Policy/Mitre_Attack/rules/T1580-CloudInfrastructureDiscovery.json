@@ -1,0 +1,186 @@
+{
+    "id": "T1580-CloudInfrastructureDiscovery",
+    "name": "Cloud Infrastructure Discovery",
+    "description": "Detects attempts by an adversary to discover infrastructure and resources available within an Infrastructure-as-a-Service (IaaS) environment using cloud provider Command Line Interface (CLI) tools like AWS CLI, Azure CLI, or GCP Cloud SDK CLI. This includes enumeration of instances, virtual machines, snapshots, storage buckets, and database instances.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1580",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Discovery:Cloud Storage Object Discovery",
+            "Enterprise:Discovery:Virtual Machine Discovery"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_aws_cli_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "aws.exe"
+                    }
+                ]
+            },
+            "s3_gcloud_cli_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "gcloud.exe"
+                    }
+                ]
+            },
+            "s4_az_cli_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "az.exe"
+                    }
+                ]
+            },
+            "s5_aws_instance_discovery_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ec2 describe-instances"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ec2 describe-vpcs"
+                    }
+                ]
+            },
+            "s6_aws_storage_discovery_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "s3api list-buckets"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "s3api head-bucket"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "s3api get-public-access-block"
+                    }
+                ]
+            },
+            "s7_aws_database_discovery_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "rds describe-db-instances"
+                    }
+                ]
+            },
+            "s8_gcloud_instance_discovery_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "compute instances list"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "compute networks list"
+                    }
+                ]
+            },
+            "s9_gcloud_storage_discovery_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "storage buckets list"
+                    }
+                ]
+            },
+            "s10_az_vm_discovery_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "vm list"
+                    }
+                ]
+            },
+            "s11_az_storage_discovery_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "storage account list"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "snapshot list"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "disk list"
+                    }
+                ]
+            },
+            "s12_az_database_discovery_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "sql db list"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "mysql server list"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "postgres server list"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create and ((s2_aws_cli_execution and (s5_aws_instance_discovery_cmd or s6_aws_storage_discovery_cmd or s7_aws_database_discovery_cmd)) or (s3_gcloud_cli_execution and (s8_gcloud_instance_discovery_cmd or s9_gcloud_storage_discovery_cmd)) or (s4_az_cli_execution and (s10_az_vm_discovery_cmd or s11_az_storage_discovery_cmd or s12_az_database_discovery_cmd)))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 AWS, GCP, Azure CLI 도구를 통해 클라우드 인프라 자산(가상 머신, 스토리지, 데이터베이스 등)을 열거하려는 시도를 탐지할 수 있습니다. 특정 CLI 실행 파일과 함께 자산 검색과 관련된 명령줄 인자가 포함된 프로세스 생성 이벤트를 모니터링합니다. 탐지된 이벤트는 자동 알람을 트리거하고, 클라우드 환경에서의 비정상적인 활동을 조사하여 잠재적인 침해사고를 식별하고 대응 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 클라우드 관리 작업, 자동화 스크립트, DevOps 도구, 또는 합법적인 애플리케이션이 클라우드 리소스 인벤토리를 수행하거나 상태를 점검하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상적인 CLI 호출 패턴, 특정 사용자 계정, 또는 관리 도구의 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

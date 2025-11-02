@@ -1,0 +1,155 @@
+{
+    "id": "T1189-DriveByCompromise",
+    "name": "Drive-by Compromise",
+    "description": "Detects attempts where a user visiting a website leads to exploit code delivery and execution, often identified by a browser spawning suspicious child processes or executing malicious commands.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0001",
+        "technique_id": "T1189",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Command:CommandExecution"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_browser_parent_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "endswith",
+                        "value": "chrome.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "endswith",
+                        "value": "firefox.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "endswith",
+                        "value": "msedge.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "endswith",
+                        "value": "iexplore.exe"
+                    }
+                ]
+            },
+            "s2_suspicious_child_exe_name": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "cmd.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "wscript.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "cscript.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "mshta.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "rundll32.exe"
+                    }
+                ]
+            },
+            "s3_suspicious_child_exe_path_temp": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "\\AppData\\Local\\Temp\\"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "\\Windows\\Temp\\"
+                    }
+                ]
+            },
+            "s4_suspicious_child_commandline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iex (new-object net.webclient).downloadstring"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell -enc"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "mshta.exe javascript:"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "rundll32.exe javascript:"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "certutil -urlcache -f -split"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "bitsadmin /transfer"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_browser_parent_process_create_action and (s2_suspicious_child_exe_name or s3_suspicious_child_exe_path_temp or s4_suspicious_child_commandline)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 드라이브-바이 침해 시도를 탐지할 수 있습니다. 웹 브라우저가 비정상적인 자식 프로세스(예: cmd.exe, powershell.exe, mshta.exe)를 생성하거나, 임시 디렉터리에서 실행 파일을 생성하는 행위, 또는 악성 명령줄 인자를 포함하는 프로세스 생성을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 네트워크 활동에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 소프트웨어 설치 프로그램, 업데이트 유틸리티, 또는 합법적인 애플리케이션이 웹 브라우저를 통해 특정 시스템 명령을 실행하거나 파일을 다운로드하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 프로세스 패턴이나 특정 명령줄 인자에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

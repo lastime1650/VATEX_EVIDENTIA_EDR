@@ -1,0 +1,179 @@
+{
+    "id": "T1546-EventTriggeredExecution",
+    "name": "Event Triggered Execution",
+    "description": "Detects attempts by adversaries to establish persistence or elevate privileges by configuring system mechanisms that trigger execution based on specific events. This includes modifying registry keys for Image File Execution Options (IFEO), creating or modifying scheduled tasks, or leveraging WMI event subscriptions to execute malicious code automatically when certain conditions are met.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1546",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Command:CommandExecution",
+            "WindowsRegistry:WindowsRegistryKeyModification",
+            "File:FileCreation",
+            "File:FileModification",
+            "Process:OSAPIExecution"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_schtasks_create_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "schtasks.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/create"
+                    }
+                ]
+            },
+            "s3_powershell_scheduledtask_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Register-ScheduledTask"
+                    }
+                ]
+            },
+            "s4_wmic_event_consumer_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wmic.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "eventconsumer"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s5_powershell_wmi_event_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-WmiFilter"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-WmiInstance"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Register-WmiEvent"
+                    }
+                ]
+            },
+            "s6_registry_modification_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreCreateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPostCreateKey"
+                    }
+                ]
+            },
+            "s7_registry_ifeo_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options"
+                    }
+                ]
+            },
+            "s8_registry_debugger_value_name": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "\\Debugger"
+                    }
+                ]
+            },
+            "s9_registry_accessibility_ifeo_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options\\sethc.exe"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options\\utilman.exe"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options\\osk.exe"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create and (s2_schtasks_create_cmdline or s3_powershell_scheduledtask_cmdline or s4_wmic_event_consumer_cmdline or s5_powershell_wmi_event_cmdline) or (s6_registry_modification_action and s7_registry_ifeo_path and s8_registry_debugger_value_name) or (s6_registry_modification_action and s9_registry_accessibility_ifeo_path)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 이벤트 트리거 실행을 통한 지속성 및 권한 상승 시도를 탐지할 수 있습니다. schtasks.exe, wmic.exe, PowerShell cmdlet을 이용한 예약 작업 및 WMI 이벤트 구독 생성 시도, Image File Execution Options (IFEO) 레지스트리 키 변경, 또는 접근성 기능 악용을 통한 레지스트리 수정 등을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 시스템 설정에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 다른 방어 회피 또는 실행 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 소프트웨어 설치 프로그램, 업데이트 프로세스, 또는 합법적인 애플리케이션이 예약 작업, WMI 이벤트, 또는 IFEO 설정을 변경하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴, 레지스트리 변경에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,68 @@
+{
+    "id": "T1021.001-RemoteDesktopProtocol",
+    "name": "Remote Desktop Protocol Usage",
+    "description": "Detects attempts to establish or utilize Remote Desktop Protocol (RDP) connections to a system. This includes the execution of mstsc.exe and network connections made over the standard RDP port (TCP 3389). Adversaries frequently use RDP for lateral movement, persistence, and remote access, often leveraging compromised valid accounts.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0008",
+        "technique_id": "T1021",
+        "subtechnique_id": "T1021.001",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Discovery:System Network Connections Discovery",
+            "Enterprise:Command and Control:Non-Standard Port",
+            "Enterprise:Initial Access:Valid Accounts:Domain Accounts",
+            "Enterprise:Initial Access:Valid Accounts:Local Accounts"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_mstsc_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "mstsc.exe"
+                    }
+                ]
+            },
+            "s3_network_dest_port_3389": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 3389
+                    }
+                ]
+            },
+            "s4_network_protocol_tcp": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "TCP"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_mstsc_exe_path) or (s3_network_dest_port_3389 and s4_network_protocol_tcp)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 RDP 연결 시도를 탐지할 수 있습니다. mstsc.exe 프로세스 생성 이벤트와 목적지 포트 3389를 사용하는 TCP 네트워크 연결을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 사용자 계정, 소스 및 목적지 IP 주소, 연결 시간 등에 대한 추가적인 조사를 시작하는 데 사용될 수 있습니다. 특히, 비정상적인 계정이나 평소 접근하지 않던 시스템으로의 RDP 연결은 침해사고의 징후일 수 있으므로 우선순위를 높여 대응해야 합니다.",
+    "false_positive": "정상적인 시스템 관리자나 지원팀이 원격으로 시스템에 접속하는 경우, 또는 합법적인 원격 지원 소프트웨어가 RDP를 사용하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 RDP 사용 패턴이나 특정 사용자 계정, IP 주소 대역에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

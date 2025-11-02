@@ -1,0 +1,521 @@
+{
+    "id": "T1091-ReplicationThroughRemovableMedia",
+    "name": "Replication Through Removable Media",
+    "description": "Detects attempts by adversaries to move malware onto systems, including those on disconnected or air-gapped networks, by copying malicious files to removable media and leveraging Autorun features or tricking users into execution. This technique can also be used for lateral movement by modifying executables on removable media.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0001",
+        "technique_id": "T1091",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Collection:Data from Local System",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Discovery:Peripheral Device Discovery"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_process_from_removable_drive_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "startswith",
+                        "value": "D:\\"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "startswith",
+                        "value": "E:\\"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "startswith",
+                        "value": "F:\\"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "startswith",
+                        "value": "G:\\"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "startswith",
+                        "value": "H:\\"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "startswith",
+                        "value": "I:\\"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "startswith",
+                        "value": "J:\\"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "startswith",
+                        "value": "K:\\"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "startswith",
+                        "value": "L:\\"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "startswith",
+                        "value": "M:\\"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "startswith",
+                        "value": "N:\\"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "startswith",
+                        "value": "O:\\"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "startswith",
+                        "value": "P:\\"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "startswith",
+                        "value": "Q:\\"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "startswith",
+                        "value": "R:\\"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "startswith",
+                        "value": "S:\\"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "startswith",
+                        "value": "T:\\"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "startswith",
+                        "value": "U:\\"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "startswith",
+                        "value": "V:\\"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "startswith",
+                        "value": "W:\\"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "startswith",
+                        "value": "X:\\"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "startswith",
+                        "value": "Y:\\"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "startswith",
+                        "value": "Z:\\"
+                    }
+                ]
+            },
+            "s3_process_from_removable_drive_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "D:\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "E:\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "F:\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "G:\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "H:\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "I:\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "J:\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "K:\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "L:\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "M:\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "N:\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "O:\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "P:\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Q:\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "R:\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "S:\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "T:\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "U:\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "V:\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "W:\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "X:\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Y:\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Z:\\"
+                    }
+                ]
+            },
+            "s4_process_suspicious_extension": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": ".vbs"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": ".js"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": ".bat"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": ".cmd"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": ".hta"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": ".scr"
+                    }
+                ]
+            },
+            "s5_filesystem_write_create_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "superseded"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    }
+                ]
+            },
+            "s6_filepath_on_removable_drive": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "D:\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "E:\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "F:\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "G:\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "H:\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "I:\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "J:\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "K:\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "L:\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "M:\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "N:\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "O:\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "P:\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "Q:\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "R:\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "S:\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "T:\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "U:\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "V:\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "W:\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "X:\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "Y:\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "Z:\\"
+                    }
+                ]
+            },
+            "s7_filepath_suspicious_ext_file": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".vbs"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".js"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".bat"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".cmd"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".hta"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".scr"
+                    }
+                ]
+            },
+            "s8_filepath_autorun_inf": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "autorun.inf"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and (s2_process_from_removable_drive_path or s3_process_from_removable_drive_cmdline) and s4_process_suspicious_extension or (s5_filesystem_write_create_action and s6_filepath_on_removable_drive and (s7_filepath_suspicious_ext_file or s8_filepath_autorun_inf))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 USB 드라이브와 같은 이동식 미디어를 통한 악성 코드 유포 및 실행 시도를 탐지할 수 있습니다. 이동식 미디어에서 실행되는 의심스러운 프로세스 생성 이벤트 또는 이동식 미디어에 악성 실행 파일이나 autorun.inf 파일이 생성/수정되는 이벤트를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 추가적인 포렌식 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히, 에어갭 환경이나 네트워크 연결이 제한된 시스템에서의 초기 침투 및 측면 이동 시도를 식별하는 데 중요합니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 소프트웨어 설치 프로그램, 백업 유틸리티, 또는 합법적인 애플리케이션이 이동식 미디어에서 파일을 생성하거나 실행하는 경우 오탐이 발생할 수 있습니다. 예를 들어, USB 드라이브에서 휴대용 애플리케이션을 실행하거나, 시스템 복구 디스크를 사용하거나, 특정 개발 도구를 사용하는 경우입니다. 알려진 정상 프로세스, 특정 파일 경로, 또는 디지털 서명된 실행 파일에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

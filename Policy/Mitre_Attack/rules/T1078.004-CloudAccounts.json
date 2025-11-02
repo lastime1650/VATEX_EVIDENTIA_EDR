@@ -1,0 +1,156 @@
+{
+    "id": "T1078.004-CloudAccounts",
+    "name": "Valid Accounts: Cloud Accounts",
+    "description": "Detects the abuse of valid cloud accounts by monitoring for the execution of cloud command-line interface (CLI) tools (e.g., AWS CLI, Azure CLI, gcloud CLI) with commands indicative of account manipulation, privilege escalation, or access to sensitive cloud resources. Adversaries leverage compromised cloud accounts for initial access, persistence, privilege escalation, and defense evasion within cloud environments.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0001",
+        "technique_id": "T1078",
+        "subtechnique_id": "T1078.004",
+        "data_sources": [
+            "Enterprise:Initial Access:Valid Accounts:Cloud Accounts",
+            "Enterprise:Persistence:Valid Accounts:Cloud Accounts",
+            "Enterprise:Privilege Escalation:Valid Accounts:Cloud Accounts",
+            "Enterprise:Defense Evasion:Valid Accounts:Cloud Accounts",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell"
+        ]
+    },
+    "platform": [
+        "saas",
+        "iaas",
+        "office suite",
+        "identity provider"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cloud_cli_tool_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "aws.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "az.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "gcloud.exe"
+                    }
+                ]
+            },
+            "s3_account_manipulation_commands": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "create-user"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "add-user-to-group"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "create-access-key"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "update-assume-role-policy"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "az ad app create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "gcloud iam roles create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "gcloud iam service-accounts create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "delete-user"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "revoke-access"
+                    }
+                ]
+            },
+            "s4_sensitive_resource_access_commands": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "s3 cp"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "blob download"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "secrets list"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "db dump"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "vm run-command"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ec2 describe-instances"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "storage account keys list"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "sql export"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_action_create and s2_cloud_cli_tool_execution and (s3_account_manipulation_commands or s4_sensitive_resource_access_commands)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 클라우드 CLI 도구(AWS CLI, Azure CLI, gcloud CLI 등)를 이용한 클라우드 계정 오용 시도를 탐지할 수 있습니다. 프로세스 생성 이벤트를 통해 클라우드 CLI 도구의 실행 여부를 확인하고, 명령줄 인자를 분석하여 계정 생성/수정, 권한 변경, 민감한 클라우드 리소스 접근과 같은 의심스러운 활동을 식별합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하며, 클라우드 환경에서의 초기 침투, 지속성 확보, 권한 상승, 방어 회피 등의 활동을 조사하는 데 중요한 단서로 활용될 수 있습니다. 특히, 비정상적인 사용자 계정이나 시스템에서 실행될 경우 더욱 주의가 필요합니다.",
+    "false_positive": "정상적인 클라우드 관리 작업, 자동화 스크립트, DevOps 파이프라인, 또는 개발 환경에서 클라우드 CLI 도구를 사용하는 경우 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴, 또는 특정 사용자 계정에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,86 @@
+{
+    "id": "T1006-DirectVolumeAccess",
+    "name": "Direct Volume Access",
+    "description": "Detects attempts by adversaries to directly access a volume to bypass file access controls and file system monitoring. This includes the execution of utilities like vssadmin.exe, wbadmin.exe, esentutl.exe, or PowerShell scripts such as NinjaCopy, which can be used to create shadow copies or backups of data directly from system volumes.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1006",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Command:Command Execution",
+            "File:File Creation",
+            "Drive:Drive Access"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmdline_vssadmin": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "vssadmin.exe"
+                    }
+                ]
+            },
+            "s3_cmdline_wbadmin": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wbadmin.exe"
+                    }
+                ]
+            },
+            "s4_cmdline_esentutl": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "esentutl.exe"
+                    }
+                ]
+            },
+            "s5_cmdline_powershell": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s6_cmdline_ninjacopy_keyword": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "NinjaCopy"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_action_create and s2_cmdline_vssadmin) or (s1_process_action_create and s3_cmdline_wbadmin) or (s1_process_action_create and s4_cmdline_esentutl) or (s1_process_action_create and s5_cmdline_powershell and s6_cmdline_ninjacopy_keyword)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템의 직접 볼륨 접근 시도를 탐지할 수 있습니다. vssadmin.exe, wbadmin.exe, esentutl.exe와 같은 유틸리티의 실행 또는 PowerShell을 통한 NinjaCopy와 같은 스크립트 실행을 모니터링합니다. 탐지된 이벤트는 중간 심각도로 분류되어 자동 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히 다른 방어 회피 또는 데이터 수집 활동과 결합될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 백업 소프트웨어, 디스크 이미징 도구 또는 합법적인 애플리케이션이 vssadmin, wbadmin, esentutl 등을 사용하여 볼륨 관련 작업을 수행하는 경우 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

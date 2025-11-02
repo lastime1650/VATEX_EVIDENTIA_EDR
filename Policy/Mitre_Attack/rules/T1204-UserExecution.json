@@ -1,0 +1,292 @@
+{
+    "id": "T1204-UserExecution",
+    "name": "User Execution",
+    "description": "Detects instances where an adversary relies on specific user actions to gain execution, such as opening a malicious document, clicking a malicious link, or manually executing downloaded malware or scripts. This technique often follows social engineering tactics like phishing.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1204",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Execution:User Execution:Malicious File",
+            "Enterprise:Execution:User Execution:Malicious Link",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Collection:Data from Local System"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_parent_is_doc_app": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "endswith",
+                        "value": "winword.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "endswith",
+                        "value": "excel.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "endswith",
+                        "value": "powerpnt.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "endswith",
+                        "value": "acrobat.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "endswith",
+                        "value": "outlook.exe"
+                    }
+                ]
+            },
+            "s3_child_is_script_interpreter": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "cmd.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "mshta.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "wscript.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "cscript.exe"
+                    }
+                ]
+            },
+            "s4_cmdline_obfuscation_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-EncodedCommand"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "IEX"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-Expression"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "DownloadString"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "bitsadmin /transfer"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "certutil -urlcache"
+                    }
+                ]
+            },
+            "s5_execution_from_temp_downloads_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "\\Temp\\"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "\\Downloads\\"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "\\AppData\\Local\\Temp\\"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "\\ProgramData\\"
+                    }
+                ]
+            },
+            "s6_exe_path_suspicious_extension": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": ".ps1"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": ".bat"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": ".cmd"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": ".vbs"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": ".js"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": ".hta"
+                    }
+                ]
+            },
+            "s7_filesystem_create_or_write_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    }
+                ]
+            },
+            "s8_filesystem_suspicious_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\Temp\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\Downloads\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\StartUp\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\AppData\\Local\\Temp\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\ProgramData\\"
+                    }
+                ]
+            },
+            "s9_filesystem_suspicious_extension": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".ps1"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".bat"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".cmd"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".vbs"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".js"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".hta"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_parent_is_doc_app and s3_child_is_script_interpreter and s4_cmdline_obfuscation_keywords) or (s1_process_create_action and s5_execution_from_temp_downloads_path and s6_exe_path_suspicious_extension) or (s7_filesystem_create_or_write_action and s8_filesystem_suspicious_path and s9_filesystem_suspicious_extension)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 사용자 실행을 통한 악성 코드 침투 및 실행 시도를 탐지할 수 있습니다. 문서 프로그램에서 비정상적인 스크립트/명령어 인터프리터가 실행되거나, 다운로드/임시 폴더에서 의심스러운 실행 파일이 생성 및 실행되는 경우를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 활동 및 파일 무결성에 대한 추가적인 조사를 시작하는 데 사용될 수 있습니다. 특히 이메일, 웹 브라우징과 같은 초기 접근 벡터와 연계될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 소프트웨어 설치, 업데이트 프로세스, 합법적인 스크립트 실행, 또는 개발/테스트 환경에서 임시 파일이 생성 및 실행되는 경우 오탐이 발생할 수 있습니다. 특정 애플리케이션이나 스크립트의 정상적인 동작 패턴을 화이트리스트에 추가하거나, 신뢰할 수 있는 경로를 예외 처리하여 오탐을 줄일 수 있습니다."
+}

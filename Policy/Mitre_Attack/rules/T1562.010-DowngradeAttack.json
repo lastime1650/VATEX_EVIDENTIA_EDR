@@ -1,0 +1,137 @@
+{
+    "id": "T1562.010-DowngradeAttack",
+    "name": "Downgrade Attack",
+    "description": "Adversaries may downgrade or use a version of system features that may be outdated, vulnerable, and/or does not support updated security controls. Downgrade attacks typically take advantage of a system's backward compatibility to force it into less secure modes of operation. For example, PowerShell versions 5+ includes Script Block Logging (SBL), which can record executed script content. However, adversaries may attempt to execute a previous version of PowerShell that does not support SBL with the intent to impair defenses while running malicious scripts that may have otherwise been detected. Adversaries may similarly target network traffic to downgrade from an encrypted HTTPS connection to an unsecured HTTP connection that exposes network data in clear text. On Windows systems, adversaries may downgrade the boot manager to a vulnerable version that bypasses Secure Boot, granting the ability to disable various operating system security mechanisms.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1562",
+        "subtechnique_id": "T1562.010",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Command and Control:Application Layer Protocol:Web Protocols",
+            "Enterprise:Defense Evasion:Modify Registry",
+            "Enterprise:Execution:Native API"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s3_powershell_v2_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-v 2"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-version 2"
+                    }
+                ]
+            },
+            "s4_network_tcp_protocol": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "TCP"
+                    }
+                ]
+            },
+            "s5_network_http_dest_port": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 80
+                    }
+                ]
+            },
+            "s6_registry_modify_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "SetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "SetInformationKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "RenameKey"
+                    }
+                ]
+            },
+            "s7_registry_hvci_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\DeviceGuard"
+                    }
+                ]
+            },
+            "s8_registry_defender_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows Defender"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows Defender"
+                    }
+                ]
+            },
+            "s9_apicall_disablekeyprotectors": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "DisableKeyProtectors"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_powershell_exe_path and s3_powershell_v2_cmdline) or (s4_network_tcp_protocol and s5_network_http_dest_port) or (s6_registry_modify_action and s7_registry_hvci_path) or (s6_registry_modify_action and s8_registry_defender_path) or s9_apicall_disablekeyprotectors"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템 기능의 다운그레이드 공격 시도를 탐지할 수 있습니다. PowerShell을 구 버전으로 실행하여 스크립트 로깅을 회피하거나, 네트워크 트래픽을 HTTPS에서 HTTP로 다운그레이드하려는 시도, HVCI(Hypervisor-Protected Code Integrity) 또는 Windows Defender 관련 레지스트리 키를 변경하여 보안 기능을 무력화하려는 시도, 또는 Bitlocker 해제와 관련된 API 호출 등을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히 다른 방어 회피 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 특정 레거시 애플리케이션의 실행, 또는 개발 및 테스트 환경에서 구 버전의 PowerShell을 사용하는 경우 오탐이 발생할 수 있습니다. 또한, 웹 애플리케이션의 HTTP 리다이렉션 설정 오류나 특정 네트워크 장비의 설정으로 인해 HTTP 통신이 발생하는 경우에도 탐지될 수 있습니다. 알려진 정상 프로세스, 명령줄 패턴, 또는 네트워크 활동에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

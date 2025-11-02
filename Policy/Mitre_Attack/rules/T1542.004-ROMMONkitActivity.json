@@ -1,0 +1,86 @@
+{
+    "id": "T1542.004-ROMMONkitActivity",
+    "name": "ROMMONkit Activity (Indirect)",
+    "description": "Detects potential activities on a Windows host that might be associated with preparing or initiating a ROM Monitor (ROMMON) firmware modification on a network device. This technique involves loading unauthorized firmware onto network devices for persistence and manipulation. Direct detection of ROMMON modification on network devices from a Windows endpoint is highly challenging, so this rule focuses on related command-line utility usage for firmware transfer.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "defense-evasion,persistence",
+        "technique_id": "T1542",
+        "subtechnique_id": "T1542.004",
+        "data_sources": [
+            "Enterprise:Persistence:Pre-OS Boot:ROMMONkit",
+            "Enterprise:Defense Evasion:Pre-OS Boot:ROMMONkit",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_tftp_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "tftp.exe"
+                    }
+                ]
+            },
+            "s3_tftp_put_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " put "
+                    }
+                ]
+            },
+            "s4_firmware_extensions": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".bin"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".img"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".rom"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".ios"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".tar"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create and s2_tftp_exe_path and s3_tftp_put_command and s4_firmware_extensions"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Windows 호스트에서 네트워크 장치의 ROMMON 펌웨어 수정을 준비하거나 시도하는 간접적인 활동을 탐지할 수 있습니다. TFTP 클라이언트(tftp.exe)가 'put' 명령과 함께 일반적인 펌웨어 파일 확장자를 가진 파일을 전송하는 프로세스 생성 이벤트를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스 및 관련 네트워크 활동에 대한 추가적인 조사를 시작하는 데 사용될 수 있습니다. 이는 네트워크 장치 자체의 ROMMON 변경을 직접 탐지하기 어려운 한계점을 보완하기 위한 시도입니다.",
+    "false_positive": "합법적인 시스템 관리자가 네트워크 장치에 펌웨어를 업데이트하거나, TFTP를 사용하여 다른 유형의 파일을 전송하는 경우 오탐이 발생할 수 있습니다. 특히, '.bin', '.img', '.tar'와 같은 확장자는 펌웨어 외에도 다양한 용도로 사용될 수 있으므로 주의가 필요합니다. 알려진 정상적인 TFTP 사용 패턴이나 특정 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

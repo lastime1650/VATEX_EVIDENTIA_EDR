@@ -1,0 +1,347 @@
+{
+    "id": "T1497.001-SystemChecks",
+    "name": "System Checks for Virtualization/Sandbox Evasion",
+    "description": "Detects attempts by adversaries to identify and avoid virtualization and analysis environments by performing various system checks. This includes querying system information, checking for VME-specific registry keys, file paths, and API calls that reveal the presence of virtual machines or sandboxes.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1497",
+        "subtechnique_id": "T1497.001",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Native API",
+            "Enterprise:Discovery:Query Registry",
+            "Enterprise:Discovery:File and Directory Discovery"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmdline_generic_system_info": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "systeminfo.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wmic csproduct get name"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wmic computersystem get model"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wmic bios get serialnumber"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "driverquery.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "tasklist /svc"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "sc query"
+                    }
+                ]
+            },
+            "s3_cmdline_vme_specific_processes": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "vmtoolsd.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "VBoxService.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "VBoxTray.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "prl_tools_service.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "qemu-ga.exe"
+                    }
+                ]
+            },
+            "s4_cmdline_powershell_vme_check": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-WmiObject -Class Win32_ComputerSystem"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-VMHost"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-Service | Where-Object {$_.DisplayName -like '*VMware*' -or $_.DisplayName -like '*VirtualBox*'}"
+                    }
+                ]
+            },
+            "s5_registry_access_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "QueryKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "OpenKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "EnumerateKey"
+                    }
+                ]
+            },
+            "s6_registry_vme_hardware_paths": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\HARDWARE\\ACPI\\DSDT\\VBOX__"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\HARDWARE\\ACPI\\FADT\\VBOX__"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\HARDWARE\\ACPI\\RSDT\\VBOX__"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "HKEY_LOCAL_MACHINE\\HARDWARE\\SMBIOS\\System\\Manufacturer"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "HKEY_LOCAL_MACHINE\\HARDWARE\\SMBIOS\\System\\ProductName"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Enum\\PCI\\VEN_15AD&DEV_0740"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\VirtualDeviceDrivers"
+                    }
+                ]
+            },
+            "s7_registry_vme_software_paths": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\VMware, Inc."
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Oracle\\VirtualBox Guest Additions"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Virtual Machine\\Guest\\Parameters"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\QEMU"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Parallels"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "\\Services\\VBoxGuest"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "\\Services\\VMTools"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "\\Services\\vmhgfs"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "\\Services\\vmic"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "\\Services\\vmxnet"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "\\Services\\vmci"
+                    }
+                ]
+            },
+            "s8_filesystem_access_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "read"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "open"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "exists"
+                    }
+                ]
+            },
+            "s9_filesystem_vme_tool_paths": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\Program Files\\VMware\\VMware Tools"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\Program Files\\Oracle\\VirtualBox Guest Additions"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\Windows\\System32\\drivers\\VBoxGuest.sys"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\Windows\\System32\\drivers\\vmhgfs.sys"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\Windows\\System32\\drivers\\vmtools.dll"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\Windows\\System32\\drivers\\prl_fs.sys"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\Windows\\System32\\drivers\\qemufwcfg.sys"
+                    }
+                ]
+            },
+            "s10_apicall_vme_detection_functions": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "IsDebuggerPresent"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "DbgBreakPoint"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "NtQuerySystemInformation"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "QueryPerformanceCounter"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetTickCount"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "FindWindow"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and (s2_cmdline_generic_system_info or s3_cmdline_vme_specific_processes or s4_cmdline_powershell_vme_check)) or (s5_registry_access_action and (s6_registry_vme_hardware_paths or s7_registry_vme_software_paths)) or (s8_filesystem_access_action and s9_filesystem_vme_tool_paths) or s10_apicall_vme_detection_functions"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 가상화/샌드박스 환경 탐지 시도를 실시간으로 탐지할 수 있습니다. 시스템 정보 조회 명령, VME 관련 프로세스 실행, PowerShell 스크립트를 통한 VME 확인, VME 관련 레지스트리 키 또는 파일 경로 접근, 그리고 안티-분석 API 호출 등을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 추가적인 포렌식 조사를 시작하여 악성 행위의 초기 단계를 식별하고 대응하는 데 사용될 수 있습니다. 특히, 다른 방어 회피 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 가상 머신 관리 소프트웨어, 백신/보안 솔루션, 또는 개발 환경 설정 스크립트가 시스템 정보를 조회하거나 특정 파일을 확인하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스, 명령줄 패턴, 또는 파일/레지스트리 접근 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

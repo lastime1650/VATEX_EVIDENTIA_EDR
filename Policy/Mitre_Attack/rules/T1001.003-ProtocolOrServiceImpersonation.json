@@ -1,0 +1,126 @@
+{
+    "id": "T1001.003-ProtocolOrServiceImpersonation",
+    "name": "Protocol or Service Impersonation",
+    "description": "Detects attempts by adversaries to impersonate legitimate protocols or web service traffic to disguise command and control activity and evade analysis. This includes using non-standard ports for common protocols (e.g., HTTP on port 8080) or using unexpected protocols on standard ports (e.g., non-TCP traffic on port 80).",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0009",
+        "technique_id": "T1001",
+        "subtechnique_id": "T1001.003",
+        "data_sources": [
+            "Enterprise:Command and Control:Application Layer Protocol:Web Protocols",
+            "Enterprise:Command and Control:Application Layer Protocol:DNS",
+            "Enterprise:Command and Control:Non-Application Layer Protocol"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s_is_tcp_protocol": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "TCP"
+                    }
+                ]
+            },
+            "s_is_udp_protocol": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "UDP"
+                    }
+                ]
+            },
+            "s_is_outbound_direction": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    }
+                ]
+            },
+            "s_is_significant_packet_size": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.packetsize",
+                        "operator": "gt",
+                        "value": 50
+                    }
+                ]
+            },
+            "s_dest_port_is_std_http_https": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 80
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 443
+                    }
+                ]
+            },
+            "s_dest_port_is_std_dns": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 53
+                    }
+                ]
+            },
+            "s_dest_port_is_common_alt_web": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 8080
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 8000
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 8443
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 4443
+                    }
+                ]
+            },
+            "s_dest_port_is_common_alt_dns": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 5353
+                    }
+                ]
+            }
+        },
+        "condition": "(s_is_tcp_protocol and s_is_outbound_direction and s_is_significant_packet_size and not (s_dest_port_is_std_http_https or s_dest_port_is_common_alt_web)) or (s_is_udp_protocol and s_is_outbound_direction and s_is_significant_packet_size and not (s_dest_port_is_std_dns or s_dest_port_is_common_alt_dns)) or (not s_is_tcp_protocol and s_is_outbound_direction and s_is_significant_packet_size and s_dest_port_is_std_http_https) or (not s_is_udp_protocol and s_is_outbound_direction and s_is_significant_packet_size and s_dest_port_is_std_dns)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 프로토콜 또는 서비스 가장을 통한 C2 통신 시도를 탐지할 수 있습니다. 이는 표준 HTTP/HTTPS/DNS 포트에서 비정상적인 프로토콜 트래픽이 발생하거나, 비표준 포트에서 웹 또는 DNS와 유사한 대량의 트래픽이 발생하는 경우를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 네트워크 연결에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 다른 C2 전술이나 방어 회피 활동과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "합법적인 사용자 지정 애플리케이션, 게임, P2P 소프트웨어, 또는 특정 네트워크 장치가 비표준 포트에서 통신하거나 표준 포트에서 예상치 못한 프로토콜을 사용할 수 있습니다. 또한, 네트워크 장비의 오작동이나 잘못된 구성으로 인해 오탐이 발생할 수 있습니다. 알려진 정상적인 통신 패턴이나 특정 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

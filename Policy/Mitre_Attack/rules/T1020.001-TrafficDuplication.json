@@ -1,0 +1,85 @@
+{
+    "id": "T1020.001-TrafficDuplication",
+    "name": "Traffic Duplication",
+    "description": "Adversaries may leverage traffic mirroring in order to automate data exfiltration over compromised infrastructure. Traffic mirroring is a native feature for some devices, often used for network analysis. Adversaries may abuse traffic mirroring to mirror or redirect network traffic through other infrastructure they control. This rule detects suspicious outbound network traffic patterns that could indicate data exfiltration or command and control activities related to traffic duplication.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0010",
+        "technique_id": "T1020",
+        "subtechnique_id": "T1020.001",
+        "data_sources": [
+            "NetworkTraffic:NetworkConnectionCreation",
+            "NetworkTraffic:NetworkTrafficFlow"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_outbound_direction": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    }
+                ]
+            },
+            "s2_large_packet_size": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.packetsize",
+                        "operator": "gt",
+                        "value": 102400
+                    }
+                ]
+            },
+            "s3_icmp_protocol": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "ICMP"
+                    }
+                ]
+            },
+            "s4_uncommon_destination_port_range": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "gt",
+                        "value": 1023
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "lt",
+                        "value": 49152
+                    }
+                ]
+            },
+            "s5_tcp_udp_protocol": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "TCP"
+                    },
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "UDP"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_outbound_direction and s2_large_packet_size and s3_icmp_protocol) or (s1_outbound_direction and s2_large_packet_size and s4_uncommon_destination_port_range and s5_tcp_udp_protocol)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 발생하는 비정상적인 아웃바운드 네트워크 트래픽을 탐지할 수 있습니다. 특히, ICMP와 같은 비표준 프로토콜을 사용하거나, TCP/UDP 프로토콜로 비정상적인 목적지 포트(1024~49151 범위)에 대량의 패킷(100KB 이상)을 전송하는 행위는 데이터 유출 또는 C2 통신 채널로 활용될 가능성이 높습니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 네트워크 연결에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 도구, P2P 애플리케이션, VPN 클라이언트, 또는 특정 소프트웨어 업데이트 프로세스가 비표준 포트나 ICMP를 통해 대량의 데이터를 전송하는 경우 오탐이 발생할 수 있습니다. 또한, 네트워크 진단 도구나 게임 클라이언트가 특정 포트를 사용하는 경우에도 탐지될 수 있습니다. 알려진 정상 프로세스 및 네트워크 통신 패턴에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

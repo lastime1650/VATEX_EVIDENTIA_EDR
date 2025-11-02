@@ -1,0 +1,187 @@
+{
+    "id": "T1546.003-WMIEventSubscription",
+    "name": "Windows Management Instrumentation Event Subscription",
+    "description": "Detects attempts to establish persistence and elevate privileges by executing malicious content triggered by a Windows Management Instrumentation (WMI) event subscription. This includes the use of `mofcomp.exe` to compile MOF files, PowerShell's `Register-WmiEvent` cmdlet, `wmic.exe` to create WMI event objects, or suspicious processes spawned by `WmiPrvSe.exe`.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1546",
+        "subtechnique_id": "T1546.003",
+        "data_sources": [
+            "File:FileCreation",
+            "Process:ProcessCreation",
+            "Command:CommandExecution",
+            "WMI:WMICreation"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_mofcomp_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "mofcomp.exe"
+                    }
+                ]
+            },
+            "s3_powershell_wmievent_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Register-WmiEvent"
+                    }
+                ]
+            },
+            "s4_wmic_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wmic.exe"
+                    }
+                ]
+            },
+            "s5_wmic_create_keyword": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "CREATE"
+                    }
+                ]
+            },
+            "s6_wmic_event_object_keyword": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "__EventFilter"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "__EventConsumer"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "__FilterToConsumerBinding"
+                    }
+                ]
+            },
+            "s7_filesystem_create_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s8_mof_file_extension": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".mof"
+                    }
+                ]
+            },
+            "s9_registry_modify_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPostSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreCreateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPostCreateKey"
+                    }
+                ]
+            },
+            "s10_registry_wmi_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\WMI"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\WBEM"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "__EventFilter"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "__EventConsumer"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "__FilterToConsumerBinding"
+                    }
+                ]
+            },
+            "s11_wmi_provider_host_parent_process": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "endswith",
+                        "value": "WmiPrvSe.exe"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_mofcomp_command) or (s1_process_create_action and s3_powershell_wmievent_command) or (s1_process_create_action and s4_wmic_command and s5_wmic_create_keyword and s6_wmic_event_object_keyword) or (s7_filesystem_create_action and s8_mof_file_extension) or (s9_registry_modify_action and s10_registry_wmi_path) or (s1_process_create_action and s11_wmi_provider_host_parent_process)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 WMI 이벤트 구독을 통한 영구화 및 권한 상승 시도를 탐지할 수 있습니다. `mofcomp.exe` 실행, `Register-WmiEvent` PowerShell cmdlet 사용, `wmic.exe`를 이용한 WMI 이벤트 객체 생성, 또는 `WmiPrvSe.exe`에 의해 생성된 의심스러운 프로세스 등을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 WMI 구성에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 다른 방어 회피 또는 실행 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 백신 소프트웨어, 또는 합법적인 애플리케이션이 WMI를 사용하여 시스템 이벤트를 모니터링하거나 구성하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상적인 WMI 호출 패턴이나 특정 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,114 @@
+{
+    "id": "T1016.001-InternetConnectionDiscovery",
+    "name": "Internet Connection Discovery",
+    "description": "Detects attempts by adversaries to check for Internet connectivity on compromised systems. This includes the execution of common command-line tools like ping, tracert, nslookup, curl, wget, or PowerShell cmdlets such as Test-Connection and Invoke-WebRequest, which are used to determine network reachability before attempting Command and Control (C2) communications.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1016",
+        "subtechnique_id": "T1016.001",
+        "data_sources": [
+            "Enterprise:Discovery:System Network Configuration Discovery:Internet Connection Discovery"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_ping_commandline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ping"
+                    }
+                ]
+            },
+            "s3_tracert_commandline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "tracert"
+                    }
+                ]
+            },
+            "s4_nslookup_commandline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "nslookup"
+                    }
+                ]
+            },
+            "s5_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s6_test_connection_cmdlet": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Test-Connection"
+                    }
+                ]
+            },
+            "s7_invoke_webrequest_cmdlet": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-WebRequest"
+                    }
+                ]
+            },
+            "s8_curl_commandline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "curl"
+                    }
+                ]
+            },
+            "s9_wget_commandline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wget"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and (s2_ping_commandline or s3_tracert_commandline or s4_nslookup_commandline or (s5_powershell_exe_path and s6_test_connection_cmdlet) or (s5_powershell_exe_path and s7_invoke_webrequest_cmdlet) or s8_curl_commandline or s9_wget_commandline)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템의 인터넷 연결 상태를 확인하려는 시도를 탐지할 수 있습니다. 'ping', 'tracert', 'nslookup', 'curl', 'wget'과 같은 네트워크 유틸리티 실행 및 PowerShell의 'Test-Connection', 'Invoke-WebRequest'와 같은 cmdlet 사용을 모니터링합니다. 탐지된 이벤트는 공격자가 C2 통신을 시도하기 전 환경을 정찰하는 단계일 수 있으므로, 다른 Discovery 또는 Command and Control 활동과 결합하여 조사 우선순위를 높이고 침해사고 대응에 활용할 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 네트워크 진단 유틸리티, 스크립트, 또는 합법적인 애플리케이션이 네트워크 연결 상태를 확인하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

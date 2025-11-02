@@ -1,0 +1,59 @@
+{
+    "id": "T1071.004-DNSTunneling",
+    "name": "DNS Tunneling for Command and Control",
+    "description": "Detects attempts by adversaries to use the Domain Name System (DNS) application layer protocol for command and control (C2) communications, often referred to as DNS tunneling. This technique involves embedding commands and data within DNS queries and responses to evade network filtering and blend with normal traffic. Indicators include unusually large DNS packet sizes or DNS traffic from non-standard processes.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0011",
+        "technique_id": "T1071",
+        "subtechnique_id": "T1071.004",
+        "data_sources": [
+            "Enterprise:Command and Control:Application Layer Protocol:DNS"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_dns_protocol_detected": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "DNS"
+                    }
+                ]
+            },
+            "s2_unusual_dns_packet_size": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.packetsize",
+                        "operator": "gt",
+                        "value": 250
+                    }
+                ]
+            },
+            "s3_standard_dns_ports_involved": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 53
+                    },
+                    {
+                        "field": "body.network.sourceport",
+                        "operator": "equals",
+                        "value": 53
+                    }
+                ]
+            }
+        },
+        "condition": "s1_dns_protocol_detected and s2_unusual_dns_packet_size and s3_standard_dns_ports_involved"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 DNS를 통한 명령 및 제어(C2) 통신 시도를 탐지할 수 있습니다. 특히, DNS 프로토콜을 사용하면서 비정상적으로 큰 패킷 사이즈를 가진 네트워크 트래픽을 모니터링합니다. 이는 DNS 터널링의 강력한 지표가 될 수 있습니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스 및 네트워크 연결에 대한 심층적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 DNSSEC(DNS Security Extensions) 응답, 일부 DNS 기반 서비스, 또는 특정 네트워크 장치의 진단 트래픽이 일시적으로 큰 DNS 패킷을 생성하여 오탐이 발생할 수 있습니다. 또한, DNS 로깅 및 모니터링 솔루션 자체에서 발생하는 트래픽도 오탐의 원인이 될 수 있습니다. 알려진 정상적인 대용량 DNS 트래픽 패턴이나 특정 IP 주소를 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

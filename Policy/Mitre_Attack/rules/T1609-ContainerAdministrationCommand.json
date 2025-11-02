@@ -1,0 +1,100 @@
+{
+    "id": "T1609-ContainerAdministrationCommand",
+    "name": "Container Administration Command",
+    "description": "Detects attempts to execute commands within a container using container administration services such as Docker or Kubernetes (kubectl). Adversaries may leverage commands like 'docker exec' or 'kubectl exec' to gain remote execution in containers, or specify an entrypoint during container deployment to run malicious scripts.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1609",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Enterprise:Execution:Command and Scripting Interpreter"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_docker_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "docker.exe"
+                    }
+                ]
+            },
+            "s3_kubectl_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "kubectl.exe"
+                    }
+                ]
+            },
+            "s4_cmdline_docker_exec": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " exec "
+                    }
+                ]
+            },
+            "s5_cmdline_kubectl_exec": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " exec "
+                    }
+                ]
+            },
+            "s6_cmdline_docker_run_entrypoint": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " run --entrypoint "
+                    }
+                ]
+            },
+            "s7_cmdline_docker_run_interactive_shell": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " run -it "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " run --rm "
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and ((s2_docker_exe_path and (s4_cmdline_docker_exec or s6_cmdline_docker_run_entrypoint or s7_cmdline_docker_run_interactive_shell)) or (s3_kubectl_exe_path and s5_cmdline_kubectl_exec))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 통해 Windows 호스트에서 Docker 또는 Kubernetes 컨테이너 내부에 명령을 실행하려는 시도를 탐지할 수 있습니다. 'docker.exe' 또는 'kubectl.exe' 프로세스 생성 이벤트와 함께 'exec', 'run --entrypoint', 'run -it' 등의 명령줄 인자를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 컨테이너 환경에 대한 침해 여부를 조사하는 데 활용될 수 있습니다. 이는 컨테이너 탈취 및 내부망 확산을 방지하는 데 중요한 역할을 합니다.",
+    "false_positive": "정상적인 컨테이너 관리 작업, 개발 및 테스트 환경에서 컨테이너 내부 명령 실행, 자동화된 배포 스크립트 등으로 인해 오탐이 발생할 수 있습니다. 특정 사용자, 프로세스, 또는 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,317 @@
+{
+    "id": "T1566.003-SpearphishingViaService",
+    "name": "Spearphishing via Service",
+    "description": "Adversaries may send spearphishing messages via third-party services in an attempt to gain access to victim systems. Spearphishing via service is a specific variant of spearphishing. It employs the use of third party services rather than directly via enterprise email channels. All forms of spearphishing are electronically delivered social engineering targeted at a specific individual, company, or industry. In this scenario, adversaries send messages through various social media services, personal webmail, and other non-enterprise controlled services. These services are more likely to have a less-strict security policy than an enterprise. As with most kinds of spearphishing, the goal is to generate rapport with the target or get the target's interest in some way. Adversaries will create fake social media accounts and message employees for potential job opportunities. Doing so allows a plausible reason for asking about services, policies, and software that's running in an environment. The adversary can then send malicious links or attachments through these services. A common example is to build rapport with a target via social media, then send content to a personal webmail service that the target uses on their work computer. This allows an adversary to bypass some email restrictions on the work account, and the target is more likely to open the file since it's something they were expecting. If the payload doesn't work as expected, the adversary can continue normal communications and troubleshoot with the target on how to get it working.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0001",
+        "technique_id": "T1566",
+        "subtechnique_id": "T1566.003",
+        "data_sources": [
+            "Enterprise:Initial Access:Phishing:Spearphishing Link",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Execution:User Execution:Malicious File",
+            "Enterprise:Command and Control:Application Layer Protocol:Web Protocols"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_file_action_create_write": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    }
+                ]
+            },
+            "s1_file_path_download_temp_location": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\Users\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\Downloads\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\AppData\\Local\\Temp\\"
+                    }
+                ]
+            },
+            "s1_file_path_suspicious_extension": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".doc"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".docx"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".pdf"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".xls"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".xlsx"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".ppt"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".pptx"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".js"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".vbs"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".hta"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".html"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".zip"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".rar"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".7z"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".iso"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".img"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".lnk"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".ps1"
+                    }
+                ]
+            },
+            "s_process_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_parent_is_document_viewer": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "contains",
+                        "value": "WINWORD.EXE"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "contains",
+                        "value": "EXCEL.EXE"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "contains",
+                        "value": "POWERPNT.EXE"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "contains",
+                        "value": "AcroRd32.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "contains",
+                        "value": "outlook.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "contains",
+                        "value": "thunderbird.exe"
+                    }
+                ]
+            },
+            "s3_parent_is_browser": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "contains",
+                        "value": "chrome.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "contains",
+                        "value": "firefox.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "contains",
+                        "value": "msedge.exe"
+                    }
+                ]
+            },
+            "s_child_is_suspicious_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "cmd.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "mshta.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "wscript.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "cscript.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "rundll32.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "regsvr32.exe"
+                    }
+                ]
+            },
+            "s4_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s4_suspicious_powershell_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-EncodedCommand"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "IEX"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "DownloadString"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "DownloadFile"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-Expression"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-WebRequest"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "System.Net.WebClient"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_file_action_create_write and s1_file_path_download_temp_location and s1_file_path_suspicious_extension) or (s_process_action_create and s_child_is_suspicious_exe and (s2_parent_is_document_viewer or s3_parent_is_browser)) or (s_process_action_create and s4_powershell_exe_path and s4_suspicious_powershell_cmdline)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 타사 서비스를 통한 스피어피싱 시도를 탐지할 수 있습니다. 이는 사용자의 다운로드 또는 임시 폴더에 의심스러운 확장자를 가진 파일이 생성되거나, 문서 뷰어/웹 브라우저가 PowerShell, CMD 등과 같은 의심스러운 프로세스를 생성하는 경우를 모니터링합니다. 또한, PowerShell이 인코딩된 명령, IEX, DownloadString 등과 같은 악성 명령줄 인자를 사용하여 실행되는 경우를 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 파일, 프로세스 및 네트워크 활동에 대한 추가적인 조사를 시작하는 데 사용될 수 있습니다. 특히, 다른 실행 또는 방어 회피 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 소프트웨어 업데이트, 합법적인 애플리케이션의 다운로드 및 실행, 시스템 관리 스크립트, 또는 개발 도구 사용으로 인해 오탐이 발생할 수 있습니다. 예를 들어, 특정 문서 뷰어가 보안 업데이트를 위해 PowerShell을 실행하거나, 웹 브라우저가 합법적인 다운로드 관리자를 실행하는 경우가 포함됩니다. 알려진 정상 프로세스, 특정 파일 경로 또는 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

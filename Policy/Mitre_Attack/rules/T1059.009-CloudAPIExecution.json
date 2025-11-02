@@ -1,0 +1,254 @@
+{
+    "id": "T1059.009-CloudAPIExecution",
+    "name": "Cloud API Execution",
+    "description": "Detects attempts to abuse cloud APIs to execute malicious commands. Adversaries may utilize command line interpreters (CLIs), PowerShell modules like Azure for PowerShell, or software developer kits (SDKs) to interact with cloud environments for various functionalities such as compute, storage, identity and access management (IAM), networking, and security policies.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1059",
+        "subtechnique_id": "T1059.009",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Cloud API"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s_az_cli_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "az.exe"
+                    }
+                ]
+            },
+            "s_az_cli_malicious_commands": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "vm create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "storage account create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "network nic create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "group delete"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ad app create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "user create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "role assignment create"
+                    }
+                ]
+            },
+            "s_aws_cli_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "aws.exe"
+                    }
+                ]
+            },
+            "s_aws_cli_malicious_commands": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ec2 run-instances"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "s3 cp"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "s3 rm"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iam create-user"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "lambda create-function"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "sts assume-role"
+                    }
+                ]
+            },
+            "s_gcloud_cli_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "gcloud.exe"
+                    }
+                ]
+            },
+            "s_gcloud_cli_malicious_commands": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "compute instances create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "storage cp"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iam service-accounts create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "functions deploy"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "auth activate-service-account"
+                    }
+                ]
+            },
+            "s_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s_powershell_az_cmdlets": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-AzVM"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-AzVM"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Remove-AzVM"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-AzStorageAccount"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Remove-AzResourceGroup"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-AzADUser"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-AzRoleAssignment"
+                    }
+                ]
+            },
+            "s_powershell_aws_cmdlets": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-EC2Instance"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Write-S3Object"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Remove-S3Object"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-IAMUser"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-LMBFunction"
+                    }
+                ]
+            }
+        },
+        "condition": "s_process_create_action and ((s_az_cli_exe and s_az_cli_malicious_commands) or (s_aws_cli_exe and s_aws_cli_malicious_commands) or (s_gcloud_cli_exe and s_gcloud_cli_malicious_commands) or (s_powershell_exe and (s_powershell_az_cmdlets or s_powershell_aws_cmdlets)))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 클라우드 API를 악용하는 명령 실행 시도를 탐지할 수 있습니다. Azure CLI (az.exe), AWS CLI (aws.exe), Google Cloud CLI (gcloud.exe) 또는 PowerShell의 클라우드 모듈(예: Azure PowerShell, AWS Tools for PowerShell)을 통해 가상 머신 생성/삭제, 스토리지 조작, 사용자/그룹 관리, 함수 배포 등 비정상적인 클라우드 리소스 조작 명령이 실행될 때 탐지됩니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 클라우드 환경 및 계정에 대한 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "합법적인 클라우드 관리 도구, 자동화 스크립트, CI/CD 파이프라인, 또는 개발자가 클라우드 리소스를 관리하는 과정에서 오탐이 발생할 수 있습니다. 특정 관리자 계정, IP 범위, 또는 정상적인 자동화 스크립트의 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다. 또한, 클라우드 CLI/PowerShell 명령의 모든 정상 사용을 포괄적으로 화이트리스트 처리하기 어려울 수 있으므로, 비정상적인 패턴이나 권한 상승/우회 시도로 의심되는 명령에 집중하여 규칙을 조정하는 것이 중요합니다."
+}

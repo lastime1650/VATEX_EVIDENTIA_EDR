@@ -1,0 +1,173 @@
+{
+    "id": "T1567.001-ExfiltrationToCodeRepository",
+    "name": "Exfiltration to Code Repository",
+    "description": "Detects attempts by adversaries to exfiltrate data to a code repository (e.g., GitHub, GitLab, Bitbucket) rather than over their primary command and control channel. This often involves using command-line tools like git, curl, or PowerShell to upload sensitive files or data.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0010",
+        "technique_id": "T1567",
+        "subtechnique_id": "T1567.001",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Command and Control:Application Layer Protocol:Web Protocols",
+            "Enterprise:Exfiltration:Exfiltration Over Web Service:Exfiltration to Code Repository",
+            "Enterprise:Collection:Data from Local System"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s_git_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "git.exe"
+                    }
+                ]
+            },
+            "s_git_push_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "git push"
+                    }
+                ]
+            },
+            "s_git_remote_add_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "git remote add"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "git remote set-url"
+                    }
+                ]
+            },
+            "s_curl_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "curl.exe"
+                    }
+                ]
+            },
+            "s_curl_upload_options": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " -T "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " --upload-file "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " -X PUT "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " -X POST "
+                    }
+                ]
+            },
+            "s_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s_powershell_web_upload_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-WebRequest -Method POST"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-RestMethod -Method PUT"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-RestMethod -Method POST"
+                    }
+                ]
+            },
+            "s_network_outbound_https": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 443
+                    }
+                ]
+            },
+            "s_network_outbound_git_protocol": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 9418
+                    }
+                ]
+            }
+        },
+        "condition": "(s_process_create_action and s_git_exe_path and (s_git_push_cmd or s_git_remote_add_cmd)) or (s_process_create_action and s_curl_exe_path and s_curl_upload_options) or (s_process_create_action and s_powershell_exe_path and s_powershell_web_upload_cmd) or (s_network_outbound_https or s_network_outbound_git_protocol)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 코드 리포지토리로의 데이터 유출 시도를 탐지할 수 있습니다. 'git push', 'curl -T', PowerShell의 'Invoke-WebRequest -Method POST'와 같은 명령 실행을 포함하는 프로세스 생성 이벤트를 모니터링합니다. 또한, 일반적인 HTTPS(443) 또는 Git 프로토콜(9418)을 통한 비정상적인 외부 네트워크 연결을 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 네트워크 활동에 대한 추가적인 조사를 시작하여 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "합법적인 개발자가 소스 코드를 원격 리포지토리로 푸시하거나, 자동화된 빌드/배포 스크립트, 또는 특정 백업/동기화 도구가 유사한 네트워크 활동을 수행하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 개발 프로세스, 특정 사용자 계정, 또는 특정 IP 주소/도메인에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

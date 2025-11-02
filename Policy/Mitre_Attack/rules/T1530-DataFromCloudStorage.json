@@ -1,0 +1,115 @@
+{
+    "id": "T1530-DataFromCloudStorage",
+    "name": "Data from Cloud Storage",
+    "description": "Adversaries may access data from cloud storage.\n\nMany IaaS providers offer solutions for online data object storage such as Amazon S3, Azure Storage, and Google Cloud Storage. Similarly, SaaS enterprise platforms such as Office 365 and Google Workspace provide cloud-based document storage to users through services such as OneDrive and Google Drive, while SaaS application providers such as Slack, Confluence, Salesforce, and Dropbox may provide cloud storage solutions as a peripheral or primary use case of their platform. \n\nIn some cases, as with IaaS-based cloud storage, there exists no overarching application (such as SQL or Elasticsearch) with which to interact with the stored objects: instead, data from these solutions is retrieved directly though the Cloud API. In SaaS applications, adversaries may be able to collect this data directly from APIs or backend cloud storage objects, rather than through their front-end application or interface (i.e., Data from Information Repositories). \n\nAdversaries may collect sensitive data from these cloud storage solutions. Providers typically offer security guides to help end users configure systems, though misconfigurations are a common problem. There have been numerous incidents where cloud storage has been improperly secured, typically by unintentionally allowing public access to unauthenticated users, overly-broad access by all users, or even access for any anonymous person outside the control of the Identity Access Management system without even needing basic user permissions.\n\nThis open access may expose various types of sensitive data, such as credit cards, personally identifiable information, or medical records.\n\nAdversaries may also obtain then abuse leaked credentials from source repositories, logs, or other means as a way to gain access to cloud storage objects.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0009",
+        "technique_id": "T1530",
+        "subtechnique_id": "",
+        "data_sources": [
+            "CloudService:CloudServiceMetadata",
+            "CloudStorage:CloudStorageAccess"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_az_cli_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "az.exe"
+                    }
+                ]
+            },
+            "s3_az_download_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "storage blob download"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "storage container download"
+                    }
+                ]
+            },
+            "s4_aws_cli_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "aws.exe"
+                    }
+                ]
+            },
+            "s5_aws_s3_download_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "s3 cp"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "s3 sync"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "s3api get-object"
+                    }
+                ]
+            },
+            "s6_gcloud_cli_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "gcloud.exe"
+                    }
+                ]
+            },
+            "s7_gcloud_storage_download_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "storage cp"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "storage cat"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create and ((s2_az_cli_execution and s3_az_download_command) or (s4_aws_cli_execution and s5_aws_s3_download_command) or (s6_gcloud_cli_execution and s7_gcloud_storage_download_command))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 클라우드 스토리지로부터 데이터 수집 또는 유출 시도를 탐지할 수 있습니다. Azure CLI (az.exe), AWS CLI (aws.exe), Google Cloud CLI (gcloud.exe)와 같은 클라우드 관리 도구의 프로세스 생성 이벤트를 모니터링하며, 특히 'download', 'cp', 'cat', 'get-object'와 같은 명령줄 인자를 통해 클라우드 스토리지 객체에 접근하는 행위를 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련된 사용자 계정, 프로세스, 네트워크 연결에 대한 추가적인 조사를 시작하는 데 사용될 수 있습니다. 이는 민감 데이터 유출 방지에 중요한 역할을 합니다.",
+    "false_positive": "정상적인 클라우드 관리 작업, 백업 스크립트, 개발 및 테스트 환경에서의 합법적인 데이터 이동, 또는 클라우드 동기화 애플리케이션에 의해 오탐이 발생할 수 있습니다. 알려진 정상적인 클라우드 CLI 호출 패턴이나 특정 사용자/프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

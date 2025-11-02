@@ -1,0 +1,105 @@
+{
+    "id": "T1558.002-SilverTicket",
+    "name": "Silver Ticket Forging",
+    "description": "Detects attempts by adversaries to forge Kerberos service tickets (silver tickets) to gain access to specific resources without interacting with the Key Distribution Center (KDC). This often involves obtaining service account password hashes (e.g., via OS Credential Dumping or Kerberoasting) and then using tools like Mimikatz or Rubeus, or directly interacting with LSASS memory.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0006",
+        "technique_id": "T1558",
+        "subtechnique_id": "T1558.002",
+        "data_sources": [
+            "Enterprise:Credential Access:OS Credential Dumping:LSASS Memory",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_mimikatz_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "mimikatz.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "sekurlsa::tickets"
+                    }
+                ]
+            },
+            "s3_rubeus_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Rubeus.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Rubeus.ps1"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "forge /ticket"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ptt /ticket"
+                    }
+                ]
+            },
+            "s4_lsass_filepath_access": {
+                "event_type": "processaccess",
+                "conditions": [
+                    {
+                        "field": "body.processaccess.filepath",
+                        "operator": "contains",
+                        "value": "lsass.exe"
+                    }
+                ]
+            },
+            "s5_lsass_read_desired_access": {
+                "event_type": "processaccess",
+                "conditions": [
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_VM_READ"
+                    },
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_DUP_HANDLE"
+                    },
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_QUERY_INFORMATION"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and (s2_mimikatz_cmdline or s3_rubeus_cmdline)) or (s4_lsass_filepath_access and s5_lsass_read_desired_access)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 은밀한 Kerberos 서비스 티켓 위조(Silver Ticket) 시도를 탐지할 수 있습니다. Mimikatz나 Rubeus와 같은 도구의 프로세스 생성 이벤트와 특정 명령줄 인자를 모니터링하고, LSASS 프로세스에 대한 비정상적인 접근(읽기, 핸들 복제, 정보 쿼리 등)을 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 시스템 활동에 대한 심층적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 다른 자격 증명 접근 또는 방어 회피 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 모니터링 도구, 백신 소프트웨어, 또는 합법적인 관리 유틸리티가 LSASS 프로세스 정보를 조회하거나 특정 Kerberos 관련 작업을 수행하는 경우 오탐이 발생할 수 있습니다. 또한, Mimikatz나 Rubeus와 유사한 문자열을 포함하는 오탐성 명령줄이 있을 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

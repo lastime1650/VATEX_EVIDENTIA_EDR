@@ -1,0 +1,105 @@
+{
+    "id": "T1558.001-GoldenTicket",
+    "name": "Golden Ticket Forgery Detection",
+    "description": "Detects attempts by adversaries to forge Kerberos ticket-granting tickets (TGTs), also known as golden tickets, by leveraging the KRBTGT account password hash. This technique allows attackers to generate authentication material for any account in Active Directory, enabling access to various resources. Detection focuses on the execution of common tools like Mimikatz or Rubeus with specific command-line arguments associated with golden ticket creation or related credential dumping.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0006",
+        "technique_id": "T1558",
+        "subtechnique_id": "T1558.001",
+        "data_sources": [
+            "Credential Access:Steal or Forge Kerberos Tickets:Golden Ticket",
+            "Execution:Command and Scripting Interpreter:Windows Command Shell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_mimikatz_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "mimikatz"
+                    }
+                ]
+            },
+            "s3_mimikatz_golden_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "kerberos::golden"
+                    }
+                ]
+            },
+            "s4_mimikatz_tgt_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "kerberos::tgt"
+                    }
+                ]
+            },
+            "s5_rubeus_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "rubeus"
+                    }
+                ]
+            },
+            "s6_rubeus_dump_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "dump"
+                    }
+                ]
+            },
+            "s7_rubeus_forge_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "forge"
+                    }
+                ]
+            },
+            "s8_rubeus_tgtdeleg_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "tgtdeleg"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create and ((s2_mimikatz_exe_path and (s3_mimikatz_golden_cmd or s4_mimikatz_tgt_cmd)) or (s5_rubeus_exe_path and (s6_rubeus_dump_cmd or s7_rubeus_forge_cmd or s8_rubeus_tgtdeleg_cmd)))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Mimikatz 또는 Rubeus와 같은 도구를 이용한 골든 티켓 위조 시도를 탐지할 수 있습니다. 프로세스 생성 이벤트와 함께 'kerberos::golden', 'kerberos::tgt', 'dump', 'forge', 'tgtdeleg'와 같은 명령줄 인자를 모니터링하여 공격자가 Active Directory 인증 시스템을 악용하는 것을 식별합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 시스템에 대한 심층적인 포렌식 조사를 시작하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 보안 테스트 도구, 또는 특정 개발 환경에서 Mimikatz나 Rubeus와 유사한 이름의 실행 파일이 사용되거나, 명령줄 인자에 우연히 탐지 키워드가 포함될 경우 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

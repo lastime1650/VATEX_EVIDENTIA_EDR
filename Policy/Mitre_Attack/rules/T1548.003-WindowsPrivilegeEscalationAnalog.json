@@ -1,0 +1,132 @@
+{
+    "id": "T1548.003-WindowsPrivilegeEscalationAnalog",
+    "name": "Windows Privilege Escalation/Defense Evasion (Sudo Analogue)",
+    "description": "This rule detects attempts on Windows systems to escalate privileges or evade defenses by modifying critical system registry keys related to services or Image File Execution Options (IFEO), or by gaining suspicious access to highly privileged processes like LSASS, Services.exe, or Winlogon.exe. While T1548.003 'Sudo and Sudo Caching' is primarily a Linux/macOS technique, this rule aims to capture analogous behaviors in the Windows environment, focusing on methods attackers might use to achieve or maintain elevated execution without repeated authentication or to bypass security controls.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0004",
+        "technique_id": "T1548",
+        "subtechnique_id": "T1548.003",
+        "data_sources": [
+            "Enterprise:Privilege Escalation:Abuse Elevation Control Mechanism:Bypass User Account Control",
+            "Enterprise:Defense Evasion:Modify Registry",
+            "Enterprise:Privilege Escalation:Process Injection",
+            "Enterprise:Persistence:Create or Modify System Process:Windows Service"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_registry_service_key_modification": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "SetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "CreateKey"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\"
+                    }
+                ]
+            },
+            "s2_registry_ifeo_key_modification": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "SetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "CreateKey"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options\\"
+                    }
+                ]
+            },
+            "s3_handle_creation_or_duplication": {
+                "event_type": "processaccess",
+                "conditions": [
+                    {
+                        "field": "body.processaccess.handletype",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.processaccess.handletype",
+                        "operator": "equals",
+                        "value": "duplicate"
+                    }
+                ]
+            },
+            "s4_target_is_privileged_process": {
+                "event_type": "processaccess",
+                "conditions": [
+                    {
+                        "field": "body.processaccess.filepath",
+                        "operator": "endswith",
+                        "value": "lsass.exe"
+                    },
+                    {
+                        "field": "body.processaccess.filepath",
+                        "operator": "endswith",
+                        "value": "services.exe"
+                    },
+                    {
+                        "field": "body.processaccess.filepath",
+                        "operator": "endswith",
+                        "value": "winlogon.exe"
+                    }
+                ]
+            },
+            "s5_desired_access_is_high_privilege": {
+                "event_type": "processaccess",
+                "conditions": [
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_ALL_ACCESS"
+                    },
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_VM_OPERATION"
+                    },
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_VM_READ"
+                    },
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_VM_WRITE"
+                    },
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_CREATE_THREAD"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_registry_service_key_modification or s2_registry_ifeo_key_modification or (s3_handle_creation_or_duplication and s4_target_is_privileged_process and s5_desired_access_is_high_privilege)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Windows 시스템에서 서비스 구성, 이미지 파일 실행 옵션(IFEO)과 같은 중요한 레지스트리 키에 대한 비정상적인 수정 시도 또는 LSASS, services.exe, winlogon.exe와 같은 고권한 프로세스에 대한 의심스러운 접근 시도를 탐지할 수 있습니다. 이는 공격자가 권한을 상승시키거나 방어 체계를 우회하려는 시도일 수 있습니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스 및 레지스트리 활동에 대한 심층적인 조사를 시작하는 데 사용될 수 있습니다. 특히, 다른 방어 회피 또는 실행 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 소프트웨어 설치 프로그램, 업데이트 유틸리티, 백신 소프트웨어 또는 합법적인 애플리케이션이 시스템 서비스나 IFEO 레지스트리 키를 수정하거나 고권한 프로세스에 접근하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 활동이나 특정 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

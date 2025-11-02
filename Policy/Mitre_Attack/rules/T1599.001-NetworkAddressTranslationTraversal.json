@@ -1,0 +1,145 @@
+{
+    "id": "T1599.001-NetworkAddressTranslationTraversal",
+    "name": "Network Address Translation Traversal",
+    "description": "Detects host-based attempts to configure Network Address Translation (NAT) or port forwarding rules to bypass network boundaries, enabling traffic routing between separated networks or obscuring malicious activities. This includes modifications via command-line utilities like netsh or PowerShell cmdlets, as well as relevant API calls.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1599",
+        "subtechnique_id": "T1599.001",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Process:OSAPIExecution"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_netsh_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "netsh.exe"
+                    }
+                ]
+            },
+            "s2_netsh_portproxy_add": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "interface portproxy add"
+                    }
+                ]
+            },
+            "s3_netsh_nat_config": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "routing ip nat"
+                    }
+                ]
+            },
+            "s4_powershell_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s5_powershell_netadapter_manipulation": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-NetAdapter"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-NetIPAddress"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-NetIPInterface"
+                    }
+                ]
+            },
+            "s6_powershell_firewall_rule_manipulation": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-NetFirewallRule"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-NetFirewallRule"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Action Allow"
+                    }
+                ]
+            },
+            "s7_apicall_ip_forwarding": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "CreateIpForwardEntry"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "SetIpForwardEntry"
+                    }
+                ]
+            },
+            "s8_apicall_firewall_manipulation": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "SetFirewallRule"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_netsh_process_create and (s2_netsh_portproxy_add or s3_netsh_nat_config)) or (s4_powershell_process_create and (s5_powershell_netadapter_manipulation or s6_powershell_firewall_rule_manipulation)) or s7_apicall_ip_forwarding or s8_apicall_firewall_manipulation"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 네트워크 주소 변환(NAT) 또는 포트 포워딩 규칙을 조작하려는 시도를 탐지할 수 있습니다. `netsh` 또는 PowerShell을 사용하여 네트워크 인터페이스, IP 주소, 라우팅 또는 방화벽 규칙을 변경하는 명령줄 실행과 관련 API 호출을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 네트워크 설정 변경의 합법성을 조사하며, 잠재적인 방어 회피 또는 측면 이동 활동에 대응하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 네트워크 구성 변경 스크립트, VPN 클라이언트 설치 또는 관리 도구, 그리고 특정 개발 환경 설정 과정에서 오탐이 발생할 수 있습니다. 알려진 정상적인 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

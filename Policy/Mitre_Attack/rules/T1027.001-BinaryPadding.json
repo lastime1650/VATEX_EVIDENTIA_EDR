@@ -1,0 +1,74 @@
+{
+    "id": "T1027.001-BinaryPadding",
+    "name": "Binary Padding for Defense Evasion",
+    "description": "Detects the creation or modification of executable files (.exe, .dll, .sys) with an unusually large file size, which could indicate binary padding used by adversaries to evade detection by security tools with file size limitations or hash-based blocklists.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1027",
+        "subtechnique_id": "T1027.001",
+        "data_sources": [
+            "Enterprise:Defense Evasion:Obfuscated Files or Information:Binary Padding"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_filesystem_action_relevant": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    }
+                ]
+            },
+            "s2_filepath_is_executable": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".sys"
+                    }
+                ]
+            },
+            "s3_filesize_unusually_large": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filesize",
+                        "operator": "gt",
+                        "value": 10485760
+                    }
+                ]
+            }
+        },
+        "condition": "s1_filesystem_action_relevant and s2_filepath_is_executable and s3_filesize_unusually_large"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 비정상적으로 큰 실행 파일(.exe, .dll, .sys)의 생성 또는 수정을 탐지할 수 있습니다. 이는 공격자가 바이너리 패딩을 사용하여 보안 도구의 파일 크기 제한을 우회하거나 해시 기반 차단 목록을 회피하려는 시도를 나타낼 수 있습니다. 탐지된 이벤트는 중간 심각도로 분류되어 추가적인 파일 분석 및 관련 프로세스 조사를 위한 알람을 트리거할 수 있습니다.",
+    "false_positive": "정상적인 소프트웨어 설치 프로그램, 대규모 애플리케이션 업데이트, 또는 합법적인 시스템 구성 요소(예: 대용량 드라이버 파일)의 생성 또는 수정으로 인해 오탐이 발생할 수 있습니다. 특정 파일 경로, SHA256 해시, 또는 프로세스에 대한 화이트리스트를 구현하여 오탐을 줄이는 것이 필요합니다."
+}

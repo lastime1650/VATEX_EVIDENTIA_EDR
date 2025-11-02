@@ -1,0 +1,46 @@
+{
+    "id": "FEATURE-REG-AMSI-Bypass-Attempt",
+    "name": "Interaction with AMSI Provider Configuration",
+    "description": "An interaction was detected with registry keys that control the Antimalware Scan Interface (AMSI). This feature is critical for detecting attempts to disable script-based threat detection before executing malicious code.",
+    "severity": "medium",
+    "mitre_attack": [
+        {
+            "tactic": "TA0005",
+            "technique_id": "T1562",
+            "subtechnique_id": "T1562.001",
+            "data_sources": ["Windows Registry"]
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "amsi_config_change",
+                "selections": {
+                    "selection_modify_amsi_settings": {
+                        "event_type": "registry",
+                        "condition_method": "and",
+                        "conditions": [
+                            {
+                                "field": "body.registry.keyclass", 
+                                "operator": "regex", 
+                                "value": "^RegNtPre(SetValueKey|DeleteKey)$"
+                            },
+                            {
+                                "field": "body.registry.name", 
+                                "operator": "regex", 
+                                "value": ".*(\\\\Software\\\\Microsoft\\\\Windows Script\\\\Settings\\\\AmsiEnable|\\\\SOFTWARE\\\\Microsoft\\\\AMSI\\\\Providers\\\\)"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "A process attempted to modify or delete a key related to AMSI configuration. This is a common defense evasion technique."
+                }
+            }
+        ]
+    },
+    "operational_usage": "This is a significant feature. The 'AmsiEnable' value is often set to '0' to disable it. Any non-GPO or non-admin tool process touching these keys is highly suspicious. SIEM should correlate this with subsequent script execution events.",
+    "false_positive": "Legitimate security configuration changes by administrators or Group Policy updates may trigger this. Baselining is essential."
+}

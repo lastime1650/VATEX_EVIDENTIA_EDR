@@ -1,0 +1,70 @@
+{
+    "id": "T1027.008-StrippedPayloads",
+    "name": "Stripped Payloads",
+    "description": "Detects the loading of executable or dynamic link library (DLL) files that may have been stripped of symbols and other human-readable information to hinder analysis. Adversaries use this technique for defense evasion, making it harder for security tools and analysts to understand the payload's functionality.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1027",
+        "subtechnique_id": "T1027.008",
+        "data_sources": [
+            "file:filemetadata",
+            "process:imageload"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_image_type_exe_dll_sys": {
+                "event_type": "imageload",
+                "conditions": [
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "endswith",
+                        "value": ".sys"
+                    }
+                ]
+            },
+            "s2_image_loaded_from_suspicious_dir": {
+                "event_type": "imageload",
+                "conditions": [
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "\\AppData\\Local\\Temp\\"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "\\Windows\\Temp\\"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "\\Users\\Public\\"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "\\ProgramData\\"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_image_type_exe_dll_sys and s2_image_loaded_from_suspicious_dir"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 악성 행위자가 분석을 방해하기 위해 심볼 및 문자열이 제거된(stripped) 페이로드를 사용하는 시도를 탐지할 수 있습니다. 이 규칙은 일반적인 임시 또는 사용자 쓰기 가능 디렉토리에서 실행 파일, DLL, 또는 시스템 드라이버가 로드되는 이벤트를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 파일의 SHA256 해시를 기반으로 추가적인 위협 인텔리전스 조회를 통해 실제 스트립된 악성 페이로드인지 확인할 수 있도록 합니다. 이는 침해사고 대응 및 포렌식 조사의 우선순위를 지정하는 데 중요합니다.",
+    "false_positive": "이 규칙은 파일의 '스트립' 여부를 직접적으로 탐지하는 것이 아니라, 스트립된 페이로드가 흔히 사용되는 방식(의심스러운 경로에서 실행 파일/DLL 로드)을 기반으로 합니다. 따라서, 정상적인 소프트웨어 설치, 업데이트, 또는 일부 합법적인 애플리케이션이 임시 폴더나 사용자 데이터 폴더에서 실행 파일을 로드하는 경우 오탐이 발생할 수 있습니다. 알려진 정상 프로세스 및 파일 경로를 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

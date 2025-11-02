@@ -1,0 +1,187 @@
+{
+    "id": "T1669-WiFiNetworkAccess",
+    "name": "Wi-Fi Network Access and Discovery",
+    "description": "Detects attempts by adversaries to discover, connect to, or manipulate Wi-Fi networks on a system. This includes command-line utilities like netsh, PowerShell cmdlets, direct API calls to Wi-Fi management functions, and access to Wi-Fi related registry keys.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0001",
+        "technique_id": "T1669",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Execution:Native API",
+            "Enterprise:Discovery:Query Registry"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_netsh_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "netsh.exe"
+                    }
+                ]
+            },
+            "s3_netsh_wlan_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wlan"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "show"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "connect"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "set hostednetwork"
+                    }
+                ]
+            },
+            "s4_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s5_powershell_wifi_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-NetAdapter -Name \"Wi-Fi\""
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-NetConnectionProfile"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-NetConnectionProfile"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Add-NetAdapterAdvancedProperty"
+                    }
+                ]
+            },
+            "s6_apicall_wlan_function": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "WlanOpenHandle"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "WlanEnumInterfaces"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "WlanGetProfile"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "WlanSetProfile"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "WlanConnect"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "WlanScan"
+                    }
+                ]
+            },
+            "s7_registry_access_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "Query"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "OpenKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "EnumerateKey"
+                    }
+                ]
+            },
+            "s8_registry_wifi_profile_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\NetworkList\\Profiles"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\NetworkList\\Signatures\\Unmanaged"
+                    }
+                ]
+            },
+            "s9_registry_wlan_svc_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\WlanSvc"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create and s2_netsh_exe and s3_netsh_wlan_cmd) or (s1_process_create and s4_powershell_exe and s5_powershell_wifi_cmd) or s6_apicall_wlan_function or (s7_registry_access_action and (s8_registry_wifi_profile_path or s9_registry_wlan_svc_path))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 Wi-Fi 네트워크에 대한 악의적인 접근 또는 조작 시도를 탐지할 수 있습니다. 'netsh wlan' 명령, PowerShell Wi-Fi 관련 cmdlet 실행, WlanAPI 함수 호출, 또는 Wi-Fi 프로필 및 서비스 관련 레지스트리 키 접근을 모니터링합니다. 탐지된 이벤트는 초기 접근 전술의 일환으로 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 네트워크 진단 유틸리티, Wi-Fi 드라이버 또는 유틸리티 설치/업데이트, 또는 합법적인 애플리케이션이 Wi-Fi 네트워크 정보를 조회하거나 설정하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

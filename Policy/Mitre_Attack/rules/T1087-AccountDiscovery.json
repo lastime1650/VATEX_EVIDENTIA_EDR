@@ -1,0 +1,243 @@
+{
+    "id": "T1087-AccountDiscovery",
+    "name": "Account Discovery",
+    "description": "Adversaries may attempt to get a listing of valid accounts, usernames, or email addresses on a system or within a compromised environment. This information can help adversaries determine which accounts exist, which can aid in follow-on behavior such as brute-forcing, spear-phishing attacks, or account takeovers. Adversaries may use several methods to enumerate accounts, including abuse of existing tools, built-in commands, and potential misconfigurations that leak account names and roles or permissions in the targeted environment. For examples, cloud environments typically provide easily accessible interfaces to obtain user lists. On hosts, adversaries can use default PowerShell and other command line functionality to identify accounts. Information about email addresses and accounts may also be extracted by searching an infected system’s files.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1087",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Discovery:Account Discovery",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Native API",
+            "Enterprise:Discovery:Query Registry",
+            "Enterprise:Discovery:File and Directory Discovery"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmdline_net_user": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "net user"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "net1 user"
+                    }
+                ]
+            },
+            "s3_cmdline_wmic_useraccount": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wmic"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "useraccount get"
+                    }
+                ]
+            },
+            "s4_cmdline_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s5_cmdline_powershell_get_localuser": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-LocalUser"
+                    }
+                ]
+            },
+            "s6_cmdline_powershell_get_aduser": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-ADUser"
+                    }
+                ]
+            },
+            "s7_cmdline_powershell_win32_useraccount": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Win32_UserAccount"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Win32_Account"
+                    }
+                ]
+            },
+            "s8_registry_query_open_enum_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "Query"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "OpenKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "Enumerate"
+                    }
+                ]
+            },
+            "s9_registry_sam_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SAM\\SAM"
+                    }
+                ]
+            },
+            "s10_registry_profilelist_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList"
+                    }
+                ]
+            },
+            "s11_registry_hkey_users_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_USERS"
+                    }
+                ]
+            },
+            "s12_filesystem_read_open_exists_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "read"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "open"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "exists"
+                    }
+                ]
+            },
+            "s13_filesystem_users_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\Users\\"
+                    }
+                ]
+            },
+            "s14_filesystem_ntuser_profile_dat": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "NTUSER.DAT"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "profile.dat"
+                    }
+                ]
+            },
+            "s15_apicall_netuserenum": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "NetUserEnum"
+                    }
+                ]
+            },
+            "s16_apicall_wtsquerysessioninfo": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "WTSQuerySessionInformationW"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "WTSQuerySessionInformationA"
+                    }
+                ]
+            },
+            "s17_apicall_lsaenumeratelogonsessions": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "LsaEnumerateLogonSessions"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and (s2_cmdline_net_user or s3_cmdline_wmic_useraccount or (s4_cmdline_powershell_exe and (s5_cmdline_powershell_get_localuser or s6_cmdline_powershell_get_aduser or s7_cmdline_powershell_win32_useraccount))) or (s8_registry_query_open_enum_action and (s9_registry_sam_path or s10_registry_profilelist_path or s11_registry_hkey_users_path)) or (s12_filesystem_read_open_exists_action and s13_filesystem_users_path and s14_filesystem_ntuser_profile_dat) or s15_apicall_netuserenum or s16_apicall_wtsquerysessioninfo or s17_apicall_lsaenumeratelogonsessions"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템 사용자 계정 정보 수집 시도를 탐지할 수 있습니다. 'net user', 'wmic useraccount get'과 같은 명령 실행, PowerShell을 통한 로컬/AD 사용자 열거 시도, SAM 데이터베이스, 사용자 프로필 목록, HKEY_USERS 하이브 등 사용자 관련 레지스트리 키 접근, 사용자 프로필 파일(NTUSER.DAT, profile.dat) 읽기, 또는 NetUserEnum, WTSQuerySessionInformation, LsaEnumerateLogonSessions와 같은 사용자 정보 조회 API 호출 등을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히 다른 Discovery 또는 Collection 활동과 결합될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 백신 소프트웨어, 사용자 환경 설정 스크립트, 또는 합법적인 애플리케이션이 시스템 사용자 정보를 조회하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴, 특정 레지스트리/파일 접근 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

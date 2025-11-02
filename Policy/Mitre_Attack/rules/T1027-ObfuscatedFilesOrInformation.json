@@ -1,0 +1,215 @@
+{
+    "id": "T1027-ObfuscatedFilesOrInformation",
+    "name": "Obfuscated Files or Information",
+    "description": "Detects attempts by adversaries to make files or commands difficult to discover or analyze by encrypting, encoding, or otherwise obfuscating their contents. This includes detecting PowerShell encoded commands, suspicious command-line obfuscation, use of tools like certutil for decoding, and creation of files with double extensions or in temporary locations.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1027",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Defense Evasion:Obfuscated Files or Information",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Execution:Command and Scripting Interpreter:JavaScript",
+            "Enterprise:File:FileCreation",
+            "Enterprise:Process:ProcessCreation",
+            "Enterprise:File:FileMetadata"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_proc_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_powershell_encoded_cmd_content": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-EncodedCommand"
+                    }
+                ]
+            },
+            "s3_cmd_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "cmd.exe"
+                    }
+                ]
+            },
+            "s4_cmd_obfuscated_caret_quotes_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "^"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "\"\""
+                    }
+                ]
+            },
+            "s5_certutil_decode_cmd_content": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "certutil.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-decode"
+                    }
+                ]
+            },
+            "s6_mshta_jscript_obf_cmd_content": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "mshta.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "javascript:"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "eval("
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ActiveXObject"
+                    }
+                ]
+            },
+            "s7_fs_create_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s8_double_extension_filepath": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".txt.exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".jpg.exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".pdf.exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".zip.exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".doc.js"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".lnk.ps1"
+                    }
+                ]
+            },
+            "s9_is_temp_dir_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\Temp\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\AppData\\Local\\Temp\\"
+                    }
+                ]
+            },
+            "s10_is_suspicious_extension": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".ps1"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".vbs"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".js"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".hta"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_proc_create_action and (s2_powershell_encoded_cmd_content or (s3_cmd_exe_path and s4_cmd_obfuscated_caret_quotes_cmdline) or s5_certutil_decode_cmd_content or s6_mshta_jscript_obf_cmd_content)) or (s7_fs_create_action and (s8_double_extension_filepath or (s9_is_temp_dir_path and s10_is_suspicious_extension)))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 통해 시스템에서 발생하는 난독화된 파일 또는 정보 사용 시도를 탐지할 수 있습니다. 특히 PowerShell의 -EncodedCommand 사용, cmd.exe에서 특수 문자(예: '^', '\"\"')를 이용한 명령줄 난독화, certutil.exe를 통한 파일 디코딩, mshta.exe를 이용한 난독화된 JavaScript 실행 등 프로세스 생성 이벤트를 모니터링합니다. 또한, 이중 확장자 파일 생성이나 임시 디렉터리에 실행 가능한 파일이 생성되는 파일 시스템 이벤트를 추적합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 파일에 대한 추가적인 포렌식 조사를 시작하는 데 활용될 수 있습니다. 이는 방어 회피 전술의 핵심으로, 다른 공격 단계와 결합될 때 더욱 중요한 지표가 됩니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 소프트웨어 설치 프로그램, 또는 합법적인 애플리케이션이 파일 압축, 인코딩, 또는 스크립트 난독화를 수행하는 과정에서 오탐이 발생할 수 있습니다. 예를 들어, 특정 개발 도구가 임시 파일을 생성하거나, 시스템 업데이트가 인코딩된 스크립트를 실행하는 경우입니다. 알려진 정상 프로세스, 특정 명령줄 패턴, 또는 특정 파일 경로를 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

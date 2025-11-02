@@ -1,0 +1,54 @@
+{
+    "id": "T1480.002-MutualExclusion",
+    "name": "Mutual Exclusion (Mutex Creation/Opening)",
+    "description": "Detects attempts by processes to create or open named mutexes, which adversaries may use to ensure only a single instance of malware runs on a system or to synchronize malicious activities. This rule focuses on Windows API calls related to mutex management.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1480",
+        "subtechnique_id": "T1480.002",
+        "data_sources": [
+            "Process:OSAPIExecution"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_create_mutex_api_call": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "CreateMutexW"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "CreateMutexA"
+                    }
+                ]
+            },
+            "s2_open_mutex_api_call": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "OpenMutexW"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "OpenMutexA"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_create_mutex_api_call or s2_open_mutex_api_call"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 프로세스가 뮤텍스를 생성하거나 열려고 시도하는 것을 탐지할 수 있습니다. 이는 악성 코드가 단일 인스턴스 실행을 강제하거나 다른 악성 활동을 조정하는 데 사용될 수 있는 방어 회피 기술입니다. 탐지된 이벤트는 잠재적인 악성 활동의 초기 지표로 간주되어 추가적인 조사 및 분석을 위한 알람을 트리거하는 데 사용될 수 있습니다. 특히, 알려지지 않은 프로세스에서 뮤텍스 API 호출이 발생할 경우 중요도가 높아집니다.",
+    "false_positive": "정상적인 애플리케이션, 시스템 서비스, 또는 개발 도구도 뮤텍스를 사용하여 프로세스 간 동기화를 처리하므로 오탐이 발생할 수 있습니다. 예를 들어, 많은 합법적인 프로그램은 자체적으로 단일 인스턴스만 실행되도록 보장하기 위해 뮤텍스를 사용합니다. 알려진 정상 프로세스 또는 특정 뮤텍스 이름에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

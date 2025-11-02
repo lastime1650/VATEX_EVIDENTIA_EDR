@@ -1,0 +1,185 @@
+{
+    "id": "T1098.003-AdditionalCloudRoles",
+    "name": "Additional Cloud Roles",
+    "description": "Detects attempts by an adversary to add additional roles or permissions to an adversary-controlled cloud account from a Windows endpoint. This includes using cloud CLI tools (e.g., Azure CLI, AWS CLI, gcloud CLI) or PowerShell cmdlets to modify IAM policies, add users to groups with elevated privileges, or assign new administrative roles within cloud environments like Azure, AWS, Google Cloud, or Office 365.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1098",
+        "subtechnique_id": "T1098.003",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Command:CommandExecution"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_az_cli_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "az.exe"
+                    }
+                ]
+            },
+            "s3_az_cli_role_add_commands": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "role assignment create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ad app permission add"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ad group member add"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "user update --add-role"
+                    }
+                ]
+            },
+            "s4_aws_cli_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "aws.exe"
+                    }
+                ]
+            },
+            "s5_aws_cli_iam_commands": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iam attach-role-policy"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iam add-user-to-group"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iam create-role"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iam update-assume-role-policy"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iam put-user-policy"
+                    }
+                ]
+            },
+            "s6_gcloud_cli_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "gcloud.exe"
+                    }
+                ]
+            },
+            "s7_gcloud_cli_iam_commands": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "add-iam-policy-binding"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iam roles create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iam service-accounts add-iam-policy-binding"
+                    }
+                ]
+            },
+            "s8_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s9_powershell_msol_role_commands": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Add-MsolRoleMember"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Add-AzureADGroupMember"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-AzureADServicePrincipal"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-MsolUserPrincipalName"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Grant-PnPAzureADAppSitePermission"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and ((s2_az_cli_exe and s3_az_cli_role_add_commands) or (s4_aws_cli_exe and s5_aws_cli_iam_commands) or (s6_gcloud_cli_exe and s7_gcloud_cli_iam_commands) or (s8_powershell_exe and s9_powershell_msol_role_commands))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Windows 엔드포인트에서 클라우드 계정에 추가 권한 또는 역할을 부여하려는 시도를 탐지할 수 있습니다. Azure CLI, AWS CLI, gcloud CLI 또는 PowerShell을 사용하여 IAM 정책 수정, 관리자 역할 할당, 또는 그룹 멤버십 변경과 같은 명령줄 활동을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련된 클라우드 환경의 활동 로그와 연계하여 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히, 다른 계정 탈취 또는 권한 상승 활동과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 클라우드 관리 도구, 자동화 스크립트, DevOps 파이프라인, 또는 시스템 관리자가 클라우드 환경에서 합법적인 사용자 및 권한 관리 작업을 수행하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 관리 프로세스, 특정 사용자 계정, 또는 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,127 @@
+{
+    "id": "T1593-SearchOpenWebsitesDomains-OnHost",
+    "name": "Search Open Websites/Domains (on Compromised Host)",
+    "description": "Detects the use of command-line tools (e.g., curl, wget, PowerShell Invoke-WebRequest/RestMethod) on a compromised host to access web resources. This activity may indicate an adversary performing post-compromise reconnaissance, leveraging the compromised system to gather further information from internal web resources or external open websites, mimicking the 'Search Open Websites/Domains' technique.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1593",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Reconnaissance:Search Open Websites/Domains:Search Engines",
+            "Enterprise:Reconnaissance:Search Open Websites/Domains:Search Victim-Owned Websites",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_exe_is_curl": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "curl.exe"
+                    }
+                ]
+            },
+            "s3_cmdline_has_http_https_curl": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "http://"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "https://"
+                    }
+                ]
+            },
+            "s4_exe_is_wget": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "wget.exe"
+                    }
+                ]
+            },
+            "s5_cmdline_has_http_https_wget": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "http://"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "https://"
+                    }
+                ]
+            },
+            "s6_exe_is_powershell": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s7_cmdline_is_webrequest_restmethod": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-WebRequest"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-RestMethod"
+                    }
+                ]
+            },
+            "s8_cmdline_has_http_https_powershell": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "http://"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "https://"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_action_create and ((s2_exe_is_curl and s3_cmdline_has_http_https_curl) or (s4_exe_is_wget and s5_cmdline_has_http_https_wget) or (s6_exe_is_powershell and s7_cmdline_is_webrequest_restmethod and s8_cmdline_has_http_https_powershell))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 침해된 호스트에서 명령줄 웹 요청 도구를 사용한 정보 수집 시도를 탐지할 수 있습니다. 이는 공격자가 외부 공개 웹사이트를 검색하거나, 내부 웹 리소스에서 추가 정보를 수집하는 행위와 유사할 수 있습니다. 탐지된 이벤트는 공격자의 정찰 활동을 나타낼 수 있으며, 추가적인 조사 및 대응의 우선순위를 결정하는 데 활용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 스크립트, 업데이트 메커니즘, 또는 합법적인 애플리케이션이 웹 요청을 수행하는 경우 오탐이 발생할 수 있습니다. 특히 'curl'이나 PowerShell 'Invoke-WebRequest'는 정상적인 용도로도 자주 사용됩니다. 알려진 정상적인 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

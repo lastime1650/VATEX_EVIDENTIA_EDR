@@ -1,0 +1,46 @@
+{
+    "id": "FEATURE-REG-Security-Policy-Modification",
+    "name": "Modification of Critical Security Policy Registry Keys",
+    "description": "A registry value related to a core security feature (e.g., Windows Defender, UAC, Firewall, AppLocker) was modified. This feature indicates a potential attempt to weaken system defenses.",
+    "severity": "medium",
+    "mitre_attack": [
+        {
+            "tactic": "TA0005",
+            "technique_id": "T1562",
+            "subtechnique_id": "",
+            "data_sources": ["Windows Registry"]
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "security_key_set",
+                "selections": {
+                    "selection_set_security_policy": {
+                        "event_type": "registry",
+                        "condition_method": "and",
+                        "conditions": [
+                            {
+                                "field": "body.registry.keyclass", 
+                                "operator": "equals", 
+                                "value": "RegNtPreSetValueKey"
+                            },
+                            {
+                                "field": "body.registry.name", 
+                                "operator": "regex", 
+                                "value": "(Policies\\\\Microsoft\\\\Windows Defender|Policies\\\\System\\\\(EnableLUA|ConsentPromptBehaviorAdmin)|Services\\\\(WinDefend|MpsSvc|RemoteRegistry)\\\\Start|Policies\\\\Microsoft\\\\Windows\\\\SrpV2)"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "A critical security policy registry key was modified. SIEM should analyze the responsible process and user context."
+                }
+            }
+        ]
+    },
+    "operational_usage": "While some admin tools might trigger this, any modification by a non-system or non-admin-tool process is highly suspicious. This is a strong feature for detecting defense evasion.",
+    "false_positive": "Can be triggered by Group Policy updates or legitimate administrative scripts. Baselining is important."
+}

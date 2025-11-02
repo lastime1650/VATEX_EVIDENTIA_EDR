@@ -1,0 +1,107 @@
+{
+    "id": "T1136-CreateAccount",
+    "name": "Create Account",
+    "description": "Adversaries may create an account to maintain access to victim systems. With a sufficient level of access, creating such accounts may be used to establish secondary credentialed access that do not require persistent remote access tools to be deployed on the system. Accounts may be created on the local system or within a domain or cloud tenant. In cloud environments, adversaries may create accounts that only have access to specific services, which can reduce the chance of detection.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1136",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Persistence:Create Account:Local Account",
+            "Enterprise:Persistence:Create Account:Domain Account"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_net_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "net.exe"
+                    }
+                ]
+            },
+            "s3_net_user_commandline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "net user"
+                    }
+                ]
+            },
+            "s4_net_user_add_commandline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/add"
+                    }
+                ]
+            },
+            "s5_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s6_powershell_commandline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s7_new_localuser_cmdlet": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-LocalUser"
+                    }
+                ]
+            },
+            "s8_new_aduser_cmdlet": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-ADUser"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and (((s2_net_exe_path or s3_net_user_commandline) and s4_net_user_add_commandline) or ((s5_powershell_exe_path or s6_powershell_commandline) and (s7_new_localuser_cmdlet or s8_new_aduser_cmdlet)))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에 새로운 계정을 생성하려는 시도를 탐지할 수 있습니다. 'net user /add' 명령 실행이나 PowerShell의 'New-LocalUser', 'New-ADUser' cmdlet 사용을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 계정이 합법적인지 여부를 확인하기 위한 추가적인 조사를 시작하는 데 사용될 수 있습니다. 특히, 비정상적인 사용자나 프로세스에 의해 계정이 생성되는 경우 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 소프트웨어 설치, 또는 사용자 계정 관리 도구 등이 새로운 계정을 생성하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상적인 계정 생성 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

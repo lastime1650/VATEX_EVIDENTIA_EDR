@@ -1,0 +1,94 @@
+{
+    "id": "T1558.004-ASREP_Roasting",
+    "name": "AS-REP Roasting",
+    "description": "Adversaries may reveal credentials of accounts that have disabled Kerberos preauthentication by password cracking Kerberos messages. This rule detects attempts to identify such accounts or perform AS-REP roasting attacks using common tools and command-line patterns.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0006",
+        "technique_id": "T1558",
+        "subtechnique_id": "T1558.004",
+        "data_sources": [
+            "Enterprise:Credential Access:Steal or Forge Kerberos Tickets:AS-REP Roasting"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s3_powershell_get_aduser_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-ADUser"
+                    }
+                ]
+            },
+            "s4_powershell_preauth_disabled_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-properties dontreqpreauth"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-Filter 'UserAccountControl -band 0x400000'"
+                    }
+                ]
+            },
+            "s5_rubeus_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "rubeus.exe"
+                    }
+                ]
+            },
+            "s6_rubeus_asreproast_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "asreproast"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and ((s2_powershell_exe_path and s3_powershell_get_aduser_cmdline and s4_powershell_preauth_disabled_cmdline) or (s5_rubeus_exe_path and s6_rubeus_asreproast_cmdline))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Kerberos AS-REP Roasting 취약점을 식별하거나 악용하려는 시도를 탐지할 수 있습니다. 특히 PowerShell을 사용하여 Active Directory에서 사전 인증이 비활성화된 사용자 계정을 쿼리하는 명령줄 패턴이나 Rubeus와 같은 도구가 AS-REP Roasting을 수행하는 명령줄 패턴을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "합법적인 Active Directory 관리 스크립트나 보안 감사 도구가 사용자 계정 속성을 조회하는 과정에서 오탐이 발생할 수 있습니다. 특히 PowerShell을 사용하여 `Get-ADUser` cmdlet과 `UserAccountControl` 속성을 조회하는 경우가 이에 해당합니다. 알려진 정상 프로세스, 특정 명령줄 패턴, 또는 특정 관리자 계정을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

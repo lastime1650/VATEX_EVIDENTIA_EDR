@@ -1,0 +1,225 @@
+{
+    "id": "T1003.003-NTDS",
+    "name": "NTDS Credential Dumping",
+    "description": "Detects attempts by adversaries to access or create a copy of the Active Directory domain database (NTDS.dit) in order to steal credential information and other sensitive data. This includes the execution of tools like ntdsutil.exe, esentutl.exe, or leveraging Volume Shadow Copy services (vssadmin, wmic) to obtain a consistent copy of the NTDS.dit file. Direct access to the NTDS.dit file or its copies is also monitored.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0006",
+        "technique_id": "T1003",
+        "subtechnique_id": "T1003.003",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Collection:Data from Local System"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_exe_ntdsutil": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "ntdsutil.exe"
+                    }
+                ]
+            },
+            "s3_cmd_ntdsutil_specific": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "activate instance ntds"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ifm"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "create full"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "create systemstate"
+                    }
+                ]
+            },
+            "s4_exe_esentutl": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "esentutl.exe"
+                    }
+                ]
+            },
+            "s5_cmd_esentutl_mode": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/y"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/d"
+                    }
+                ]
+            },
+            "s6_cmd_esentutl_target_ntds": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ntds.dit"
+                    }
+                ]
+            },
+            "s7_exe_vssadmin": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "vssadmin.exe"
+                    }
+                ]
+            },
+            "s8_cmd_vssadmin_shadow": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "create shadow"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "delete shadows"
+                    }
+                ]
+            },
+            "s9_exe_wmic": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "wmic.exe"
+                    }
+                ]
+            },
+            "s10_cmd_wmic_shadow": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "shadowcopy call create"
+                    }
+                ]
+            },
+            "s11_exe_powershell": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s12_cmd_powershell_ninjacopy": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-NinjaCopy"
+                    }
+                ]
+            },
+            "s13_filesystem_action_relevant": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "read"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "open"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "rename"
+                    }
+                ]
+            },
+            "s14_filepath_contains_ntds": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "ntds.dit"
+                    }
+                ]
+            },
+            "s15_filepath_location_ntds": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\\\Windows\\\\NTDS\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\\\GLOBALROOT\\\\Device\\\\HarddiskVolumeShadowCopy"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_action_create and ((s2_exe_ntdsutil and s3_cmd_ntdsutil_specific) or (s4_exe_esentutl and s5_cmd_esentutl_mode and s6_cmd_esentutl_target_ntds) or (s7_exe_vssadmin and s8_cmd_vssadmin_shadow) or (s9_exe_wmic and s10_cmd_wmic_shadow) or (s11_exe_powershell and s12_cmd_powershell_ninjacopy)) or (s13_filesystem_action_relevant and s14_filepath_contains_ntds and s15_filepath_location_ntds)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Active Directory NTDS.dit 파일에 대한 무단 접근 또는 복사 시도를 탐지할 수 있습니다. ntdsutil.exe, esentutl.exe, vssadmin.exe, wmic.exe와 같은 도구의 실행 및 관련 명령줄 인자를 모니터링하며, NTDS.dit 파일 또는 볼륨 섀도 복사본에 대한 의심스러운 파일 시스템 접근(읽기, 열기, 생성, 쓰기, 이름 변경)을 탐지합니다. 탐지된 이벤트는 즉각적인 알람을 트리거하고, 해당 프로세스 및 시스템에 대한 심층 조사를 시작하여 Active Directory 자격 증명 덤프 시도를 신속하게 식별하고 대응하는 데 사용됩니다.",
+    "false_positive": "정상적인 시스템 백업, Active Directory 유지보수 작업, 또는 보안 감사 도구가 NTDS.dit 파일에 접근하거나 섀도 복사본을 생성하는 경우 오탐이 발생할 수 있습니다. 특히 esentutl.exe는 데이터베이스 무결성 검사 및 복구에 사용될 수 있으므로, 정상적인 관리 활동과 악성 활동을 구분하기 위해 프로세스의 부모-자식 관계, 사용자 계정, 그리고 명령줄 인자의 상세 패턴을 추가적으로 분석해야 합니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

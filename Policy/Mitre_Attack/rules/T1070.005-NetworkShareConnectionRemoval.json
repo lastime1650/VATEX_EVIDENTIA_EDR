@@ -1,0 +1,77 @@
+{
+    "id": "T1070.005-NetworkShareConnectionRemoval",
+    "name": "Network Share Connection Removal",
+    "description": "Adversaries may remove share connections that are no longer useful in order to clean up traces of their operation. Windows shared drive and SMB/Windows Admin Shares connections can be removed when no longer needed. Net is an example utility that can be used to remove network share connections with the `net use \\\\system\\share /delete` command.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1070",
+        "subtechnique_id": "T1070.005",
+        "data_sources": [
+            "NetworkTraffic:NetworkTrafficContent",
+            "Command:CommandExecution",
+            "Process:ProcessCreation",
+            "UserAccount:UserAccountAuthentication"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_net_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "net.exe"
+                    }
+                ]
+            },
+            "s3_cmdline_contains_use": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "use"
+                    }
+                ]
+            },
+            "s4_cmdline_contains_delete": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/delete"
+                    }
+                ]
+            },
+            "s5_cmdline_contains_network_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "\\\\"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_action_create and s2_net_exe_path and s3_cmdline_contains_use and s4_cmdline_contains_delete and s5_cmdline_contains_network_path"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 공격자가 흔적을 지우기 위해 네트워크 공유 연결을 제거하는 시도를 탐지할 수 있습니다. 특히 `net.exe` 프로세스 생성 이벤트와 함께 `/delete` 및 `use` 명령어가 포함된 명령줄을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스의 활동 및 관련 네트워크 트래픽에 대한 추가적인 조사를 시작하여 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 스크립트 또는 자동화 도구가 불필요한 네트워크 공유 연결을 정리하는 과정에서 오탐이 발생할 수 있습니다. 특히 `net use /delete` 명령은 시스템 관리자가 자주 사용하는 명령일 수 있으므로, 알려진 정상적인 프로세스나 특정 사용자 계정에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

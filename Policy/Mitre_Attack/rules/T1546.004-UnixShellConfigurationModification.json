@@ -1,0 +1,297 @@
+{
+    "id": "T1546.004-UnixShellConfigurationModification",
+    "name": "Unix Shell Configuration Modification",
+    "description": "Detects attempts to establish persistence by modifying Unix-like shell configuration files (e.g., .bashrc, .profile, /etc/profile) on a Windows system, typically through tools like WSL, Cygwin, or Git Bash. Adversaries may insert malicious commands into these scripts to be executed automatically when a user logs in or a new shell session is initiated.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1546",
+        "subtechnique_id": "T1546.004",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "File:FileCreation",
+            "Command:CommandExecution",
+            "File:FileModification"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_file_action_modify": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "rename"
+                    }
+                ]
+            },
+            "s2_filepath_user_bash_profile": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\.bashrc"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\.profile"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\.bash_profile"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\.bash_login"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\.bash_logout"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\.zshrc"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\.zprofile"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\.zlogin"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\.zlogout"
+                    }
+                ]
+            },
+            "s3_filepath_system_etc_profile": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\etc\\profile"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\etc\\profile.d\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\etc\\bashrc"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\etc\\zshenv"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\etc\\zprofile"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\etc\\zlogin"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\etc\\zlogout"
+                    }
+                ]
+            },
+            "s4_process_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s5_cmdline_unix_shell_tool": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "bash.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "sh.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "zsh.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wsl.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "cygwin.bat"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "git-bash.exe"
+                    }
+                ]
+            },
+            "s6_cmdline_modifying_keyword": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "echo"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "sed"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "vi"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "nano"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ">>"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ">"
+                    }
+                ]
+            },
+            "s7_cmdline_target_unix_profile": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".bashrc"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".profile"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".bash_profile"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".bash_login"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".bash_logout"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".zshrc"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".zprofile"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".zlogin"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".zlogout"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/etc/profile"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/etc/bashrc"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/etc/zshenv"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/etc/zprofile"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/etc/zlogin"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/etc/zlogout"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_file_action_modify and (s2_filepath_user_bash_profile or s3_filepath_system_etc_profile)) or (s4_process_action_create and s5_cmdline_unix_shell_tool and s6_cmdline_modifying_keyword and s7_cmdline_target_unix_profile)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Windows 시스템 내에서 WSL, Cygwin, 또는 Git Bash와 같은 환경의 Unix-like 쉘 구성 파일 변경 시도를 탐지할 수 있습니다. 파일 시스템 이벤트(생성, 쓰기, 이름 변경)를 통해 특정 쉘 구성 파일(.bashrc, .profile, /etc/profile 등)에 대한 직접적인 변경을 모니터링하고, 프로세스 생성 이벤트를 통해 'bash', 'wsl', 'echo' 등의 명령어가 해당 파일들을 수정하는 행위를 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련된 프로세스 및 파일에 대한 추가적인 조사를 시작하는 데 사용될 수 있습니다. 특히, 다른 지속성 또는 권한 상승 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 소프트웨어 설치 또는 업데이트, 개발 환경 설정 스크립트, 또는 사용자가 의도적으로 자신의 쉘 환경을 커스터마이징하는 과정에서 오탐이 발생할 수 있습니다. 예를 들어, Git Bash 사용자가 .bashrc 파일을 수정하거나 WSL 환경에서 패키지를 설치하는 경우 탐지될 수 있습니다. 알려진 정상 프로세스, 특정 명령줄 패턴, 또는 특정 파일 경로에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

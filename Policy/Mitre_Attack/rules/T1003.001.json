@@ -1,0 +1,238 @@
+{
+    "id": "T1003.001",
+    "name": "LSASS Memory",
+    "description": "Detects attempts by adversaries to access credential material stored in the process memory of the Local Security Authority Subsystem Service (LSASS). This includes execution of tools like procdump, mimikatz, rundll32 with comsvcs.dll for minidumps, or PowerShell-based credential dumping. It also covers direct process access to lsass.exe and modifications to Security Support Provider (SSP) registry keys, as well as the creation of memory dump files.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0006",
+        "technique_id": "T1003",
+        "subtechnique_id": "T1003.001",
+        "data_sources": [
+            "Process:ProcessAccess",
+            "WindowsRegistry:WindowsRegistryKeyModification",
+            "Process:ProcessCreation",
+            "Command:CommandExecution",
+            "File:FileCreation"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmdline_procdump_lsass": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "procdump -ma lsass.exe"
+                    }
+                ]
+            },
+            "s3_cmdline_comsvcs_rundll": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "rundll32.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "comsvcs.dll"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "MiniDump"
+                    }
+                ]
+            },
+            "s4_cmdline_mimikatz": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "mimikatz.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "sekurlsa::"
+                    }
+                ]
+            },
+            "s5_cmdline_powershell_mimikatz": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-Mimikatz"
+                    }
+                ]
+            },
+            "s6_cmdline_werfault_lsass_dump": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "WerFault.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "lsass.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "dump"
+                    }
+                ]
+            },
+            "s7_process_access_lsass_target_path": {
+                "event_type": "processaccess",
+                "conditions": [
+                    {
+                        "field": "body.processaccess.filepath",
+                        "operator": "contains",
+                        "value": "lsass.exe"
+                    }
+                ]
+            },
+            "s8_process_access_handle_type": {
+                "event_type": "processaccess",
+                "conditions": [
+                    {
+                        "field": "body.processaccess.handletype",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.processaccess.handletype",
+                        "operator": "equals",
+                        "value": "duplicate"
+                    }
+                ]
+            },
+            "s9_process_access_desired_rights": {
+                "event_type": "processaccess",
+                "conditions": [
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_VM_READ"
+                    },
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_DUP_HANDLE"
+                    },
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_ALL_ACCESS"
+                    }
+                ]
+            },
+            "s10_registry_ssp_key_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Lsa\\Security Packages"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Lsa\\OSConfig\\Security Packages"
+                    }
+                ]
+            },
+            "s11_registry_ssp_key_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtCreateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreCreateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPostCreateKey"
+                    }
+                ]
+            },
+            "s12_filesystem_create_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s13_filesystem_dump_extension": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".dmp"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".bin"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".mdmp"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and (s2_cmdline_procdump_lsass or s3_cmdline_comsvcs_rundll or s4_cmdline_mimikatz or s5_cmdline_powershell_mimikatz or s6_cmdline_werfault_lsass_dump)) or (s7_process_access_lsass_target_path and s8_process_access_handle_type and s9_process_access_desired_rights) or (s10_registry_ssp_key_path and s11_registry_ssp_key_action) or (s12_filesystem_create_action and s13_filesystem_dump_extension)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 LSASS 메모리에서 자격 증명 정보를 탈취하려는 시도를 탐지할 수 있습니다. procdump, mimikatz, rundll32/comsvcs.dll, PowerShell Invoke-Mimikatz와 같은 도구들의 프로세스 생성 및 명령줄 인자를 모니터링합니다. 또한, LSASS 프로세스에 대한 비정상적인 접근 시도(예: Read/Duplicate Handle 권한), Security Support Provider(SSP) 관련 레지스트리 키 변경, 그리고 메모리 덤프 파일(.dmp, .bin, .mdmp) 생성 이벤트를 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 활동 및 시스템 변경 사항에 대한 심층적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 이는 초기 접근 후 권한 상승 또는 횡적 이동을 위한 중요한 단계이므로, 신속한 대응이 필수적입니다.",
+    "false_positive": "정상적인 시스템 디버깅 도구, 백신 소프트웨어, 취약점 분석 도구, 또는 시스템 관리 유틸리티가 LSASS 프로세스와 상호작용하거나 메모리 덤프를 생성하는 경우 오탐이 발생할 수 있습니다. 특히, 개발 환경이나 보안 테스트 환경에서는 이러한 활동이 흔할 수 있습니다. 알려진 정상 프로세스 또는 특정 명령줄 패턴에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

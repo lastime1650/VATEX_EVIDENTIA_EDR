@@ -1,0 +1,125 @@
+{
+    "id": "T1071-ApplicationLayerProtocol",
+    "name": "Application Layer Protocol for Command and Control",
+    "description": "Detects attempts by adversaries to use common application layer protocols (HTTP/S, DNS, SMTP, FTP, SMB, SSH, RDP) for command and control (C2) communication. This technique allows adversaries to blend in with legitimate network traffic and evade detection by leveraging standard communication channels. Commands to the remote system, and often the results of those commands, will be embedded within the protocol traffic between the client and server. Adversaries may utilize many different protocols, including those used for web browsing, transferring files, electronic mail, DNS, or publishing/subscribing. For connections that occur internally within an enclave (such as those between a proxy or pivot node and other nodes), commonly used protocols are SMB, SSH, or RDP.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0011",
+        "technique_id": "T1071",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Command and Control:Application Layer Protocol:Web Protocols",
+            "Enterprise:Command and Control:Application Layer Protocol:DNS",
+            "Enterprise:Command and Control:Application Layer Protocol:Mail Protocols",
+            "Enterprise:Command and Control:Application Layer Protocol:File Transfer Protocols",
+            "Enterprise:Command and Control:Remote Access Tools:Remote Desktop Software",
+            "Enterprise:Command and Control:Remote Access Tools:SSH",
+            "Enterprise:Lateral Movement:Remote Services:SMB/Windows Admin Shares"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_outbound_network_direction": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    }
+                ]
+            },
+            "s2_http_https_c2_ports": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 80
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 443
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 8080
+                    }
+                ]
+            },
+            "s3_dns_c2_port": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 53
+                    }
+                ]
+            },
+            "s4_smtp_c2_ports": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 25
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 465
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 587
+                    }
+                ]
+            },
+            "s5_ftp_c2_ports": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 20
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 21
+                    }
+                ]
+            },
+            "s6_internal_c2_ports": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 445
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 22
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 3389
+                    }
+                ]
+            }
+        },
+        "condition": "s1_outbound_network_direction and (s2_http_https_c2_ports or s3_dns_c2_port or s4_smtp_c2_ports or s5_ftp_c2_ports or s6_internal_c2_ports)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 애플리케이션 계층 프로토콜을 이용한 C2 통신 시도를 탐지할 수 있습니다. 특히 외부로 나가는 (outbound) 네트워크 트래픽 중 HTTP/S (80, 443, 8080), DNS (53), SMTP (25, 465, 587), FTP (20, 21), SMB (445), SSH (22), RDP (3389)와 같은 특정 포트를 사용하는 경우를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 통신의 프로세스 및 목적지에 대한 추가적인 조사를 시작하는 데 사용될 수 있습니다. 비정상적인 트래픽 패턴이나 알려지지 않은 프로세스에 의한 통신은 추가 분석의 우선순위가 됩니다.",
+    "false_positive": "이 규칙은 정상적인 웹 브라우징, DNS 쿼리, 이메일 전송, 파일 전송, 원격 접속 등 합법적인 네트워크 통신에서도 탐지될 수 있습니다. 특히 80, 443, 53과 같은 표준 포트는 일상적으로 사용되므로 오탐이 빈번할 수 있습니다. 알려진 정상 프로세스나 특정 IP 주소 대역에 대한 화이트리스트를 적용하거나, 추가적인 심층 분석 (예: 트래픽 볼륨, 연결 빈도, 페이로드 분석)을 통해 오탐을 줄일 수 있습니다."
+}

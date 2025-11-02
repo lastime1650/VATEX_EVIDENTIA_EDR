@@ -1,0 +1,80 @@
+{
+    "id": "T1218.004-InstallUtilExecution",
+    "name": "InstallUtil Proxy Execution",
+    "description": "Adversaries may use InstallUtil to proxy execution of code through a trusted Windows utility. InstallUtil is a command-line utility that allows for installation and uninstallation of resources by executing specific installer components specified in .NET binaries. The InstallUtil binary may also be digitally signed by Microsoft and located in the .NET directories on a Windows system. InstallUtil may also be used to bypass application control through use of attributes within the binary that execute the class decorated with the attribute [System.ComponentModel.RunInstaller(true)].",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1218",
+        "subtechnique_id": "T1218.004",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Defense Evasion:System Binary Proxy Execution:InstallUtil"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_installutil_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "InstallUtil.exe"
+                    }
+                ]
+            },
+            "s2_process_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s3_cmdline_install_flags": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/install"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/uninstall"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/u"
+                    }
+                ]
+            },
+            "s4_cmdline_target_assembly": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".exe"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_installutil_exe_path and s2_process_action_create and s3_cmdline_install_flags and s4_cmdline_target_assembly"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 InstallUtil.exe를 통한 악성 코드 프록시 실행 시도를 탐지할 수 있습니다. InstallUtil.exe의 프로세스 생성 이벤트와 함께 설치/제거 플래그 및 .NET 어셈블리(.dll, .exe)를 포함하는 명령줄 인자를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 로드된 모듈에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 애플리케이션 제어 우회 및 방어 회피 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 소프트웨어 설치 프로그램, .NET 애플리케이션의 설치/제거 프로세스, 또는 개발/테스트 환경에서 InstallUtil.exe를 사용하여 .NET 어셈블리를 관리하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 InstallUtil.exe 호출 패턴이나 특정 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

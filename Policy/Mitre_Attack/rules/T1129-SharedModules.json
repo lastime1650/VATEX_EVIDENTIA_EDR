@@ -1,0 +1,135 @@
+{
+    "id": "T1129-SharedModules",
+    "name": "Shared Modules Execution from Suspicious Location or API Call",
+    "description": "Detects the loading of shared modules (DLLs, OCX, SYS, EFI) from non-standard or user-writable locations, or direct API calls to load modules (e.g., LoadLibrary family). Adversaries may use this to execute arbitrary payloads, establish persistence, or evade defenses by leveraging the legitimate module loading mechanism.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1129",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Module:Module Load",
+            "Process:OS API Execution"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_imageload_module_extension": {
+                "event_type": "imageload",
+                "conditions": [
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "endswith",
+                        "value": ".ocx"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "endswith",
+                        "value": ".sys"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "endswith",
+                        "value": ".efi"
+                    }
+                ]
+            },
+            "s2_imageload_suspicious_user_path": {
+                "event_type": "imageload",
+                "conditions": [
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "C:\\Users\\"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "\\AppData\\Local\\Temp\\"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "\\AppData\\Roaming\\"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "\\Downloads\\"
+                    }
+                ]
+            },
+            "s3_imageload_suspicious_system_path": {
+                "event_type": "imageload",
+                "conditions": [
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "C:\\Windows\\Temp\\"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "C:\\ProgramData\\"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "C:\\PerfLogs\\"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "C:\\Windows\\System32\\spool\\drivers\\"
+                    }
+                ]
+            },
+            "s4_apicall_load_library_family": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "LoadLibraryA"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "LoadLibraryW"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "LoadLibraryExA"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "LoadLibraryExW"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "LdrLoadDll"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "NtLoadDriver"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_imageload_module_extension and (s2_imageload_suspicious_user_path or s3_imageload_suspicious_system_path)) or s4_apicall_load_library_family"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 악성 공유 모듈 로딩 시도를 탐지할 수 있습니다. 특히, DLL, OCX, SYS, EFI와 같은 모듈이 사용자 프로필, 임시 폴더, ProgramData 등 비표준 경로에서 로드되거나, LoadLibrary 계열의 API 함수 호출이 감지될 경우 높은 심각도로 분류됩니다. 탐지된 이벤트는 즉각적인 알람을 트리거하고, 해당 프로세스 및 로드된 모듈에 대한 포렌식 조사를 시작하여 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 이는 방어 회피 및 실행 전술의 중요한 지표가 됩니다.",
+    "false_positive": "정상적인 소프트웨어 설치 프로그램, 업데이트 유틸리티, 또는 일부 합법적인 애플리케이션이 임시 폴더나 ProgramData에 모듈을 배치하고 로드할 수 있습니다. 또한, 특정 개발 도구나 시스템 유틸리티가 LoadLibrary API를 호출할 수 있습니다. 알려진 정상 프로세스, 특정 경로, 또는 모듈 해시를 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

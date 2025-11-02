@@ -1,0 +1,176 @@
+{
+    "id": "T1659-ContentInjection",
+    "name": "Content Injection",
+    "description": "Detects attempts by adversaries to inject malicious content into systems through online network traffic, leading to suspicious process execution or file creation. This technique is used for initial access and continuous communication by manipulating legitimate data-transfer channels to deliver payloads or other malicious data.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0001",
+        "technique_id": "T1659",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Network Traffic:Network Traffic Content",
+            "Process:Process Creation",
+            "File:File Creation"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmdline_certutil_download": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "certutil.exe -urlcache"
+                    }
+                ]
+            },
+            "s3_cmdline_bitsadmin_download": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "bitsadmin /transfer"
+                    }
+                ]
+            },
+            "s4_cmdline_mshta_web_script": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "mshta.exe http"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "mshta.exe javascript:"
+                    }
+                ]
+            },
+            "s5_cmdline_powershell_download": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe -c (new-object System.Net.WebClient).DownloadFile"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe -c Invoke-WebRequest"
+                    }
+                ]
+            },
+            "s6_cmdline_powershell_encoded": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe -w hidden -nop -e"
+                    }
+                ]
+            },
+            "s7_filesystem_create_or_write_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    }
+                ]
+            },
+            "s8_filepath_in_temp_or_downloads": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\AppData\\Local\\Temp\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\Downloads\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\Windows\\Temp\\"
+                    }
+                ]
+            },
+            "s9_filepath_has_suspicious_extension": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".ps1"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".bat"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".cmd"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".vbs"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".js"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".hta"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and (s2_cmdline_certutil_download or s3_cmdline_bitsadmin_download or s4_cmdline_mshta_web_script or s5_cmdline_powershell_download or s6_cmdline_powershell_encoded) or (s7_filesystem_create_or_write_action and s8_filepath_in_temp_or_downloads and s9_filepath_has_suspicious_extension)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Content Injection 기법을 통한 악성 콘텐츠 전달 시도를 탐지할 수 있습니다. 특히, certutil.exe, bitsadmin, mshta.exe, powershell.exe와 같은 시스템 유틸리티가 비정상적인 명령줄 인자와 함께 프로세스를 생성하거나, 사용자 임시/다운로드 디렉터리에 의심스러운 실행 파일 또는 스크립트 파일이 생성되는 이벤트를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스, 파일, 그리고 관련된 네트워크 활동에 대한 심층 조사를 시작하는 데 사용될 수 있습니다. 이는 초기 침투 및 추가 페이로드 전달을 방지하는 데 핵심적인 역할을 합니다.",
+    "false_positive": "정상적인 소프트웨어 업데이트, 개발/테스트 목적으로 웹에서 스크립트를 실행하는 행위, 또는 사용자가 합법적인 실행 파일을 다운로드하여 임시/다운로드 디렉터리에 저장하는 경우 오탐이 발생할 수 있습니다. 알려진 정상 프로세스, 특정 명령줄 패턴, 또는 신뢰할 수 있는 파일 경로를 화이트리스트에 추가하여 오탐을 줄일 수 있습니다. 또한, 다운로드된 파일의 SHA256 해시를 위협 인텔리전스와 비교하는 추가적인 검증 과정을 통해 탐지의 정확도를 높일 수 있습니다."
+}

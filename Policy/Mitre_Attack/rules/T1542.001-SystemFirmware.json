@@ -1,0 +1,266 @@
+{
+    "id": "T1542.001-SystemFirmware",
+    "name": "Persistence via System Firmware Modification",
+    "description": "Detects attempts to modify system firmware (BIOS/UEFI) to establish persistence. This includes the execution of known firmware flashing utilities with suspicious command-line arguments, modification of firmware-related registry keys, or write operations to files with common firmware image extensions. Adversaries may leverage this technique to install malicious firmware updates that are difficult to detect and remove.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1542",
+        "subtechnique_id": "T1542.001",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "File:FileModification",
+            "WindowsRegistry:WindowsRegistryKeyModification"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_known_firmware_flashing_tool": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "flashrom.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "afuwin.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "winflash.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "qflash.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "afudos.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "amiflash.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "biosupdate.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "hpqflash.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "dellbiosupdate.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "lenovosystemupdate.exe"
+                    }
+                ]
+            },
+            "s3_firmware_tool_cmdline_args": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " /write"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " /flash"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " /update"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " /f "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " /u "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " /b "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " /p "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " /s "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " /v "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " /bios"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " /rom"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " /bin"
+                    }
+                ]
+            },
+            "s4_registry_firmware_key_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\HARDWARE\\DESCRIPTION\\System\\BIOS"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\FirmwareResources"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\ACPI\\Parameters"
+                    }
+                ]
+            },
+            "s5_registry_modification_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "SetValue"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "SetInformation"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "RenameKey"
+                    }
+                ]
+            },
+            "s6_filesystem_firmware_file_extension": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".rom"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".bin"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".cap"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".wim"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".efi"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".fd"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".fw"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".img"
+                    }
+                ]
+            },
+            "s7_filesystem_write_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "superseded"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_known_firmware_flashing_tool and s3_firmware_tool_cmdline_args) or (s5_registry_modification_action and s4_registry_firmware_key_path) or (s7_filesystem_write_action and s6_filesystem_firmware_file_extension)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템 펌웨어(BIOS/UEFI) 변조 시도를 탐지할 수 있습니다. 펌웨어 플래싱 유틸리티의 실행과 함께 의심스러운 명령줄 인자, 펌웨어 관련 레지스트리 키에 대한 수정 작업, 또는 펌웨어 이미지 파일 확장자를 가진 파일에 대한 쓰기 작업을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 시스템에 대한 심층적인 포렌식 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 펌웨어 변조는 탐지 및 복구가 어려우므로, 이러한 초기 징후를 탐지하는 것이 중요합니다.",
+    "false_positive": "정상적인 시스템 유지보수, 펌웨어 업데이트, 드라이버 설치, 또는 제조사 제공 유틸리티가 펌웨어 관련 작업을 수행하는 경우 오탐이 발생할 수 있습니다. 특히, 벤더별 펌웨어 업데이트 도구의 실행이나 합법적인 시스템 관리 작업은 유사한 패턴을 보일 수 있습니다. 알려진 정상적인 펌웨어 업데이트 프로세스나 특정 파일 경로를 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

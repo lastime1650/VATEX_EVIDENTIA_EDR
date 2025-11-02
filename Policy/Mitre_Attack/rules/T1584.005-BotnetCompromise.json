@@ -1,0 +1,192 @@
+{
+    "id": "T1584.005-BotnetCompromise",
+    "name": "Botnet Client Compromise",
+    "description": "Detects indicators of a system being compromised and becoming part of a botnet, focusing on suspicious process execution from temporary/user-writable directories, C2 network communication patterns, registry persistence mechanisms, and suspicious file creation.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1584",
+        "subtechnique_id": "T1584.005",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Network:NetworkConnection",
+            "File:FileCreation",
+            "WindowsRegistry:WindowsRegistryKeyModification"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_process_suspicious_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "\\AppData\\Local\\Temp\\"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "\\ProgramData\\"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "\\Users\\Public\\"
+                    }
+                ]
+            },
+            "s3_net_direction_out": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    }
+                ]
+            },
+            "s4_net_protocol_tcp": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "TCP"
+                    }
+                ]
+            },
+            "s5_net_c2_ports": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 8080
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 8443
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 4443
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 10000
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 31337
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 6667
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 6697
+                    }
+                ]
+            },
+            "s6_registry_set_value_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    }
+                ]
+            },
+            "s7_registry_autostart_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce"
+                    }
+                ]
+            },
+            "s8_filesystem_create_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s9_fs_suspicious_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\AppData\\Local\\Temp\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\ProgramData\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\Users\\Public\\"
+                    }
+                ]
+            },
+            "s10_fs_is_exe": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_process_suspicious_path) or (s3_net_direction_out and s4_net_protocol_tcp and s5_net_c2_ports) or (s6_registry_set_value_action and s7_registry_autostart_path) or (s8_filesystem_create_action and s9_fs_suspicious_path and s10_fs_is_exe)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템이 봇넷에 통합되거나 봇넷 클라이언트 활동을 보이는 다양한 지표를 탐지할 수 있습니다. 여기에는 임시 또는 사용자 쓰기 가능 디렉터리에서 의심스러운 실행 파일이 생성되는 경우, 비표준 포트를 통한 외부 C2 통신, 일반적인 레지스트리 Run 키를 통한 지속성 확보 시도, 그리고 의심스러운 위치에 실행 파일이 생성되는 행위 등이 포함됩니다. 탐지된 이벤트는 높은 우선순위의 알람을 트리거하여 즉각적인 조사를 시작하고, 침해된 호스트를 식별하며, 봇넷에 의해 조율되는 DDoS, 스팸, 데이터 유출과 같은 추가적인 악성 활동을 방지하는 데 기여할 수 있습니다.",
+    "false_positive": "정상적인 애플리케이션의 업데이트 또는 설치 프로그램이 임시 디렉터리에서 실행되거나 파일을 생성하는 경우, 합법적인 네트워크 서비스가 비표준 포트에서 통신하는 경우, 또는 시스템 관리 도구가 레지스트리 키를 수정하는 경우 오탐이 발생할 수 있습니다. 알려진 정상 프로세스, 네트워크 연결, 또는 파일 경로를 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

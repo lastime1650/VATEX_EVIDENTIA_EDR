@@ -1,0 +1,131 @@
+{
+    "id": "T1496.003-SMSPumping",
+    "name": "SMS Pumping",
+    "description": "Detects attempts to leverage messaging services for SMS pumping, which may impact system and/or hosted service availability. This involves abusing publicly available web forms (e.g., one-time password or account verification fields) to send large amounts of SMS messages to adversary-controlled phone numbers. This can lead to financial gain for the adversary and increased SMS costs or overwhelmed communication channels for the victim.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0040",
+        "technique_id": "T1496",
+        "subtechnique_id": "T1496.003",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Impact:Resource Hijacking:SMS Pumping"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s3_powershell_web_cmdlet": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-WebRequest"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-RestMethod"
+                    }
+                ]
+            },
+            "s4_curl_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "curl.exe"
+                    }
+                ]
+            },
+            "s5_curl_post_method": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-X POST"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " POST "
+                    }
+                ]
+            },
+            "s6_sms_keywords_in_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "otp"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "sms"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "phone"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "verify"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "twilio"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "sns.amazonaws.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "cognito-idp"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and ((s2_powershell_exe and s3_powershell_web_cmdlet and s6_sms_keywords_in_cmdline) or (s4_curl_exe and s5_curl_post_method and s6_sms_keywords_in_cmdline))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Windows 엔드포인트에서 SMS Pumping 공격 시도를 탐지할 수 있습니다. PowerShell의 Invoke-WebRequest/Invoke-RestMethod 또는 curl.exe와 같은 명령줄 도구를 사용하여 SMS/OTP 관련 키워드를 포함한 대량의 웹 요청을 생성하는 프로세스 활동을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스의 사용자 및 네트워크 활동에 대한 추가적인 조사를 시작하는 데 사용될 수 있습니다. 특히, 비정상적인 외부 통신 패턴과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 개발/테스트 활동, 합법적인 애플리케이션의 SMS/OTP 인증 기능 테스트, 시스템 관리 스크립트 또는 특정 웹 서비스와의 통합 시나리오에서 유사한 명령줄 패턴이 사용될 경우 오탐이 발생할 수 있습니다. 알려진 정상 프로세스, 특정 사용자 계정, 또는 특정 명령줄 인자를 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

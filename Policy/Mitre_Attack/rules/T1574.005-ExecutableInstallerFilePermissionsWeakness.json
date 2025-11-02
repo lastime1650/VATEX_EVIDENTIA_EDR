@@ -1,0 +1,198 @@
+{
+    "id": "T1574.005-ExecutableInstallerFilePermissionsWeakness",
+    "name": "Executable Installer File Permissions Weakness",
+    "description": "Adversaries may execute their own malicious payloads by hijacking the binaries used by an installer. These processes may automatically execute specific binaries as part of their functionality or to perform other actions. If the permissions on the file system directory containing a target binary, or permissions on the binary itself, are improperly set, then the target binary may be overwritten with another binary using user-level permissions and executed by the original process. If the original process and thread are running under a higher permissions level, then the replaced binary will also execute under higher-level permissions, which could include SYSTEM.\n\nAnother variation of this technique can be performed by taking advantage of a weakness that is common in executable, self-extracting installers. During the installation process, it is common for installers to use a subdirectory within the %TEMP% directory to unpack binaries such as DLLs, EXEs, or other payloads. When installers create subdirectories and files they often do not set appropriate permissions to restrict write access, which allows for execution of untrusted code placed in the subdirectories or overwriting of binaries used in the installation process. This behavior is related to and may take advantage of DLL search order hijacking.\n\nAdversaries may use this technique to replace legitimate binaries with malicious ones as a means of executing code at a higher permissions level. Some installers may also require elevated privileges that will result in privilege escalation when executing adversary controlled code. This behavior is related to Bypass User Account Control. Several examples of this weakness in existing common installers have been reported to software vendors. If the executing process is set to run at a specific time or during a certain event (e.g., system bootup) then this technique can also be used for persistence.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1574",
+        "subtechnique_id": "T1574.005",
+        "data_sources": [
+            "Enterprise:Persistence:Create or Modify System Process:Windows Service",
+            "Enterprise:Defense Evasion:File and Directory Permissions Modification:Windows File and Directory Permissions Modification",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Native API",
+            "Enterprise:Execution:Shared Modules"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmdline_installer_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "install"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "setup"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "msiexec.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "update.exe"
+                    }
+                ]
+            },
+            "s3_process_exe_path_temp_dir": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "\\AppData\\Local\\Temp\\"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "\\Windows\\Temp\\"
+                    }
+                ]
+            },
+            "s4_filesystem_write_create_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "superseded"
+                    }
+                ]
+            },
+            "s5_filesystem_filepath_temp_dir": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\AppData\\Local\\Temp\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\Windows\\Temp\\"
+                    }
+                ]
+            },
+            "s6_filesystem_filepath_exe_dll_ext": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".msi"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".bat"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".ps1"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".vbs"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".js"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".hta"
+                    }
+                ]
+            },
+            "s7_imageload_filepath_temp_dir": {
+                "event_type": "imageload",
+                "conditions": [
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "\\AppData\\Local\\Temp\\"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "\\Windows\\Temp\\"
+                    }
+                ]
+            },
+            "s8_imageload_filepath_exe_dll_ext": {
+                "event_type": "imageload",
+                "conditions": [
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "endswith",
+                        "value": ".msi"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_action_create and s3_process_exe_path_temp_dir and s2_cmdline_installer_keywords) or (s4_filesystem_write_create_action and s5_filesystem_filepath_temp_dir and s6_filesystem_filepath_exe_dll_ext) or (s7_imageload_filepath_temp_dir and s8_imageload_filepath_exe_dll_ext)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 실행 가능한 설치 관리자 파일 권한 취약점을 이용한 공격 시도를 탐지할 수 있습니다. 이는 주로 다음과 같은 시나리오를 모니터링합니다: 1) 설치 관리자 관련 키워드를 포함하는 명령줄로 임시 디렉터리에서 프로세스가 생성되는 경우, 2) 임시 디렉터리 내에서 실행 파일 또는 DLL과 같은 의심스러운 확장자를 가진 파일이 생성, 쓰기, 덮어쓰기 또는 대체되는 파일 시스템 활동, 3) 임시 디렉터리에서 실행 파일 또는 DLL이 로드되는 이미지 로드 이벤트. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스, 파일 및 로드된 모듈에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 다른 권한 상승 또는 방어 회피 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 소프트웨어 설치 프로그램, 업데이트 프로세스, 또는 합법적인 애플리케이션이 임시 디렉터리에 파일을 생성하거나 로드하는 과정에서 오탐이 발생할 수 있습니다. 예를 들어, 웹 브라우저가 다운로드한 설치 파일을 임시 폴더에 저장하거나, 특정 소프트웨어의 자동 업데이트 로직이 임시 파일을 사용하는 경우입니다. 알려진 정상적인 설치 관리자 프로세스, 특정 임시 디렉터리 패턴, 또는 특정 파일 해시를 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

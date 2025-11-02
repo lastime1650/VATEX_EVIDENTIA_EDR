@@ -1,0 +1,110 @@
+{
+    "id": "T1584.001-DomainResourceDevelopment",
+    "name": "Resource Development: Domains",
+    "description": "Detects attempts to query or manage domain-related information and DNS records using command-line tools or cloud provider CLIs, which could indicate an adversary's efforts to hijack domains/subdomains or prepare infrastructure for future operations.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0001",
+        "technique_id": "T1584",
+        "subtechnique_id": "T1584.001",
+        "data_sources": [
+            "Command:CommandExecution",
+            "Process:ProcessCreation"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_nslookup_query": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "nslookup"
+                    }
+                ]
+            },
+            "s3_dig_query": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "dig"
+                    }
+                ]
+            },
+            "s4_aws_route53_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "aws"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "route53"
+                    }
+                ]
+            },
+            "s5_az_dns_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "az"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "network dns"
+                    }
+                ]
+            },
+            "s6_gcloud_dns_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "gcloud"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "dns"
+                    }
+                ]
+            },
+            "s7_whois_query": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "whois"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create and (s2_nslookup_query or s3_dig_query or s4_aws_route53_command or s5_az_dns_command or s6_gcloud_dns_command or s7_whois_query)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 공격자가 시스템에서 도메인 및 DNS 정보를 수집하거나 클라우드 DNS 서비스를 조작하려는 시도를 탐지할 수 있습니다. 'nslookup', 'dig', 'whois'와 같은 DNS/도메인 쿼리 도구의 실행, 또는 AWS, Azure, GCP CLI를 통한 DNS 관련 명령 실행을 모니터링합니다. 탐지된 이벤트는 공격자가 향후 공격 인프라를 구축하거나 도메인을 탈취하기 위한 사전 작업으로 분류될 수 있으며, 추가적인 조사 및 위협 분석의 우선순위를 지정하는 데 사용됩니다.",
+    "false_positive": "정상적인 시스템 관리자, 개발자, DevOps 엔지니어 또는 자동화된 스크립트가 DNS 문제 해결, 도메인 정보 조회, 또는 클라우드 DNS 리소스 관리 목적으로 이러한 명령을 실행하는 경우 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

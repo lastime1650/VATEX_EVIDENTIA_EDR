@@ -1,0 +1,123 @@
+{
+    "id": "T1498.002-ReflectionAmplification",
+    "name": "Reflection Amplification Network DoS",
+    "description": "Detects attempts to cause a denial of service (DoS) by reflecting a high-volume of network traffic to a target, often leveraging protocols like DNS, NTP, or Memcache. This involves detecting unusually large incoming packets on common reflector ports.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0040",
+        "technique_id": "T1498",
+        "subtechnique_id": "T1498.002",
+        "data_sources": [
+            "Enterprise:Impact:Network Denial of Service:Direct Network Flood",
+            "Enterprise:Command and Control:Application Layer Protocol:DNS",
+            "Enterprise:Command and Control:Application Layer Protocol:NTP"
+        ]
+    },
+    "platform": [
+        "windows",
+        "linux",
+        "macos"
+    ],
+    "detection": {
+        "selections": {
+            "s1_direction_in": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "in"
+                    }
+                ]
+            },
+            "s2_protocol_udp": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "UDP"
+                    }
+                ]
+            },
+            "s3_protocol_tcp_or_udp": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "UDP"
+                    },
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "TCP"
+                    }
+                ]
+            },
+            "s4_port_dns": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 53
+                    }
+                ]
+            },
+            "s5_size_dns_amplification": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.packetsize",
+                        "operator": "gt",
+                        "value": 500
+                    }
+                ]
+            },
+            "s6_port_ntp": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 123
+                    }
+                ]
+            },
+            "s7_size_ntp_amplification": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.packetsize",
+                        "operator": "gt",
+                        "value": 200
+                    }
+                ]
+            },
+            "s8_port_memcache": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 11211
+                    }
+                ]
+            },
+            "s9_size_memcache_amplification": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.packetsize",
+                        "operator": "gt",
+                        "value": 1000
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_direction_in and s2_protocol_udp and s4_port_dns and s5_size_dns_amplification) or (s1_direction_in and s2_protocol_udp and s6_port_ntp and s7_size_ntp_amplification) or (s1_direction_in and s3_protocol_tcp_or_udp and s8_port_memcache and s9_size_memcache_amplification)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 DNS, NTP, Memcache와 같은 프로토콜을 이용한 반사 증폭 서비스 거부(DoS) 공격 시도를 실시간으로 탐지할 수 있습니다. 비정상적으로 큰 크기의 인바운드 패킷이 해당 프로토콜의 표준 포트로 유입되는 것을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 네트워크 트래픽 분석 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 이러한 초기 탐지는 서비스 가용성에 대한 영향을 최소화하는 데 중요합니다.",
+    "false_positive": "정상적인 네트워크 트래픽에서도 일시적으로 큰 패킷이 발생하거나, 특정 애플리케이션이 해당 포트에서 비표준적인 방식으로 통신하는 경우 오탐이 발생할 수 있습니다. 예를 들어, 대규모 DNS 영역 전송, NTP 서버 동기화 문제, 또는 개발/테스트 환경에서의 비정상적인 Memcache 사용 등이 이에 해당합니다. 알려진 정상 소스 IP 주소, 특정 포트 사용 패턴, 또는 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

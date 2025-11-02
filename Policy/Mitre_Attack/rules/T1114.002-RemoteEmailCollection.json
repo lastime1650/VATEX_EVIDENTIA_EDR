@@ -1,0 +1,181 @@
+{
+    "id": "T1114.002-RemoteEmailCollection",
+    "name": "Remote Email Collection",
+    "description": "Detects attempts by adversaries to collect sensitive email information from remote sources like Exchange servers, Office 365, or Google Workspace. This often involves leveraging user credentials or access tokens and using tools or scripts (e.g., MailSniper, PowerShell cmdlets) to interact with mail services directly or via web protocols.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0009",
+        "technique_id": "T1114",
+        "subtechnique_id": "T1114.002",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Command and Control:Application Layer Protocol:Mail Protocols",
+            "Enterprise:Command and Control:Application Layer Protocol:Web Protocols"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s3_cmdline_mail_sniper": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "MailSniper"
+                    }
+                ]
+            },
+            "s4_cmdline_exchange_cmdlet": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-Mailbox"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Export-Mailbox"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Search-Mailbox"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-Command -ComputerName"
+                    }
+                ]
+            },
+            "s5_cmdline_o365_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Office365"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ExchangeOnline"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "EWS"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "MAPI"
+                    }
+                ]
+            },
+            "s6_cmdline_curl_wget_mail": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "curl"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wget"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "outlook.office365.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "mail.google.com"
+                    }
+                ]
+            },
+            "s7_network_activity": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "TCP"
+                    }
+                ]
+            },
+            "s8_network_mail_ports": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 25
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 110
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 143
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 465
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 587
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 993
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 995
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create and s2_powershell_exe and (s3_cmdline_mail_sniper or s4_cmdline_exchange_cmdlet or s5_cmdline_o365_keywords or s6_cmdline_curl_wget_mail)) or (s7_network_activity and s8_network_mail_ports)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 원격 이메일 정보 수집 시도를 탐지할 수 있습니다. PowerShell을 통한 MailSniper 실행, Exchange/Office 365 관련 cmdlet 사용, 또는 curl/wget을 이용한 웹메일 접근 시도를 프로세스 생성 이벤트에서 모니터링합니다. 또한, 네트워크 이벤트에서 표준 이메일 프로토콜 포트(SMTP, POP3, IMAP 등)로의 비정상적인 TCP 연결을 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 네트워크 활동에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 다른 Credential Access 또는 Collection 활동과 결합될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 이메일 클라이언트 (Outlook, Thunderbird 등), 시스템 관리 도구, 백신 소프트웨어, 또는 합법적인 스크립트가 이메일 서버와 통신하거나 이메일 정보를 조회하는 과정에서 오탐이 발생할 수 있습니다. 특히, PowerShell 스크립트나 웹 브라우저가 Office 365/Google Workspace와 상호작용하는 경우 오탐의 가능성이 있습니다. 알려진 정상 프로세스, 특정 명령줄 패턴, 또는 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

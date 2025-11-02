@@ -1,0 +1,153 @@
+{
+    "id": "T1592.002-SoftwareDiscovery",
+    "name": "Software Discovery",
+    "description": "Adversaries may gather information about the victim's host software that can be used during targeting. Information about installed software may include a variety of details such as types and versions on specific hosts, as well as the presence of additional components that might be indicative of added defensive protections (ex: antivirus, SIEMs, etc.). Adversaries may gather this information in various ways, such as direct collection actions via Active Scanning (ex: listening ports, server banners, user agent strings) or Phishing for Information. Adversaries may also compromise sites then include malicious content designed to collect host information from visitors. Information about the installed software may also be exposed to adversaries via online or other accessible data sets (ex: job postings, network maps, assessment reports, resumes, or purchase invoices). Gathering this information may reveal opportunities for other forms of reconnaissance (ex: Search Open Websites/Domains or Search Open Technical Databases), establishing operational resources (ex: Develop Capabilities or Obtain Capabilities), and/or for initial access (ex: Supply Chain Compromise or External Remote Services).",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1592",
+        "subtechnique_id": "T1592.002",
+        "data_sources": [
+            "Enterprise:Discovery:Software Discovery",
+            "Enterprise:Discovery:Query Registry",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Execution:Native API"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_wmic_product_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wmic"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "product get"
+                    }
+                ]
+            },
+            "s3_powershell_uninstall_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-ItemProperty"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Uninstall"
+                    }
+                ]
+            },
+            "s4_reg_query_uninstall_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "reg query"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Uninstall"
+                    }
+                ]
+            },
+            "s5_registry_query_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "Query"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "Enumerate"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "OpenKey"
+                    }
+                ]
+            },
+            "s6_registry_uninstall_key_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall"
+                    }
+                ]
+            },
+            "s7_apicall_msi_enum_functions": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "MsiEnumProductsExA"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "MsiEnumProductsExW"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "MsiGetProductInfoExA"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "MsiGetProductInfoExW"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_wmic_product_command) or (s1_process_create_action and s3_powershell_uninstall_command) or (s1_process_create_action and s4_reg_query_uninstall_command) or (s5_registry_query_action and s6_registry_uninstall_key_path) or s7_apicall_msi_enum_functions"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에 설치된 소프트웨어 정보를 수집하려는 시도를 탐지할 수 있습니다. 'wmic product get', PowerShell의 'Get-ItemProperty *Uninstall*' 명령, 'reg query *Uninstall*' 명령과 같은 프로세스 생성 이벤트, 또는 관련 레지스트리 키에 대한 질의/열거/열기 활동, 그리고 MSI 관련 API 호출을 모니터링합니다. 탐지된 이벤트는 정찰 활동의 지표로 간주되어 자동 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히 다른 Discovery 또는 Initial Access 활동과 결합될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 소프트웨어 인벤토리 스캐너, 업데이트 프로그램, 또는 합법적인 애플리케이션이 설치된 소프트웨어 정보를 조회하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

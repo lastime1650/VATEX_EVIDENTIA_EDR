@@ -1,0 +1,290 @@
+{
+    "id": "T1176.001-BrowserExtensions",
+    "name": "Browser Extensions",
+    "description": "Adversaries may abuse internet browser extensions to establish persistent access to victim systems. Browser extensions or plugins are small programs that can add functionality to and customize aspects of internet browsers. They can be installed directly via a local file or custom URL or through a browser's app store - an official online platform where users can browse, install, and manage extensions for a specific web browser. Extensions generally inherit the web browser's permissions previously granted. Malicious extensions can be installed into a browser through malicious app store downloads masquerading as legitimate extensions, through social engineering, or by an adversary that has already compromised a system. Security can be limited on browser app stores, so it may not be difficult for malicious extensions to defeat automated scanners. Depending on the browser, adversaries may also manipulate an extension's update url to install updates from an adversary-controlled server or manipulate the mobile configuration file to silently install additional extensions. Once the extension is installed, it can browse to websites in the background, steal all information that a user enters into a browser (including credentials), and be used as an installer for a RAT for persistence. There have also been instances of botnets using a persistent backdoor through malicious Chrome extensions for Command and Control. Adversaries may also use browser extensions to modify browser permissions and components, privacy settings, and other security controls for Defense Evasion.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1176",
+        "subtechnique_id": "T1176.001",
+        "data_sources": [
+            "WindowsRegistry:WindowsRegistryKeyCreation",
+            "Process:ProcessCreation",
+            "Command:CommandExecution",
+            "File:FileCreation",
+            "NetworkTraffic:NetworkConnectionCreation"
+        ]
+    },
+    "platform": [
+        "windows",
+        "linux",
+        "macos"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_browser_process": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "chrome.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "firefox.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "msedge.exe"
+                    }
+                ]
+            },
+            "s3_cmdline_load_extension": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--load-extension"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--install-extension"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--enable-extension"
+                    }
+                ]
+            },
+            "s4_filesystem_write_create_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    }
+                ]
+            },
+            "s5_filepath_chrome_ext_dir": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "AppData\\Local\\Google\\Chrome\\User Data\\Default\\Extensions"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "AppData\\Local\\Google\\Chrome\\User Data\\Profile "
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "AppData\\Local\\Google\\Chrome\\User Data\\Guest Profile\\Extensions"
+                    }
+                ]
+            },
+            "s6_filepath_firefox_ext_dir": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "AppData\\Roaming\\Mozilla\\Firefox\\Profiles\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\extensions.json"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\browser-extension-data\\"
+                    }
+                ]
+            },
+            "s7_filepath_edge_ext_dir": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "AppData\\Local\\Microsoft\\Edge\\User Data\\Default\\Extensions"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "AppData\\Local\\Microsoft\\Edge\\User Data\\Profile "
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "AppData\\Local\\Microsoft\\Edge\\User Data\\Guest Profile\\Extensions"
+                    }
+                ]
+            },
+            "s8_filepath_extension_types": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".crx"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".xpi"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".zip"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "manifest.json"
+                    }
+                ]
+            },
+            "s9_registry_mod_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "SetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "CreateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "SetInformationKey"
+                    }
+                ]
+            },
+            "s10_registry_chrome_policy_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Google\\Chrome\\ExtensionInstallForcelist"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\SOFTWARE\\Policies\\Google\\Chrome\\ExtensionInstallForcelist"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Google\\Chrome\\ExtensionInstallSources"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\SOFTWARE\\Policies\\Google\\Chrome\\ExtensionInstallSources"
+                    }
+                ]
+            },
+            "s11_registry_firefox_policy_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Mozilla\\Firefox\\Extensions\\Install"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\SOFTWARE\\Policies\\Mozilla\\Firefox\\Extensions\\Install"
+                    }
+                ]
+            },
+            "s12_registry_edge_policy_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Edge\\ExtensionInstallForcelist"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\SOFTWARE\\Policies\\Microsoft\\Edge\\ExtensionInstallForcelist"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Edge\\ExtensionInstallSources"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\SOFTWARE\\Policies\\Microsoft\\Edge\\ExtensionInstallSources"
+                    }
+                ]
+            },
+            "s13_apicall_extension_management": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "contains",
+                        "value": "InstallExtension"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "contains",
+                        "value": "LoadExtension"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "contains",
+                        "value": "RegisterExtension"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_browser_process and s3_cmdline_load_extension) or (s4_filesystem_write_create_action and (s5_filepath_chrome_ext_dir or s6_filepath_firefox_ext_dir or s7_filepath_edge_ext_dir) and s8_filepath_extension_types) or (s9_registry_mod_action and (s10_registry_chrome_policy_path or s11_registry_firefox_policy_path or s12_registry_edge_policy_path)) or (s1_process_create_action and s13_apicall_extension_management)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 브라우저 확장 프로그램을 통한 악성 활동 시도를 탐지할 수 있습니다. 브라우저 프로세스 실행 시 `--load-extension`과 같은 의심스러운 명령줄 인자 사용, 알려진 브라우저 확장 프로그램 디렉터리 내에서의 비정상적인 파일 생성/수정, 또는 브라우저 확장 프로그램 설치를 강제하는 레지스트리 키 변경 등을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스, 파일 및 레지스트리 활동에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 다른 지속성, 권한 상승 또는 C2 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 브라우저 확장 프로그램 설치, 업데이트, 또는 개발자가 디버깅 목적으로 확장 프로그램을 로드하는 경우 오탐이 발생할 수 있습니다. 기업에서 사용하는 합법적인 관리 도구나 그룹 정책을 통해 확장 프로그램을 배포하는 경우에도 탐지될 수 있습니다. 알려진 정상적인 확장 프로그램 설치 경로, 프로세스 또는 레지스트리 변경 패턴에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

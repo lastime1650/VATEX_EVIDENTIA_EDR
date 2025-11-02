@@ -1,0 +1,211 @@
+{
+    "id": "T1578.005-ModifyCloudComputeConfigurations",
+    "name": "Modify Cloud Compute Configurations",
+    "description": "Adversaries may modify settings that directly affect the size, locations, and resources available to cloud compute infrastructure in order to evade defenses. These settings may include service quotas, subscription associations, tenant-wide policies, or other configurations that impact available compute. Such modifications may allow adversaries to abuse the victim’s compute resources to achieve their goals, potentially without affecting the execution of running instances and/or revealing their activities to the victim. For example, cloud providers often limit customer usage of compute resources via quotas. Customers may request adjustments to these quotas to support increased computing needs, though these adjustments may require approval from the cloud provider. Adversaries who compromise a cloud environment may similarly request quota adjustments in order to support their activities, such as enabling additional Resource Hijacking without raising suspicion by using up a victim’s entire quota. Adversaries may also increase allowed resource usage by modifying any tenant-wide policies that limit the sizes of deployed virtual machines. Adversaries may also modify settings that affect where cloud resources can be deployed, such as enabling Unused/Unsupported Cloud Regions.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1578",
+        "subtechnique_id": "T1578.005",
+        "data_sources": [
+            "Enterprise:Defense Evasion:Modify Cloud Compute Infrastructure:Modify Cloud Compute Configurations",
+            "Process:ProcessCreation",
+            "Command:CommandExecution"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_az_cli_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "az.exe"
+                    }
+                ]
+            },
+            "s3_aws_cli_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "aws.exe"
+                    }
+                ]
+            },
+            "s4_gcloud_cli_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "gcloud.exe"
+                    }
+                ]
+            },
+            "s5_az_vm_modification": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "vm update"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "vm resize"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "vm delete"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "vmss update"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "vmss scale"
+                    }
+                ]
+            },
+            "s6_az_snapshot_disk_modification": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "snapshot delete"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "disk update"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "disk delete"
+                    }
+                ]
+            },
+            "s7_aws_ec2_modification": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ec2 modify-instance-attribute"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ec2 stop-instances"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ec2 terminate-instances"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ec2 modify-image-attribute"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ec2 deregister-image"
+                    }
+                ]
+            },
+            "s8_aws_snapshot_volume_modification": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ec2 modify-snapshot-attribute"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ec2 delete-snapshot"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ec2 modify-volume"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ec2 delete-volume"
+                    }
+                ]
+            },
+            "s9_gcloud_instance_modification": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "compute instances update"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "compute instances delete"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "compute instance-templates update"
+                    }
+                ]
+            },
+            "s10_gcloud_disk_snapshot_modification": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "compute disks update"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "compute disks delete"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "compute snapshots delete"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and ((s2_az_cli_execution and (s5_az_vm_modification or s6_az_snapshot_disk_modification)) or (s3_aws_cli_execution and (s7_aws_ec2_modification or s8_aws_snapshot_volume_modification)) or (s4_gcloud_cli_execution and (s9_gcloud_instance_modification or s10_gcloud_disk_snapshot_modification)))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 클라우드 컴퓨팅 인프라 구성 변경 시도를 탐지할 수 있습니다. Azure, AWS, Google Cloud CLI 도구의 프로세스 생성 이벤트와 함께 가상 머신, 스냅샷, 디스크, 이미지 등 컴퓨팅 리소스의 수정 또는 삭제를 지시하는 명령줄 인자를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 클라우드 환경의 비정상적인 변경 사항에 대한 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히, 방어 회피 또는 자원 탈취 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 클라우드 관리 도구, 자동화 스크립트, DevOps 파이프라인, 또는 합법적인 시스템 관리자가 클라우드 리소스 구성을 변경하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상적인 클라우드 CLI 호출 패턴이나 특정 사용자/서비스 계정에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

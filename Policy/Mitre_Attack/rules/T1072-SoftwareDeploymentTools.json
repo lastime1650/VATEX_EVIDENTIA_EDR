@@ -1,0 +1,213 @@
+{
+    "id": "T1072-SoftwareDeploymentTools",
+    "name": "Software Deployment Tools",
+    "description": "Adversaries may gain access to and use centralized software suites installed within an enterprise to execute commands and move laterally through the network. Configuration management and software deployment applications may be used in an enterprise network or cloud environment for routine administration purposes. These systems may also be integrated into CI/CD pipelines. Examples of such solutions include: SCCM, HBSS, Altiris, AWS Systems Manager, Microsoft Intune, Azure Arc, and GCP Deployment Manager. Access to network-wide or enterprise-wide endpoint management software may enable an adversary to achieve remote code execution on all connected systems. The access may be used to laterally move to other systems, gather information, or cause a specific effect, such as wiping the hard drives on all endpoints. SaaS-based configuration management services may allow for broad Cloud Administration Command on cloud-hosted instances, as well as the execution of arbitrary commands on on-premises endpoints. For example, Microsoft Configuration Manager allows Global or Intune Administrators to run scripts as SYSTEM on on-premises devices joined to Entra ID. Such services may also utilize Web Protocols to communicate back to adversary owned infrastructure. Network infrastructure devices may also have configuration management tools that can be similarly abused by adversaries. The permissions required for this action vary by system configuration; local credentials may be sufficient with direct access to the third-party system, or specific domain credentials may be required. However, the system may require an administrative account to log in or to access specific functionality.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1072",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Command:CommandExecution",
+            "File:FileModification",
+            "Network:NetworkConnection",
+            "Process:OSAPIExecution"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_msiexec_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "msiexec.exe"
+                    }
+                ]
+            },
+            "s3_msiexec_install_options": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/i"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/qn"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/s"
+                    }
+                ]
+            },
+            "s4_wmic_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "wmic.exe"
+                    }
+                ]
+            },
+            "s5_wmic_remote_exec_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "process call create"
+                    }
+                ]
+            },
+            "s6_psexec_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "psexec.exe"
+                    }
+                ]
+            },
+            "s7_powershell_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s8_powershell_invoke_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-Command"
+                    }
+                ]
+            },
+            "s9_powershell_iex_or_invoke_expression": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "IEX"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-Expression"
+                    }
+                ]
+            },
+            "s10_powershell_downloadstring": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "DownloadString"
+                    }
+                ]
+            },
+            "s11_az_cli_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "az.exe"
+                    }
+                ]
+            },
+            "s12_az_vm_extension_set": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "vm extension set"
+                    }
+                ]
+            },
+            "s13_az_vm_run_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "vm run-command invoke"
+                    }
+                ]
+            },
+            "s14_file_create_or_write_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    }
+                ]
+            },
+            "s15_file_deployment_paths": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\ccmcache\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\ProgramData\\Package Cache\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\Windows\\Temp\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\Program Files\\Microsoft Configuration Manager\\Client\\"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_msiexec_path and s3_msiexec_install_options) or (s1_process_create_action and s4_wmic_path and s5_wmic_remote_exec_cmd) or (s1_process_create_action and s6_psexec_path) or (s1_process_create_action and s7_powershell_path and (s8_powershell_invoke_command or (s9_powershell_iex_or_invoke_expression and s10_powershell_downloadstring))) or (s1_process_create_action and s11_az_cli_path and (s12_az_vm_extension_set or s13_az_vm_run_command)) or (s14_file_create_or_write_action and s15_file_deployment_paths)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 엔터프라이즈 내 소프트웨어 배포 도구의 악용 시도를 탐지할 수 있습니다. MSIXec, WMIC, PsExec, PowerShell 또는 클라우드 CLI 도구(예: Azure CLI)를 통한 프로세스 생성 이벤트와 함께 비정상적인 명령줄 인자를 모니터링합니다. 또한, 일반적인 배포 캐시 또는 임시 디렉터리 내의 파일 생성/쓰기 활동을 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 파일 활동에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 공격자가 기존의 합법적인 도구를 사용하여 방어 체계를 우회하려는 시도와 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 소프트웨어 설치, 업데이트 프로세스, 시스템 관리 도구, 또는 합법적인 클라우드 관리 활동이 이 규칙에 의해 탐지될 수 있습니다. 예를 들어, IT 관리자가 MSI 패키지를 배포하거나, PowerShell 스크립트를 통해 원격 명령을 실행하거나, 클라우드 CLI를 사용하여 VM 확장을 관리하는 경우 오탐이 발생할 수 있습니다. 알려진 정상 프로세스, 특정 명령줄 패턴, 또는 특정 파일 경로에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

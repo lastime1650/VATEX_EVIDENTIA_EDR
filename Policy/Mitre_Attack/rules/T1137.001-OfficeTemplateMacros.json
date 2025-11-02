@@ -1,0 +1,163 @@
+{
+    "id": "T1137.001-OfficeTemplateMacros",
+    "name": "Persistence via Office Template Macros",
+    "description": "Adversaries may abuse Microsoft Office templates to obtain persistence on a compromised system. Microsoft Office contains templates that are part of common Office applications and are used to customize styles. The base templates within the application are used each time an application starts. Office Visual Basic for Applications (VBA) macros can be inserted into the base template and used to execute code when the respective Office application starts in order to obtain persistence. Examples for both Word and Excel have been discovered and published. By default, Word has a Normal.dotm template created that can be modified to include a malicious macro. Excel does not have a template file created by default, but one can be added that will automatically be loaded. Shared templates may also be stored and pulled from remote locations. Adversaries may also change the location of the base template to point to their own by hijacking the application's search order, e.g. Word 2016 will first look for Normal.dotm under C:\\Program Files (x86)\\Microsoft Office\\root\\Office16\\, or by modifying the GlobalDotName registry key. By modifying the GlobalDotName registry key an adversary can specify an arbitrary location, file name, and file extension to use for the template that will be loaded on application startup. To abuse GlobalDotName, adversaries may first need to register the template as a trusted document or place it in a trusted location. An adversary may need to enable macros to execute unrestricted depending on the system or enterprise security policy on use of macros.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1137",
+        "subtechnique_id": "T1137.001",
+        "data_sources": [
+            "Enterprise:Persistence:Office Application Startup:Office Template Macros",
+            "Enterprise:File:File Creation",
+            "Enterprise:File:File Modification",
+            "Enterprise:Windows Registry:Windows Registry Key Creation",
+            "Enterprise:Windows Registry:Windows Registry Key Modification"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s_reg_action_modify_create": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreCreateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPostCreateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreRenameKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPostRenameKey"
+                    }
+                ]
+            },
+            "s_reg_globaldotname_key_path_office": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "Software\\Microsoft\\Office\\"
+                    }
+                ]
+            },
+            "s_reg_globaldotname_key_path_globaldotname": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "GlobalDotName"
+                    }
+                ]
+            },
+            "s_file_action_modify_create": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "rename"
+                    }
+                ]
+            },
+            "s_file_template_known_paths": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "AppData\\Roaming\\Microsoft\\Templates\\Normal.dotm"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "AppData\\Roaming\\Microsoft\\Excel\\XLSTART\\PERSONAL.XLSB"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "Program Files (x86)\\Microsoft Office\\root\\Office"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "Program Files\\Microsoft Office\\root\\Office"
+                    }
+                ]
+            },
+            "s_file_template_suspicious_extension": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".dotm"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".xlsb"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".docm"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".xlsm"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".pptm"
+                    }
+                ]
+            }
+        },
+        "condition": "(s_reg_action_modify_create and s_reg_globaldotname_key_path_office and s_reg_globaldotname_key_path_globaldotname) or (s_file_action_modify_create and s_file_template_known_paths and s_file_template_suspicious_extension)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Microsoft Office 템플릿 매크로를 이용한 지속성(Persistence) 확보 시도를 탐지할 수 있습니다. 특히, Normal.dotm 또는 PERSONAL.XLSB와 같은 알려진 Office 템플릿 파일의 생성/수정 이벤트와 GlobalDotName 레지스트리 키 변경 시도를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 파일 및 레지스트리 변경 사항에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 이는 Office 환경에서 악성 매크로를 통한 초기 침투 및 지속성 유지에 대한 중요한 지표가 됩니다.",
+    "false_positive": "정상적인 Office 업데이트, 소프트웨어 설치 또는 사용자가 합법적인 목적으로 템플릿을 수정하는 경우 오탐이 발생할 수 있습니다. 예를 들어, 기업 내에서 표준화된 매크로 템플릿을 배포하거나, 개발자가 VBA 코드를 포함하는 템플릿을 생성할 때 탐지될 수 있습니다. 알려진 정상적인 템플릿 파일이나 특정 Office 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

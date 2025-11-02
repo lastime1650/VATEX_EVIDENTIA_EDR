@@ -1,0 +1,158 @@
+{
+    "id": "T1615",
+    "name": "Group Policy Discovery",
+    "description": "Adversaries may gather information on Group Policy settings to identify paths for privilege escalation, security measures applied within a domain, and to discover patterns in domain objects that can be manipulated or used to blend in the environment. Group Policy allows for centralized management of user and computer settings in Active Directory (AD). Group policy objects (GPOs) are containers for group policy settings made up of files stored within a predictable network path \\<DOMAIN>\\SYSVOL\\<DOMAIN>\\Policies\\. Adversaries may use commands such as `gpresult` or various publicly available PowerShell functions, such as `Get-DomainGPO` and `Get-DomainGPOLocalGroup`, to gather information on Group Policy settings. Adversaries may use this information to shape follow-on behaviors, including determining potential attack paths within the target network as well as opportunities to manipulate Group Policy settings for their benefit.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1615",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Script:ScriptExecution",
+            "ActiveDirectory:ActiveDirectoryObjectAccess",
+            "Process:ProcessCreation",
+            "Command:CommandExecution",
+            "NetworkTraffic:NetworkTrafficContent"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_gpresult_commandline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "gpresult"
+                    }
+                ]
+            },
+            "s3_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s4_gpo_cmdlet_get_domain_gpo": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-DomainGPO"
+                    }
+                ]
+            },
+            "s5_gpo_cmdlet_get_domain_gpo_localgroup": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-DomainGPOLocalGroup"
+                    }
+                ]
+            },
+            "s6_filesystem_action_read_open": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "read"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "open"
+                    }
+                ]
+            },
+            "s7_filepath_contains_sysvol": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "SYSVOL"
+                    }
+                ]
+            },
+            "s8_filepath_contains_policies_dir": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\\\Policies\\\\"
+                    }
+                ]
+            },
+            "s9_registry_keyclass_query_open_enum": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "QueryKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "OpenKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "EnumerateKey"
+                    }
+                ]
+            },
+            "s10_registry_name_gpo_paths": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\\\SOFTWARE\\\\Policies"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\\\SOFTWARE\\\\Policies"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "GroupPolicy"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create and (s2_gpresult_commandline or (s3_powershell_exe_path and (s4_gpo_cmdlet_get_domain_gpo or s5_gpo_cmdlet_get_domain_gpo_localgroup))) or (s6_filesystem_action_read_open and s7_filepath_contains_sysvol and s8_filepath_contains_policies_dir) or (s9_registry_keyclass_query_open_enum and s10_registry_name_gpo_paths)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 그룹 정책 설정 정보 수집 시도를 탐지할 수 있습니다. `gpresult` 명령 실행, PowerShell을 통한 `Get-DomainGPO` 또는 `Get-DomainGPOLocalGroup` cmdlet 사용, SYSVOL 공유 내 정책 파일 접근, 또는 그룹 정책 관련 레지스트리 키 조회 등을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히 권한 상승, 방어 회피 또는 지속성 전술과 결합될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 감사 스크립트, 또는 합법적인 애플리케이션이 그룹 정책 정보를 조회하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

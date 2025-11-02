@@ -1,0 +1,146 @@
+{
+    "id": "T1596.004-CDNs",
+    "name": "External CDN Information Gathering",
+    "description": "Detects the use of command-line tools that can be leveraged by adversaries to gather information about Content Delivery Networks (CDNs) and their associated domains or infrastructure. This includes querying DNS records for CDN CNAMEs or fetching web content from potential CDN-hosted resources to identify misconfigurations or exposed information. This activity is typically part of external reconnaissance (PRE-ATT&CK) but may involve tools executed on an endpoint.",
+    "severity": "low",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1596",
+        "subtechnique_id": "T1596.004",
+        "data_sources": [
+            "Enterprise:Reconnaissance:Search Open Technical Databases:CDNs",
+            "Enterprise:Reconnaissance:Search Open Technical Databases:DNS/Passive DNS",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_nslookup_dig_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "nslookup.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "dig.exe"
+                    }
+                ]
+            },
+            "s3_curl_wget_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "curl.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "wget.exe"
+                    }
+                ]
+            },
+            "s4_commandline_cdn_keywords_dns": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " cdn."
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " cloudfront.net"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " azureedge.net"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " akamai.net"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " fastly.net"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " -type=cname"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " -q=cname"
+                    }
+                ]
+            },
+            "s5_commandline_cdn_keywords_http": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "://cdn."
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "://cloudfront.net"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "://azureedge.net"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "://akamai.net"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "://fastly.net"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " -I "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " --head"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and ( (s2_nslookup_dig_execution and s4_commandline_cdn_keywords_dns) or (s3_curl_wget_execution and s5_commandline_cdn_keywords_http) )"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 사용하여 엔드포인트에서 CDN 관련 정보 수집에 사용될 수 있는 명령줄 도구의 실행을 탐지할 수 있습니다. 'nslookup' 또는 'dig'가 CDN 관련 도메인 키워드나 CNAME 쿼리 옵션과 함께 실행되거나, 'curl' 또는 'wget'이 CDN 관련 URL 키워드나 헤더 조회 옵션과 함께 실행될 때 알람을 트리거합니다. 이는 외부 정찰 활동의 흔적일 수 있으므로, 탐지 시 관련 프로세스, 명령줄 인자, 네트워크 연결 등을 추가로 조사하여 잠재적인 위협을 평가하는 데 활용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리, 개발, 네트워크 진단 도구 사용, 또는 합법적인 애플리케이션이 CDN 관련 도메인이나 서비스를 쿼리하는 과정에서 오탐이 발생할 수 있습니다. 특히 개발 환경이나 네트워크 관리 부서에서는 이러한 도구 사용이 빈번하므로, 특정 사용자, 프로세스, 또는 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄이는 것이 중요합니다. 'low' 심각도는 높은 오탐 가능성을 반영합니다."
+}

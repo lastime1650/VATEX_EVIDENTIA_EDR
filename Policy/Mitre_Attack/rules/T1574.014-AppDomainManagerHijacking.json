@@ -1,0 +1,145 @@
+{
+    "id": "T1574.014-AppDomainManagerHijacking",
+    "name": "AppDomainManager Hijacking",
+    "description": "Adversaries may execute their own malicious payloads by hijacking how the .NET `AppDomainManager` loads assemblies. The .NET framework uses the `AppDomainManager` class to create and manage one or more isolated runtime environments (called application domains) inside a process to host the execution of .NET applications. Assemblies (`.exe` or `.dll` binaries compiled to run as .NET code) may be loaded into an application domain as executable code. Known as \"AppDomainManager injection,\" adversaries may execute arbitrary code by hijacking how .NET applications load assemblies. For example, malware may create a custom application domain inside a target process to load and execute an arbitrary assembly. Alternatively, configuration files (`.config`) or process environment variables that define .NET runtime settings may be tampered with to instruct otherwise benign .NET applications to load a malicious assembly (identified by name) into the target process.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003,TA0004,TA0005",
+        "technique_id": "T1574",
+        "subtechnique_id": "T1574.014",
+        "data_sources": [
+            "Enterprise:Persistence:Hijack Execution Flow:AppDomainManager",
+            "Enterprise:Privilege Escalation:Hijack Execution Flow:AppDomainManager",
+            "Enterprise:Defense Evasion:Hijack Execution Flow:AppDomainManager",
+            "Process:ProcessCreation",
+            "File:FileCreation",
+            "File:FileModification",
+            "Module:ModuleLoad"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmdline_appdomain_type_env": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "APPDOMAIN_MANAGER_TYPE"
+                    }
+                ]
+            },
+            "s3_cmdline_appdomain_assembly_env": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "APPDOMAIN_MANAGER_ASSEMBLY"
+                    }
+                ]
+            },
+            "s4_fs_config_modify_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "rename"
+                    }
+                ]
+            },
+            "s5_fs_filepath_is_config": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".config"
+                    }
+                ]
+            },
+            "s6_fs_filepath_is_dotnet_framework_config": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\\\Microsoft.NET\\\\Framework\\\\"
+                    }
+                ]
+            },
+            "s7_imageload_suspicious_extension": {
+                "event_type": "imageload",
+                "conditions": [
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    }
+                ]
+            },
+            "s8_imageload_suspicious_location": {
+                "event_type": "imageload",
+                "conditions": [
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "\\\\Temp\\\\"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "\\\\AppData\\\\Local\\\\"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "\\\\ProgramData\\\\"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "\\\\Users\\\\Public\\\\"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_cmdline_appdomain_type_env and s3_cmdline_appdomain_assembly_env) or (s4_fs_config_modify_action and (s5_fs_filepath_is_config or s6_fs_filepath_is_dotnet_framework_config)) or (s7_imageload_suspicious_extension and s8_imageload_suspicious_location)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 .NET AppDomainManager 하이재킹 시도를 탐지할 수 있습니다. 이는 주로 프로세스 생성 시 비정상적인 AppDomainManager 관련 환경 변수 설정, 애플리케이션 .config 파일의 악의적인 수정 또는 생성, 그리고 임시 폴더나 사용자 데이터 폴더와 같은 의심스러운 위치에서 .NET DLL/EXE가 로드되는 이벤트를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스, 파일 및 로드된 모듈에 대한 포렌식 조사를 시작하는 데 사용될 수 있습니다. 이 기법은 방어 회피, 권한 상승 및 지속성을 위해 활용될 수 있으므로 신속한 대응이 중요합니다.",
+    "false_positive": "일부 합법적인 .NET 애플리케이션, 개발 도구 또는 시스템 관리 유틸리티가 AppDomainManager를 동적으로 구성하거나, 애플리케이션 .config 파일을 수정하거나, 비표준 위치에서 .NET 어셈블리를 로드하는 경우 오탐이 발생할 수 있습니다. 특히 개발 환경이나 특정 레거시 시스템에서 이러한 활동이 발생할 수 있습니다. 알려진 정상 프로세스, 특정 파일 경로, 또는 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

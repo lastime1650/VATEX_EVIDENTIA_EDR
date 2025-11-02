@@ -1,0 +1,171 @@
+{
+    "id": "T1135-NetworkShareDiscovery",
+    "name": "Network Share Discovery",
+    "description": "Detects attempts by adversaries to identify network shares on local or remote systems. This includes the use of command-line utilities like 'net view' and 'net share', PowerShell cmdlets (e.g., Get-SmbShare), WMIC queries, and direct API calls for share enumeration.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1135",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Discovery:Network Share Discovery",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Native API"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_net_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "net.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "net"
+                    }
+                ]
+            },
+            "s3_net_view_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "view"
+                    }
+                ]
+            },
+            "s4_net_share_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "share"
+                    }
+                ]
+            },
+            "s5_remote_system_path_indicator": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "\\\\"
+                    }
+                ]
+            },
+            "s6_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s7_ps_get_smbshare_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-SmbShare"
+                    }
+                ]
+            },
+            "s8_ps_get_wmi_share_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-WmiObject -Class Win32_Share"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-CimInstance -ClassName Win32_Share"
+                    }
+                ]
+            },
+            "s9_wmic_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "wmic.exe"
+                    }
+                ]
+            },
+            "s10_wmic_share_query_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "path Win32_Share"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "share get"
+                    }
+                ]
+            },
+            "s11_apicall_netshareenum": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "NetShareEnum"
+                    }
+                ]
+            },
+            "s12_apicall_wnetenumresource": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "WNetEnumResourceW"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "WNetEnumResourceA"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_net_exe_path and ((s3_net_view_command and s5_remote_system_path_indicator) or s4_net_share_command)) or (s1_process_create_action and s6_powershell_exe_path and (s7_ps_get_smbshare_command or s8_ps_get_wmi_share_command)) or (s1_process_create_action and s9_wmic_exe_path and s10_wmic_share_query_command) or (s11_apicall_netshareenum or s12_apicall_wnetenumresource)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 네트워크 공유 자원을 탐색하려는 시도를 탐지할 수 있습니다. 'net view \\\\remotehost', 'net share'와 같은 명령줄 도구 실행, PowerShell의 'Get-SmbShare' 또는 WMI를 통한 공유 정보 조회, 그리고 'NetShareEnum'과 같은 관련 API 호출을 모니터링합니다. 탐지된 이벤트는 자동 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히, 다른 Discovery 또는 Lateral Movement 활동과 결합될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 백신 소프트웨어, 네트워크 모니터링 애플리케이션, 또는 합법적인 스크립트가 네트워크 공유 정보를 조회하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

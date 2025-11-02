@@ -1,0 +1,163 @@
+{
+    "id": "T1114.001-LocalEmailCollection",
+    "name": "Local Email Collection",
+    "description": "Adversaries may target user email on local systems to collect sensitive information. Files containing email data can be acquired from a user’s local system, such as Outlook storage or cache files. Outlook stores data locally in offline data files with an extension of .ost. Outlook 2010 and later supports .ost file sizes up to 50GB, while earlier versions of Outlook support up to 20GB. IMAP accounts in Outlook 2013 (and earlier) and POP accounts use Outlook Data Files (.pst) as opposed to .ost, whereas IMAP accounts in Outlook 2016 (and later) use .ost files. Both types of Outlook data files are typically stored in `C:\\Users\\<username>\\Documents\\Outlook Files` or `C:\\Users\\<username>\\AppData\\Local\\Microsoft\\Outlook`.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0009",
+        "technique_id": "T1114",
+        "subtechnique_id": "T1114.001",
+        "data_sources": [
+            "Enterprise:Collection:Data from Local System",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Process:ProcessCreation",
+            "File:FileAccess"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s_proc_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s_proc_cmd_file_util": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "copy"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "move"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "xcopy"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "robocopy"
+                    }
+                ]
+            },
+            "s_proc_cmd_email_path_or_ext": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".pst"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".ost"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Outlook Files"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "AppData\\Local\\Microsoft\\Outlook"
+                    }
+                ]
+            },
+            "s_proc_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s_proc_powershell_file_cmdlets": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Copy-Item"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Move-Item"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-ChildItem -Path"
+                    }
+                ]
+            },
+            "s_fs_access_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "read"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "open"
+                    }
+                ]
+            },
+            "s_fs_email_filepath_target": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": ".pst"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": ".ost"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "Documents\\Outlook Files"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "AppData\\Local\\Microsoft\\Outlook"
+                    }
+                ]
+            }
+        },
+        "condition": "(s_proc_create_action and s_proc_cmd_file_util and s_proc_cmd_email_path_or_ext) or (s_proc_create_action and s_proc_powershell_exe and s_proc_powershell_file_cmdlets and s_proc_cmd_email_path_or_ext) or (s_fs_access_action and s_fs_email_filepath_target)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 로컬 시스템에서 이메일 데이터를 수집하려는 시도를 탐지할 수 있습니다. 'copy', 'move', 'xcopy', 'robocopy'와 같은 파일 유틸리티를 사용하여 Outlook 데이터 파일(.pst, .ost) 또는 관련 폴더에 접근하거나, PowerShell을 통해 이메일 파일을 조작하는 프로세스 생성 이벤트를 모니터링합니다. 또한, 이메일 데이터 파일에 대한 비정상적인 'read' 또는 'open' 파일 시스템 접근 이벤트도 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련된 프로세스 및 파일 활동에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 백업 소프트웨어, 메일 클라이언트 자체의 동기화 또는 아카이빙 기능, 시스템 관리 도구, 또는 합법적인 애플리케이션이 Outlook 데이터 파일에 접근하는 경우 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 파일 경로에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

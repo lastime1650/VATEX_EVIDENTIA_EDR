@@ -1,0 +1,191 @@
+{
+    "id": "T1556.009-ConditionalAccessPolicies",
+    "name": "Conditional Access Policies Modification",
+    "description": "Detects attempts to disable or modify conditional access policies to enable persistent access to compromised accounts, circumvent multi-factor authentication requirements, or allow access from untrusted locations. This includes activities like modifying IP ranges, removing MFA, or allowing access from unsupported cloud regions via CLI tools or PowerShell.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1556",
+        "subtechnique_id": "T1556.009",
+        "data_sources": [
+            "Enterprise:Credential Access:Modify Authentication Process:Conditional Access Policies",
+            "Enterprise:Defense Evasion:Modify Authentication Process:Conditional Access Policies",
+            "Enterprise:Persistence:Modify Authentication Process:Conditional Access Policies"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_azure_cli_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "az.exe"
+                    }
+                ]
+            },
+            "s3_azure_ca_policy_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "conditional-access policy"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ip-named-location"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "mfa"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "trusted"
+                    }
+                ]
+            },
+            "s4_aws_cli_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "aws.exe"
+                    }
+                ]
+            },
+            "s5_aws_iam_policy_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iam update-policy"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iam create-policy"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iam delete-policy-version"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iam attach-user-policy"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iam detach-user-policy"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "condition"
+                    }
+                ]
+            },
+            "s6_gcloud_cli_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "gcloud.exe"
+                    }
+                ]
+            },
+            "s7_gcloud_iam_policy_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iam policies update"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iam policies create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iam policies delete"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "condition"
+                    }
+                ]
+            },
+            "s8_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s9_powershell_entra_ca_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-AzureADMSConditionalAccessPolicy"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-AzureADMSConditionalAccessPolicy"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Remove-AzureADMSConditionalAccessPolicy"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "TrustedIPs"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Mfa"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_action_create and ( (s2_azure_cli_exe and s3_azure_ca_policy_keywords) or (s4_aws_cli_exe and s5_aws_iam_policy_keywords) or (s6_gcloud_cli_exe and s7_gcloud_iam_policy_keywords) or (s8_powershell_exe and s9_powershell_entra_ca_keywords) )"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 클라우드 환경 및 ID 공급자의 조건부 액세스 정책 변경 시도를 탐지할 수 있습니다. Azure CLI, AWS CLI, Google Cloud CLI 또는 PowerShell과 같은 명령줄 도구를 사용하여 조건부 액세스 정책을 수정하거나, MFA 요구 사항을 제거하거나, 신뢰할 수 없는 IP 범위에서의 접근을 허용하는 명령줄 패턴을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 계정 침해 또는 방어 회피 시도에 대한 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 클라우드 관리 작업, 자동화 스크립트, 또는 보안 관리 도구가 조건부 액세스 정책을 합법적으로 생성, 수정 또는 삭제하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 관리 활동에 대한 화이트리스트를 적용하거나, 특정 사용자 계정 및 IP 주소에서의 활동을 예외 처리하여 오탐을 줄일 수 있습니다."
+}

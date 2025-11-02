@@ -1,0 +1,34 @@
+{
+    "id": "F-PROC-047-ODBCConfiguration",
+    "name": "Feature: ODBC Data Source Configuration",
+    "description": "Identifies the execution of odbcconf.exe, a utility to configure ODBC data sources. It can be abused as a LOLBin to execute code or load DLLs.",
+    "severity": "info",
+    "mitre_attack": [
+        {
+            "tactic": "TA0002",
+            "technique_id": "T1218",
+            "subtechnique_id": "T1218.008"
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "odbcconf_execution",
+                "selections": {
+                    "selection_odbcconf": {
+                        "event_type": "process",
+                        "condition_method": "and",
+                        "conditions": [
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "odbcconf.exe"}
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "Feature Captured: ODBC configuration utility (odbcconf.exe) was executed."
+                }
+            }
+        ]
+    }
+}

@@ -1,0 +1,160 @@
+{
+    "id": "T1586-CompromiseAccounts-SuspiciousWebAPI",
+    "name": "Compromise Accounts - Suspicious Web/API Interaction",
+    "description": "Detects on-host process execution patterns that may indicate attempts to compromise or manage external accounts (social media, email, cloud) from the endpoint. This includes command-line tools making web requests to common service login/API endpoints with suspicious keywords.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1586",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s3_curl_wget_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "curl.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "wget.exe"
+                    }
+                ]
+            },
+            "s4_cmdline_webrequest_method": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-WebRequest"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-RestMethod"
+                    }
+                ]
+            },
+            "s5_cmdline_suspicious_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "facebook.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "twitter.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "linkedin.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "outlook.live.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "mail.google.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "azure.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "aws.amazon.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "login"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "auth"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "api"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-credential"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-username"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-password"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-u "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-p "
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and (((s2_powershell_exe and s4_cmdline_webrequest_method) or s3_curl_wget_exe) and s5_cmdline_suspicious_keywords)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 엔드포인트에서 외부 계정(소셜 미디어, 이메일, 클라우드)을 침해하거나 관리하려는 시도를 탐지할 수 있습니다. PowerShell, curl, wget과 같은 명령줄 도구가 일반적인 서비스 로그인/API 엔드포인트에 웹 요청을 보내는 프로세스 생성 이벤트를 모니터링합니다. 탐지된 이벤트는 중간 심각도로 분류되어 추가 조사를 트리거하며, 특히 다른 정찰 또는 리소스 개발 활동과 결합될 때 중요도가 높아집니다. 이는 공격자가 탈취한 계정을 활용하거나 계정 정보를 수집하는 초기 단계 활동을 나타낼 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 스크립트, 자동화된 클라우드 관리 도구, 또는 개발 목적으로 웹 API와 상호작용하는 합법적인 애플리케이션에 의해 오탐이 발생할 수 있습니다. 알려진 정상적인 명령줄 패턴이나 특정 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

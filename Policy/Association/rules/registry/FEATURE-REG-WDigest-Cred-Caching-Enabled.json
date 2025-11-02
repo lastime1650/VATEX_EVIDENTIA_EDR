@@ -1,0 +1,46 @@
+{
+    "id": "FEATURE-REG-WDigest-Cred-Caching-Enabled",
+    "name": "WDigest Credential Caching Enabled for Credential Dumping",
+    "description": "Detects the modification of the 'UseLogonCredential' value for WDigest. Setting this to '1' forces Windows to store logon credentials in memory in cleartext, preparing for credential dumping attacks.",
+    "severity": "medium",
+    "mitre_attack": [
+        {
+            "tactic": "TA0006",
+            "technique_id": "T1003",
+            "subtechnique_id": "T1003.001",
+            "data_sources": ["Windows Registry"]
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "enable_wdigest_caching",
+                "selections": {
+                    "selection_set_wdigest_use_logon": {
+                        "event_type": "registry",
+                        "condition_method": "and",
+                        "conditions": [
+                            {
+                                "field": "body.registry.keyclass", 
+                                "operator": "equals", 
+                                "value": "RegNtPreSetValueKey"
+                            },
+                            {
+                                "field": "body.registry.name", 
+                                "operator": "regex", 
+                                "value": ".*\\\\SYSTEM\\\\CurrentControlSet\\\\Control\\\\SecurityProviders\\\\WDigest\\\\UseLogonCredential$"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "WDigest 'UseLogonCredential' was set, likely to enable cleartext credential caching in LSASS for subsequent dumping."
+                }
+            }
+        ]
+    },
+    "operational_usage": "This is a very strong indicator of an impending credential dumping attempt. Modern Windows versions have this disabled by default. Any process enabling it requires immediate investigation. Correlate with subsequent access to lsass.exe.",
+    "false_positive": "Extremely rare. Required only for very specific legacy authentication protocols. In any modern environment, this should be treated as malicious until proven otherwise."
+}

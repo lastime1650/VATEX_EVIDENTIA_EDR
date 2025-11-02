@@ -1,0 +1,46 @@
+{
+    "id": "FEATURE-REG-Hidden-Files-Setting-Modification",
+    "name": "Hidden Files and Folders Display Setting Modified",
+    "description": "Detects changes to the registry value that controls the visibility of hidden files and folders in Explorer. Adversaries often disable this to hide their artifacts from the user.",
+    "severity": "low",
+    "mitre_attack": [
+        {
+            "tactic": "TA0005",
+            "technique_id": "T1564",
+            "subtechnique_id": "T1564.001",
+            "data_sources": ["Windows Registry"]
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "hide_from_user",
+                "selections": {
+                    "selection_set_explorer_hidden": {
+                        "event_type": "registry",
+                        "condition_method": "and",
+                        "conditions": [
+                            {
+                                "field": "body.registry.keyclass", 
+                                "operator": "equals", 
+                                "value": "RegNtPreSetValueKey"
+                            },
+                            {
+                                "field": "body.registry.name", 
+                                "operator": "regex", 
+                                "value": ".*\\\\Software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Explorer\\\\Advanced\\\\Hidden$"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "The setting for displaying hidden files in Explorer was modified. This may be an attempt to hide malicious files."
+                }
+            }
+        ]
+    },
+    "operational_usage": "This is a feature indicating an attempt to reduce user visibility. The value is often set to '2' (Don't show) by malware. SIEM should correlate this with file creation events in hidden directories (e.g., AppData, ProgramData).",
+    "false_positive": "A user can legitimately change this setting. The value is in flagging the event and correlating it with the process that made the change (e.g., explorer.exe vs. a suspicious script)."
+}

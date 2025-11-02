@@ -1,0 +1,159 @@
+{
+    "id": "T1499.003-ApplicationExhaustionFlood",
+    "name": "Application Exhaustion Flood",
+    "description": "Detects attempts by a process to cause a Denial of Service (DoS) by generating excessive network traffic or targeting resource-intensive application features, leading to exhaustion of system or application resources. This includes the execution of known DoS tools or scripts, or a process generating unusually large outbound network packets.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0008",
+        "technique_id": "T1499",
+        "subtechnique_id": "T1499.003",
+        "data_sources": [
+            "Impact:Endpoint Denial of Service:Application Exhaustion Flood",
+            "Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Execution:Command and Scripting Interpreter:Python",
+            "Command and Control:Application Layer Protocol:Web Protocols",
+            "NetworkTraffic:NetworkTrafficFlow",
+            "NetworkTraffic:NetworkTrafficContent"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmdline_hping3": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "hping3"
+                    }
+                ]
+            },
+            "s3_cmdline_ab_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ab.exe"
+                    }
+                ]
+            },
+            "s4_cmdline_slowloris": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "slowloris"
+                    }
+                ]
+            },
+            "s5_cmdline_python_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "python.exe"
+                    }
+                ]
+            },
+            "s6_cmdline_python_dos_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "flood"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "dos"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "attack"
+                    }
+                ]
+            },
+            "s7_cmdline_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s8_cmdline_powershell_webrequest_cmdlets": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-WebRequest"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-RestMethod"
+                    }
+                ]
+            },
+            "s9_cmdline_powershell_loop_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "loop"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "while"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "for"
+                    }
+                ]
+            },
+            "s10_outbound_large_network_packet": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    },
+                    {
+                        "field": "body.network.packetsize",
+                        "operator": "gte",
+                        "value": 200000
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and (s2_cmdline_hping3 or s3_cmdline_ab_exe or s4_cmdline_slowloris or (s5_cmdline_python_exe and s6_cmdline_python_dos_keywords) or (s7_cmdline_powershell_exe and s8_cmdline_powershell_webrequest_cmdlets and s9_cmdline_powershell_loop_keywords)) or s10_outbound_large_network_packet"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템 또는 애플리케이션에 대한 서비스 거부(DoS) 공격 시도를 탐지할 수 있습니다. 'hping3', 'ab.exe', 'slowloris'와 같은 알려진 DoS 도구의 실행, 또는 'python.exe'나 'powershell.exe'를 이용한 DoS 관련 스크립트 실행을 모니터링합니다. 또한, 단일 네트워크 이벤트에서 200KB 이상의 비정상적으로 큰 아웃바운드 패킷을 탐지하여 애플리케이션 리소스 고갈 시도를 식별할 수 있습니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 네트워크 활동에 대한 심층 조사를 시작하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 부하 테스트 도구, 네트워크 진단 유틸리티, 대용량 파일 전송 애플리케이션, 또는 특정 웹 기반 자동화 스크립트가 실행될 때 오탐이 발생할 수 있습니다. 특히 'Invoke-WebRequest'와 같은 PowerShell cmdlet은 합법적인 용도로도 자주 사용됩니다. 알려진 정상 프로세스나 특정 명령줄 패턴, 혹은 대용량 패킷을 생성하는 화이트리스트된 애플리케이션에 대해 예외 처리를 적용하여 오탐을 줄일 수 있습니다."
+}

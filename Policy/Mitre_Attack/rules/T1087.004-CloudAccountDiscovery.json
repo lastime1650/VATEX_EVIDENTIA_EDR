@@ -1,0 +1,187 @@
+{
+    "id": "T1087.004-CloudAccountDiscovery",
+    "name": "Cloud Account Discovery",
+    "description": "Detects attempts to enumerate cloud accounts using command-line interfaces for cloud service providers (Azure CLI, AWS CLI, Google Cloud CLI) or PowerShell cmdlets (e.g., Get-MsolRoleMember, Get-ADUser). This technique allows adversaries to identify valid user accounts, roles, and service accounts within cloud environments.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1087",
+        "subtechnique_id": "T1087.004",
+        "data_sources": [
+            "Enterprise:Discovery:Cloud Account",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Native API"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s3_az_cli_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "az.exe"
+                    }
+                ]
+            },
+            "s4_aws_cli_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "aws.exe"
+                    }
+                ]
+            },
+            "s5_gcloud_cli_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "gcloud.exe"
+                    }
+                ]
+            },
+            "s6_cmd_get_msolrolemember": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-MsolRoleMember"
+                    }
+                ]
+            },
+            "s7_cmd_get_aduser": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-ADUser"
+                    }
+                ]
+            },
+            "s8_cmd_get_localuser": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-LocalUser"
+                    }
+                ]
+            },
+            "s9_cmd_get_wmi_useraccount": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-WmiObject -Class Win32_UserAccount"
+                    }
+                ]
+            },
+            "s10_cmd_get_cim_useraccount": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-CimInstance -ClassName Win32_UserAccount"
+                    }
+                ]
+            },
+            "s11_cmd_az_ad_user_list": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ad user list"
+                    }
+                ]
+            },
+            "s12_cmd_aws_iam_list_users": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iam list-users"
+                    }
+                ]
+            },
+            "s13_cmd_aws_iam_list_roles": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iam list-roles"
+                    }
+                ]
+            },
+            "s14_cmd_gcloud_iam_service_accounts_list": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iam service-accounts list"
+                    }
+                ]
+            },
+            "s15_cmd_gcloud_projects_get_iam_policy": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "projects get-iam-policy"
+                    }
+                ]
+            },
+            "s16_apicall_netuserenum": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "NetUserEnum"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create and ( (s2_powershell_exe and (s6_cmd_get_msolrolemember or s7_cmd_get_aduser or s8_cmd_get_localuser or s9_cmd_get_wmi_useraccount or s10_cmd_get_cim_useraccount)) or (s3_az_cli_exe and s11_cmd_az_ad_user_list) or (s4_aws_cli_exe and (s12_cmd_aws_iam_list_users or s13_cmd_aws_iam_list_roles)) or (s5_gcloud_cli_exe and (s14_cmd_gcloud_iam_service_accounts_list or s15_cmd_gcloud_projects_get_iam_policy)) ) or s16_apicall_netuserenum"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 클라우드 계정 정보 수집 시도를 탐지할 수 있습니다. PowerShell을 통한 클라우드 사용자 및 역할 열거, Azure CLI, AWS CLI, Google Cloud CLI를 사용한 계정 목록 조회 명령 실행 등을 모니터링합니다. 탐지된 이벤트는 중간 심각도로 분류되어 자동 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히 다른 Discovery 또는 Collection 활동과 결합될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 클라우드 관리 도구, 자동화 스크립트, DevOps 파이프라인, 또는 합법적인 애플리케이션이 클라우드 계정 정보를 조회하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

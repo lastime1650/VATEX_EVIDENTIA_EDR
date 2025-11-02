@@ -1,0 +1,167 @@
+{
+    "id": "T1114.003-EmailForwardingRule",
+    "name": "Email Forwarding Rule",
+    "description": "Detects attempts by adversaries to setup or modify email forwarding rules to collect sensitive information, maintain persistent access to emails, or gain intelligence. This includes actions via PowerShell cmdlets, direct MAPI calls, or registry modifications related to email client rules.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0009",
+        "technique_id": "T1114",
+        "subtechnique_id": "T1114.003",
+        "data_sources": [
+            "Enterprise:Collection:Email Collection:Email Forwarding Rule",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Execution:Native API",
+            "Enterprise:Persistence:Modify Registry"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s3_powershell_new_inboxrule_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-InboxRule"
+                    }
+                ]
+            },
+            "s4_powershell_set_inboxrule_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-InboxRule"
+                    }
+                ]
+            },
+            "s5a_powershell_set_mailbox_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-Mailbox"
+                    }
+                ]
+            },
+            "s5b_powershell_forwarding_smtp_address_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-ForwardingSmtpAddress"
+                    }
+                ]
+            },
+            "s6_registry_modify_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtCreateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreCreateKey"
+                    }
+                ]
+            },
+            "s7a_registry_outlook_path_prefix": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\Software\\Microsoft\\Office\\"
+                    }
+                ]
+            },
+            "s7b_registry_outlook_rules_suffix": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "\\Outlook\\Rules"
+                    }
+                ]
+            },
+            "s8_apicall_create_rule": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "contains",
+                        "value": "CreateRule"
+                    }
+                ]
+            },
+            "s9_apicall_set_rule": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "contains",
+                        "value": "SetRule"
+                    }
+                ]
+            },
+            "s10_apicall_hrsetoneprop": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "contains",
+                        "value": "HrSetOneProp"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create and s2_powershell_exe_path and (s3_powershell_new_inboxrule_cmd or s4_powershell_set_inboxrule_cmd or (s5a_powershell_set_mailbox_cmd and s5b_powershell_forwarding_smtp_address_cmd))) or (s6_registry_modify_action and s7a_registry_outlook_path_prefix and s7b_registry_outlook_rules_suffix) or (s8_apicall_create_rule or s9_apicall_set_rule or s10_apicall_hrsetoneprop)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 이메일 전달 규칙 생성 및 수정 시도를 탐지할 수 있습니다. PowerShell을 통한 New-InboxRule, Set-InboxRule, Set-Mailbox -ForwardingSmtpAddress와 같은 명령 실행, Outlook 레지스트리 규칙 경로에 대한 쓰기/생성 작업, 또는 MAPI 관련 API 호출을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 계정의 이메일 규칙을 조사하여 악성 여부를 판단하고 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 사용자 또는 관리자가 이메일 전달 규칙을 설정하거나 수정하는 경우, 또는 합법적인 이메일 관리 소프트웨어가 규칙을 변경하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상적인 PowerShell 스크립트, 관리 도구, 또는 특정 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

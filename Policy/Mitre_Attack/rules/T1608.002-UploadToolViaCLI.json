@@ -1,0 +1,112 @@
+{
+    "id": "T1608.002-UploadToolViaCLI",
+    "name": "Upload Tool via Command Line Utilities",
+    "description": "Detects attempts by a compromised endpoint to upload tools to external infrastructure using common command-line utilities like PowerShell, curl, or ftp. This activity may indicate an adversary is staging tools for later use or transferring them to their controlled infrastructure.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1608",
+        "subtechnique_id": "T1608.002",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Command:CommandExecution",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s3_powershell_upload_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-WebRequest -Method PUT"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-RestMethod -Method PUT"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "[System.Net.WebClient].UploadFile"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "[System.Net.WebClient].UploadData"
+                    }
+                ]
+            },
+            "s4_curl_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "curl.exe"
+                    }
+                ]
+            },
+            "s5_curl_upload_option": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " -T "
+                    }
+                ]
+            },
+            "s6_ftp_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "ftp.exe"
+                    }
+                ]
+            },
+            "s7_ftp_put_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " put "
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and ((s2_powershell_exe_path and s3_powershell_upload_keywords) or (s4_curl_exe_path and s5_curl_upload_option) or (s6_ftp_exe_path and s7_ftp_put_command))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 PowerShell, curl, 또는 ftp.exe와 같은 명령줄 유틸리티를 통한 파일 업로드 시도를 탐지할 수 있습니다. 이는 공격자가 탈취한 시스템에서 도구를 외부 인프라로 전송하거나, 추가적인 공격을 위한 준비 작업을 수행하는 징후일 수 있습니다. 탐지된 이벤트는 중간 심각도로 분류되어 추가 조사를 트리거하고, 해당 프로세스의 전체 활동 및 네트워크 연결을 분석하여 악성 여부를 판단하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 소프트웨어 배포, 개발 프로세스, 또는 합법적인 파일 동기화 도구가 명령줄을 통해 파일을 업로드하는 경우 오탐이 발생할 수 있습니다. 특정 사용자, 프로세스, 또는 대상 IP 주소에 대한 화이트리스트를 구성하여 오탐을 줄일 수 있습니다."
+}

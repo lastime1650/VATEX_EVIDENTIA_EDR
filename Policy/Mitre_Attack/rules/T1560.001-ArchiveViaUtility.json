@@ -1,0 +1,260 @@
+{
+    "id": "T1560.001-ArchiveViaUtility",
+    "name": "Archive via Utility",
+    "description": "Detects attempts by adversaries to compress and/or encrypt collected data prior to exfiltration using common utilities like zip, tar, 7-Zip, WinRAR, WinZip, diantz, makecab, or certutil for Base64 encoding. This technique aims to package data into a format that is easier/more secure to transport.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0009",
+        "technique_id": "T1560",
+        "subtechnique_id": "T1560.001",
+        "data_sources": [
+            "Collection:Archive Collected Data:Archive via Utility",
+            "Execution:Command and Scripting Interpreter:Windows Command Shell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "process_diantz_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "diantz.exe"
+                    }
+                ]
+            },
+            "process_makecab_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "makecab.exe"
+                    }
+                ]
+            },
+            "process_certutil_encode_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "certutil.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-encode"
+                    }
+                ]
+            },
+            "process_zip_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "zip.exe"
+                    }
+                ]
+            },
+            "process_tar_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "tar.exe"
+                    }
+                ]
+            },
+            "process_7zip_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "7z.exe"
+                    }
+                ]
+            },
+            "process_winrar_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "WinRAR.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Rar.exe"
+                    }
+                ]
+            },
+            "process_winzip_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "WinZip.exe"
+                    }
+                ]
+            },
+            "filesystem_archive_creation_zip": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".zip"
+                    }
+                ]
+            },
+            "filesystem_archive_creation_rar": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".rar"
+                    }
+                ]
+            },
+            "filesystem_archive_creation_7z": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".7z"
+                    }
+                ]
+            },
+            "filesystem_archive_creation_cab": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".cab"
+                    }
+                ]
+            },
+            "filesystem_archive_creation_tar_gz_bz2_xz": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".tar"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".tgz"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".gz"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".bz2"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".tbz2"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".xz"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".txz"
+                    }
+                ]
+            }
+        },
+        "condition": "(process_diantz_execution or process_makecab_execution or process_certutil_encode_execution or process_zip_execution or process_tar_execution or process_7zip_execution or process_winrar_execution or process_winzip_execution) or (filesystem_archive_creation_zip or filesystem_archive_creation_rar or filesystem_archive_creation_7z or filesystem_archive_creation_cab or filesystem_archive_creation_tar_gz_bz2_xz)"
+    },
+    "operational_usage": "SOC는 이 룰을 통해 공격자가 데이터를 외부로 유출하기 전 압축/암호화하는 행위를 탐지할 수 있습니다. 특정 압축 유틸리티의 실행이나 알려진 압축 파일 확장자를 가진 파일 생성 이벤트를 모니터링하여 데이터 수집 및 스테이징 단계의 이상 징후를 식별하고, 관련 프로세스 및 파일에 대한 즉각적인 조사를 시작할 수 있습니다. 탐지된 이벤트는 자동 알람 및 사후 보고서 작성에 활용되어 침해사고 대응 우선순위를 높일 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 소프트웨어 설치/업데이트, 백업 솔루션, 또는 사용자가 수동으로 파일을 압축하는 경우에도 탐지될 수 있습니다. 개발자가 소스 코드를 압축하거나, 합법적인 애플리케이션이 로그 또는 데이터를 압축하는 경우에도 오탐이 발생할 수 있으므로, 화이트리스트 기반의 예외 처리가 필요할 수 있습니다."
+}

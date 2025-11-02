@@ -1,0 +1,84 @@
+{
+    "id": "T1071.003-MailProtocolsC2",
+    "name": "Command and Control via Mail Protocols",
+    "description": "Detects attempts by adversaries to use application layer protocols associated with electronic mail delivery (SMTP, POP3, IMAP) for command and control (C2) to avoid detection and network filtering. This technique blends in with existing network traffic by embedding commands and results within mail protocol traffic, mimicking normal communication patterns.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0011",
+        "technique_id": "T1071",
+        "subtechnique_id": "T1071.003",
+        "data_sources": [
+            "Enterprise:Command and Control:Application Layer Protocol:Mail Protocols"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_tcp_network_protocol": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "TCP"
+                    }
+                ]
+            },
+            "s2_smtp_destination_ports": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 25
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 465
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 587
+                    }
+                ]
+            },
+            "s3_pop3_destination_ports": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 110
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 995
+                    }
+                ]
+            },
+            "s4_imap_destination_ports": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 143
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 993
+                    }
+                ]
+            }
+        },
+        "condition": "s1_tcp_network_protocol and (s2_smtp_destination_ports or s3_pop3_destination_ports or s4_imap_destination_ports)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 악성 행위자가 SMTP, POP3, IMAP과 같은 메일 프로토콜을 명령 및 제어(C2) 채널로 사용하는 시도를 탐지할 수 있습니다. 정상적인 메일 트래픽으로 위장하여 탐지를 회피하려는 공격을 식별하는 데 중점을 둡니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스의 네트워크 활동 및 연관된 이메일 내용을 추가적으로 조사하여 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "합법적인 이메일 클라이언트(예: Outlook, Thunderbird), 이메일 서버, 또는 기타 메일 프로토콜을 사용하는 애플리케이션에 의해 오탐이 발생할 수 있습니다. 특히 사용자 시스템에서 직접 메일 서버와 통신하는 경우 정상적인 행위로 간주될 수 있으므로, 알려진 정상 프로세스에 대한 화이트리스트 적용 또는 비정상적인 트래픽 패턴(예: 비정상적인 데이터 양, 비표준 시간대의 통신)에 대한 추가적인 컨텍스트 분석이 필요합니다."
+}

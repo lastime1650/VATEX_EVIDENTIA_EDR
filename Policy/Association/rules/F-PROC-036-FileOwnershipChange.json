@@ -1,0 +1,34 @@
+{
+    "id": "F-PROC-036-FileOwnershipChange",
+    "name": "Feature: File Ownership Change via takeown.exe",
+    "description": "Identifies the execution of takeown.exe, which is used to take ownership of a file or directory. This can be used to bypass file permissions.",
+    "severity": "info",
+    "mitre_attack": [
+        {
+            "tactic": "TA0004",
+            "technique_id": "T1222",
+            "subtechnique_id": "T1222.001"
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "takeown_execution",
+                "selections": {
+                    "selection_takeown": {
+                        "event_type": "process",
+                        "condition_method": "and",
+                        "conditions": [
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "takeown.exe"}
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "Feature Captured: File ownership change attempt (takeown.exe)."
+                }
+            }
+        ]
+    }
+}

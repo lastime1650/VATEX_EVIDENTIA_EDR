@@ -6,19 +6,21 @@
 
 int main()
 {
+
+
     EDR::Server::EDRServer Server(
         /*
             Kafka Consume
         */
         "192.168.1.205:29092",
-        "my_consumer_group2",
-        "edr_agent_windows",
+        "my_consumer_group5",
+        "raw-edr-agent-windows",
 
         /*
             EDR Policy Arguments
         */
-        "",
-        "",
+        "Policy/Association/rules",
+        "Policy/Association/Scenario/rules",
 
         /*
             AgentTCP Server

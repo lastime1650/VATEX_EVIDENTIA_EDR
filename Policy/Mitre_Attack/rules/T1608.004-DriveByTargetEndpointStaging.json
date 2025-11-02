@@ -1,0 +1,185 @@
+{
+    "id": "T1608.004-DriveByTargetEndpointStaging",
+    "name": "Drive-by Target - Endpoint Staging Detection",
+    "description": "Detects an endpoint being used to stage malicious web content by writing or creating suspicious files (e.g., JavaScript, HTML) in common web server directories, or by executing command-line tools for web content upload/modification. This rule aims to identify instances where a compromised endpoint is leveraged as part of an adversary's resource development for drive-by compromises.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1608",
+        "subtechnique_id": "T1608.004",
+        "data_sources": [
+            "File:FileModification",
+            "Process:ProcessCreation"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_filesystem_write_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    }
+                ]
+            },
+            "s2_web_server_directory": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\inetpub\\wwwroot"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\Apache\\htdocs"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\xampp\\htdocs"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\Program Files\\nginx\\html"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\nginx\\html"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\webapps\\"
+                    }
+                ]
+            },
+            "s3_suspicious_web_file_extension": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".js"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".html"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".htm"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".php"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".asp"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".aspx"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".jsp"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".css"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".xml"
+                    }
+                ]
+            },
+            "s4_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s5_suspicious_upload_commandline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ftp.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "curl.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe -Command Invoke-WebRequest"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe -Command Invoke-RestMethod"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "bitsadmin.exe /transfer"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wget.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "git.exe push"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "scp.exe"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_filesystem_write_action and s2_web_server_directory and s3_suspicious_web_file_extension) or (s4_process_create_action and s5_suspicious_upload_commandline)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 침해된 엔드포인트가 악성 웹 콘텐츠 스테이징에 사용되는 것을 탐지할 수 있습니다. 이는 웹 서버 디렉터리 내에서 `.js`, `.html` 등 웹 관련 파일의 비정상적인 생성 또는 수정 행위를 모니터링하거나, `ftp.exe`, `curl.exe`, `powershell.exe`와 같은 도구를 사용하여 웹 콘텐츠를 업로드하거나 조작하는 프로세스 생성 이벤트를 감시합니다. 탐지된 이벤트는 공격자가 드라이브 바이 공격을 위한 리소스를 개발하는 초기 단계에 있음을 나타내므로, 즉각적인 조사와 대응이 필요합니다.",
+    "false_positive": "정상적인 웹 개발 활동, 웹 서버 관리 작업, 자동화된 배포 스크립트, 또는 합법적인 콘텐츠 관리 시스템(CMS) 업데이트 등으로 인해 오탐이 발생할 수 있습니다. 특정 개발 환경, 관리 도구, 또는 알려진 정상 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,203 @@
+{
+    "id": "T1137.004-OutlookHomePagePersistence",
+    "name": "Persistence via Outlook Home Page",
+    "description": "Detects attempts by adversaries to establish persistence by abusing Microsoft Outlook's Home Page feature. This involves setting a malicious URL as an Outlook folder's home page, which can execute code when the folder is opened. This rule focuses on detecting suspicious registry modifications to Outlook configuration and unusual process creations originating from Outlook.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1137",
+        "subtechnique_id": "T1137.004",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "WindowsRegistry:WindowsRegistryKeyModification",
+            "WindowsRegistry:WindowsRegistryKeyAccess",
+            "File:FileCreation",
+            "File:FileModification"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_registry_set_value_key": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    }
+                ]
+            },
+            "s2_registry_outlook_home_page_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "Software\\Microsoft\\Office\\"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "\\Outlook\\Profiles\\"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "Folder Home Page"
+                    }
+                ]
+            },
+            "s3_process_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s4_parent_is_outlook": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "endswith",
+                        "value": "outlook.exe"
+                    }
+                ]
+            },
+            "s5_child_process_suspicious_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "cmd.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "mshta.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "wscript.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "cscript.exe"
+                    }
+                ]
+            },
+            "s6_child_process_suspicious_cmdline_script": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "javascript:"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "mshta.exe http"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell -c"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell -enc"
+                    }
+                ]
+            },
+            "s7_filesystem_html_write_create": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    }
+                ]
+            },
+            "s8_filepath_ends_with_html": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".html"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".htm"
+                    }
+                ]
+            },
+            "s9_filepath_in_temp_or_outlook_cache": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\\\Temp\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\\\Temporary Internet Files\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\\\Content.Outlook\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\\\AppData\\\\Local\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\\\AppData\\\\Roaming\\\\"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_registry_set_value_key and s2_registry_outlook_home_page_path) or (s3_process_action_create and s4_parent_is_outlook and (s5_child_process_suspicious_exe or s6_child_process_suspicious_cmdline_script)) or (s7_filesystem_html_write_create and s8_filepath_ends_with_html and s9_filepath_in_temp_or_outlook_cache)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Microsoft Outlook의 Home Page 기능을 악용하는 지속성(Persistence) 시도를 탐지할 수 있습니다. Outlook 구성과 관련된 레지스트리 키('Folder Home Page' 등)에 대한 비정상적인 쓰기/수정 활동을 모니터링하고, outlook.exe가 cmd.exe, powershell.exe, mshta.exe 등과 같은 의심스러운 자식 프로세스를 생성하는 이벤트를 탐지합니다. 또한, 사용자 임시 폴더나 Outlook 캐시 경로에서 악성 HTML 파일의 생성 또는 수정도 추적합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 파일에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 Outlook 추가 기능, 매크로, 또는 합법적인 시스템 관리 도구가 Outlook 설정을 변경하거나, Outlook이 웹 콘텐츠를 로드하는 과정에서 임시 파일을 생성할 때 오탐이 발생할 수 있습니다. 특정 Outlook 버전 업데이트나 기업에서 배포하는 Outlook 커스터마이징 스크립트도 유사한 행동을 보일 수 있습니다. 알려진 정상 프로세스나 파일 경로를 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

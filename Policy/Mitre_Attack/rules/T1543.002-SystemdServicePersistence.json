@@ -1,0 +1,142 @@
+{
+    "id": "T1543.002-SystemdServicePersistence",
+    "name": "Persistence via Systemd Service",
+    "description": "Detects attempts to create or modify systemd services for persistence on Linux systems. Adversaries may alter service unit files (e.g., .service files in /etc/systemd/system or user directories) or use utilities like systemctl to enable malicious payloads to execute repeatedly during system boot or user login, potentially leading to privilege escalation.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1543",
+        "subtechnique_id": "T1543.002",
+        "data_sources": [
+            "Enterprise:Persistence:Create or Modify System Process:Systemd Service",
+            "Enterprise:Privilege Escalation:Create or Modify System Process:Systemd Service",
+            "Enterprise:Execution:Command and Scripting Interpreter:Unix Shell",
+            "Enterprise:Execution:System Services:Service Execution"
+        ]
+    },
+    "platform": [
+        "linux"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_systemctl_or_service_utility": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "systemctl"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "/usr/sbin/service"
+                    }
+                ]
+            },
+            "s3_cmdline_service_modification": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "enable"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "start"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "set-property"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "edit"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "link"
+                    }
+                ]
+            },
+            "s4_filesystem_mod_create_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    }
+                ]
+            },
+            "s5_systemd_service_file_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "/etc/systemd/system"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/.config/systemd/user"
+                    }
+                ]
+            },
+            "s6_systemd_service_file_extension": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".service"
+                    }
+                ]
+            },
+            "s7_systemd_spawned_process_ppid": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.ppid",
+                        "operator": "equals",
+                        "value": 1
+                    }
+                ]
+            },
+            "s8_systemd_spawned_process_parent_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "contains",
+                        "value": "systemd"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_systemctl_or_service_utility and s3_cmdline_service_modification) or (s4_filesystem_mod_create_action and s5_systemd_service_file_path and s6_systemd_service_file_extension) or (s1_process_create_action and s7_systemd_spawned_process_ppid and s8_systemd_spawned_process_parent_exe)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Linux 시스템에서 systemd 서비스를 통한 지속성(Persistence) 및 권한 상승(Privilege Escalation) 시도를 탐지할 수 있습니다. systemctl 또는 service 유틸리티의 실행 이벤트와 함께 서비스 수정 명령줄 인자를 모니터링하고, /etc/systemd/system 또는 사용자 디렉터리 내 .service 파일의 생성/수정 이벤트를 감시합니다. 또한, systemd(PID 1)에 의해 생성된 의심스러운 프로세스를 추적하여 악성 서비스 실행을 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 추가적인 포렌식 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 소프트웨어 설치/업데이트, 또는 합법적인 애플리케이션이 systemd 서비스를 등록하거나 수정하는 경우 오탐이 발생할 수 있습니다. 예를 들어, Docker, Kubelet 등의 컨테이너 오케스트레이션 도구, 웹 서버 (Nginx, Apache), 데이터베이스 (PostgreSQL, MySQL) 등이 systemd 서비스를 생성하거나 수정할 수 있습니다. 알려진 정상적인 systemctl 명령 패턴, 서비스 파일 경로, 또는 특정 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,67 @@
+{
+    "id": "T1564.007-VBAStomping",
+    "name": "VBA Stomping",
+    "description": "Detects attempts to hide malicious Visual Basic for Applications (VBA) payloads within MS Office documents by replacing the VBA source code with benign data, while leaving the compiled malicious p-code intact. This is often achieved through file modification actions on macro-enabled Office documents.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1564",
+        "subtechnique_id": "T1564.007",
+        "data_sources": [
+            "Enterprise:Defense Evasion:Hide Artifacts:VBA Stomping",
+            "Enterprise:Execution:Command and Scripting Interpreter:Visual Basic"
+        ]
+    },
+    "platform": [
+        "windows",
+        "macos",
+        "linux"
+    ],
+    "detection": {
+        "selections": {
+            "s1_file_creation_or_modification": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    }
+                ]
+            },
+            "s2_target_is_macro_enabled_doc": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".docm"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".xlsm"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".pptm"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_file_creation_or_modification and s2_target_is_macro_enabled_doc"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 VBA 스톰핑 공격을 탐지할 수 있습니다. 매크로가 활성화된 MS Office 문서(.docm, .xlsm, .pptm)에 대한 생성, 쓰기, 또는 덮어쓰기 파일 시스템 이벤트를 모니터링합니다. 이러한 이벤트는 악성 VBA 코드를 은폐하려는 시도로 해석될 수 있습니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 문서와 관련된 프로세스 및 사용자 활동에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 문서가 비정상적으로 수정되거나 예상치 못한 위치에서 생성될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 MS Office 문서 편집, 저장, 또는 매크로를 포함하는 문서의 생성/업데이트 과정에서 오탐이 발생할 수 있습니다. 합법적인 매크로 개발 활동이나 문서 관리 시스템에 의한 자동화된 문서 수정 시에도 탐지될 수 있습니다. 특정 사용자, 프로세스 또는 문서 경로에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

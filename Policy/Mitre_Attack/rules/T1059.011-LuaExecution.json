@@ -1,0 +1,76 @@
+{
+    "id": "T1059.011-LuaExecution",
+    "name": "Lua Execution",
+    "description": "Detects attempts to abuse Lua commands and scripts for execution. Adversaries may incorporate, abuse, or replace existing Lua interpreters to allow for malicious Lua command execution at runtime, either through the stand-alone interpreter, via scripts (.lua), or from Lua-embedded programs. This technique allows adversaries to execute malicious code, achieve persistence, or perform other actions.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1059",
+        "subtechnique_id": "T1059.011",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Lua"
+        ]
+    },
+    "platform": [
+        "windows",
+        "linux",
+        "macos"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_lua_interpreter_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "lua.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "/lua"
+                    }
+                ]
+            },
+            "s3_lua_script_in_commandline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".lua"
+                    }
+                ]
+            },
+            "s4_lua_direct_code_execution_flags": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " -e "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " -l "
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and (s2_lua_interpreter_exe_path or s3_lua_script_in_commandline or s4_lua_direct_code_execution_flags)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Lua 스크립트 또는 명령어 실행 시도를 탐지할 수 있습니다. Lua 인터프리터 실행, 명령줄을 통한 .lua 스크립트 실행, 또는 '-e'나 '-l'과 같은 플래그를 사용하여 직접 Lua 코드를 실행하는 경우를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히 다른 실행 또는 방어 회피 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 기능, 개발 도구, 게임 엔진, 또는 합법적인 애플리케이션이 Lua 스크립트를 사용하거나 Lua 인터프리터를 실행하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 Lua 관련 프로세스나 스크립트 실행 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

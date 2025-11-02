@@ -1,0 +1,126 @@
+{
+    "id": "T1124-SystemTimeDiscovery",
+    "name": "System Time Discovery",
+    "description": "Detects attempts to gather the system time and/or time zone settings from a local or remote Windows system. This includes execution of commands like 'net time' or 'w32tm /tz', PowerShell cmdlets such as 'Get-Date', and API calls to retrieve system time information like GetTickCount(), GetSystemTime(), GetLocalTime(), or GetTimeZoneInformation(). Adversaries may use this information for time bombs, delaying execution, or for system location discovery.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1124",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Process:OSAPIExecution",
+            "Command:CommandExecution",
+            "Process:ProcessCreation"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_net_time_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "net time"
+                    }
+                ]
+            },
+            "s3_w32tm_tz_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "w32tm /tz"
+                    }
+                ]
+            },
+            "s4_powershell_exe_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s5_get_date_cmdlet": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-Date"
+                    }
+                ]
+            },
+            "s6_apicall_gettickcount": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetTickCount"
+                    }
+                ]
+            },
+            "s7_apicall_getsystemtime": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetSystemTime"
+                    }
+                ]
+            },
+            "s8_apicall_getlocaltime": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetLocalTime"
+                    }
+                ]
+            },
+            "s9_apicall_gettimezoneinfo": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetTimeZoneInformation"
+                    }
+                ]
+            },
+            "s10_apicall_getsystemtimeasfiletime": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetSystemTimeAsFileTime"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create and s2_net_time_cmd) or (s1_process_create and s3_w32tm_tz_cmd) or (s1_process_create and s4_powershell_exe_cmd and s5_get_date_cmdlet) or s6_apicall_gettickcount or s7_apicall_getsystemtime or s8_apicall_getlocaltime or s9_apicall_gettimezoneinfo or s10_apicall_getsystemtimeasfiletime"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템 시간 및 시간대 정보 수집 시도를 탐지할 수 있습니다. 'net time', 'w32tm /tz'와 같은 명령 실행, PowerShell의 'Get-Date' cmdlet 사용, 또는 GetTickCount(), GetSystemTime() 등 시스템 시간 관련 API 호출을 모니터링합니다. 탐지된 이벤트는 정찰 활동의 일부로 간주될 수 있으며, 다른 Discovery 또는 Execution 활동과 결합될 때 중요도가 높아집니다. 자동 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 백신 소프트웨어, 사용자 환경 설정 스크립트, 또는 합법적인 애플리케이션이 시스템 시간 정보를 조회하는 과정에서 오탐이 발생할 수 있습니다. 특히 GetTickCount()와 같은 API는 많은 애플리케이션에서 내부적으로 사용될 수 있으므로, 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

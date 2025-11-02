@@ -1,0 +1,272 @@
+{
+    "id": "T1484.001-GroupPolicyModification",
+    "name": "Group Policy Modification",
+    "description": "Detects attempts by adversaries to modify Group Policy Objects (GPOs) to subvert intended discretionary access controls, often for privilege escalation or persistence. This includes execution of GPO management tools, PowerShell cmdlets, direct registry modifications to policy keys, or changes to GPO-related files within the SYSVOL share.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0004",
+        "technique_id": "T1484",
+        "subtechnique_id": "T1484.001",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "WindowsRegistry:WindowsRegistryKeyModification",
+            "File:FileModification",
+            "ActiveDirectory:ActiveDirectoryObjectModification"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s1_gpo_editor_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "gpedit.msc"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "secedit.exe"
+                    }
+                ]
+            },
+            "s2_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s3_powershell_gpo_cmdlets": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-GPO"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-GPLink"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Remove-GPLink"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-GPRegistryValue"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-GPPermissions"
+                    }
+                ]
+            },
+            "s4_reg_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "reg.exe"
+                    }
+                ]
+            },
+            "s5_reg_exe_modify_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " add "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " set "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " delete "
+                    }
+                ]
+            },
+            "s6_reg_exe_gpo_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "HKEY_CURRENT_USER\\SOFTWARE\\Policies"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Group Policy"
+                    }
+                ]
+            },
+            "s7_registry_modify_action_keyclass": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtRenameKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtDeleteKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreCreateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreCreateKeyEx"
+                    }
+                ]
+            },
+            "s7_registry_gpo_name_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\SOFTWARE\\Policies"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "Group Policy"
+                    }
+                ]
+            },
+            "s8_filesystem_gpo_file_modify_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "rename"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "remove"
+                    }
+                ]
+            },
+            "s9_filesystem_filepath_contains_sysvol": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "SYSVOL"
+                    }
+                ]
+            },
+            "s9_filesystem_filepath_contains_policies": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "Policies"
+                    }
+                ]
+            },
+            "s10_filesystem_gpo_specific_files": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "GptTmpl.inf"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "ScheduledTasks.xml"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "registry.pol"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "gpt.ini"
+                    }
+                ]
+            }
+        },
+        "condition": " (s1_process_create_action AND s1_gpo_editor_cmdline) OR (s1_process_create_action AND s2_powershell_exe_path AND s3_powershell_gpo_cmdlets) OR (s1_process_create_action AND s4_reg_exe_path AND s5_reg_exe_modify_action AND s6_reg_exe_gpo_path) OR (s7_registry_modify_action_keyclass AND s7_registry_gpo_name_path) OR (s8_filesystem_gpo_file_modify_action AND s9_filesystem_filepath_contains_sysvol AND s9_filesystem_filepath_contains_policies AND s10_filesystem_gpo_specific_files)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 그룹 정책 개체(GPO) 수정 시도를 탐지할 수 있습니다. 이는 gpedit.msc, secedit.exe와 같은 GPO 관리 도구 실행, PowerShell GPO cmdlet 사용, 또는 reg.exe를 통한 정책 관련 레지스트리 키 직접 수정 시도, 그리고 SYSVOL 공유 내 GPO 관련 파일(GptTmpl.inf, ScheduledTasks.xml, registry.pol 등)의 변경을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히, 권한 상승 또는 방어 회피 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 소프트웨어 설치 또는 업데이트, 또는 합법적인 스크립트가 그룹 정책을 수정하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스, 특정 명령줄 패턴, 또는 특정 GPO 경로에 대한 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

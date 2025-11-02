@@ -1,0 +1,181 @@
+{
+    "id": "T1197-BITSJobsAbuse",
+    "name": "BITS Jobs Abuse",
+    "description": "Detects attempts by adversaries to abuse the Windows Background Intelligent Transfer Service (BITS) for various malicious purposes, including downloading, executing, and persisting code. This often involves the use of bitsadmin.exe, PowerShell cmdlets, or direct interaction with the BITS service to transfer files, establish persistence, or perform reconnaissance.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1197",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Discovery:System Service Discovery"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_bitsadmin_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "bitsadmin.exe"
+                    }
+                ]
+            },
+            "s3_bitsadmin_command_recon_options": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/list"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/info"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/monitor"
+                    }
+                ]
+            },
+            "s4_bitsadmin_command_malicious_options": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "transfer"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "addfile"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "setnotifyflags"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "setnotifycmdline"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "setminretrydelay"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "setcustomheaders"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "resume"
+                    }
+                ]
+            },
+            "s5_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s6_powershell_bits_cmdlets": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Start-BitsTransfer"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Add-BitsFile"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-BitsTransfer"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Complete-BitsTransfer"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Resume-BitsTransfer"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-BitsTransfer"
+                    }
+                ]
+            },
+            "s7_sc_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "sc.exe"
+                    }
+                ]
+            },
+            "s8_sc_query_bits_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "query"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "bits"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and ((s2_bitsadmin_exe_path and (s3_bitsadmin_command_recon_options or s4_bitsadmin_command_malicious_options)) or (s5_powershell_exe_path and s6_powershell_bits_cmdlets) or (s7_sc_exe_path and s8_sc_query_bits_command))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Windows BITS(Background Intelligent Transfer Service)를 악용하려는 시도를 탐지할 수 있습니다. 특히 bitsadmin.exe 또는 PowerShell을 통해 BITS 작업을 생성, 수정, 또는 조회하는 명령줄 활동을 모니터링합니다. 또한 'sc query bits'와 같은 BITS 서비스 상태 조회 명령도 탐지하여 초기 정찰 활동을 파악할 수 있습니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 네트워크 활동에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 이는 특히 파일 전송, 지속성 유지, 또는 명령 및 제어 채널 구축과 같은 후속 공격 단계와 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 업데이트, 소프트웨어 설치 프로그램, 또는 합법적인 애플리케이션이 BITS를 사용하여 파일을 다운로드하거나 전송하는 경우 오탐이 발생할 수 있습니다. 또한 시스템 관리자가 BITS 작업 상태를 수동으로 확인하는 경우에도 탐지될 수 있습니다. 알려진 정상적인 BITS 작업 패턴이나 특정 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

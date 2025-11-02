@@ -1,0 +1,214 @@
+{
+    "id": "T1556-ModifyAuthenticationProcess",
+    "name": "Modify Authentication Process",
+    "description": "Detects attempts to modify authentication mechanisms and processes, such as changes to LSA Notification Packages registry keys, creation/modification of suspicious DLLs in system directories, high-privilege access to LSASS process, or command-line execution for reversible password encryption and Active Directory user modifications. Adversaries use this to bypass authentication or steal credentials.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0006",
+        "technique_id": "T1556",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Process:ProcessAccess",
+            "WindowsRegistry:WindowsRegistryKeyCreation",
+            "WindowsRegistry:WindowsRegistryKeyModification",
+            "File:FileCreation",
+            "File:FileModification"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_lsa_reg_key_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Lsa\\Notification Packages"
+                    }
+                ]
+            },
+            "s2_lsa_reg_key_mod_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "SetValueKey"
+                    }
+                ]
+            },
+            "s3_lsa_reg_key_create_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "CreateKey"
+                    }
+                ]
+            },
+            "s4_lsa_reg_key_open_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "OpenKey"
+                    }
+                ]
+            },
+            "s5_filesystem_action_write_create": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "superseded"
+                    }
+                ]
+            },
+            "s6_system32_dll_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "C:\\Windows\\System32\\"
+                    }
+                ]
+            },
+            "s7_dll_extension": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    }
+                ]
+            },
+            "s8_lsass_target_path": {
+                "event_type": "processaccess",
+                "conditions": [
+                    {
+                        "field": "body.processaccess.filepath",
+                        "operator": "endswith",
+                        "value": "lsass.exe"
+                    }
+                ]
+            },
+            "s9_handle_action_create_duplicate": {
+                "event_type": "processaccess",
+                "conditions": [
+                    {
+                        "field": "body.processaccess.handletype",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.processaccess.handletype",
+                        "operator": "equals",
+                        "value": "duplicate"
+                    }
+                ]
+            },
+            "s10_desired_access_high_priv": {
+                "event_type": "processaccess",
+                "conditions": [
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_ALL_ACCESS"
+                    },
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_VM_WRITE"
+                    },
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_VM_OPERATION"
+                    },
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_CREATE_THREAD"
+                    },
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "GENERIC_ALL"
+                    }
+                ]
+            },
+            "s11_process_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s12_powershell_or_cmd_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "cmd.exe"
+                    }
+                ]
+            },
+            "s13_cmdline_reversible_encryption_or_ad_mod": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-AllowReversiblePasswordEncryption $true"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-ADUser"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-ADAccountControl"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_lsa_reg_key_path and (s2_lsa_reg_key_mod_action or s3_lsa_reg_key_create_action or s4_lsa_reg_key_open_action)) or (s5_filesystem_action_write_create and s6_system32_dll_path and s7_dll_extension) or (s8_lsass_target_path and s9_handle_action_create_duplicate and s10_desired_access_high_priv) or (s11_process_action_create and s12_powershell_or_cmd_exe_path and s13_cmdline_reversible_encryption_or_ad_mod)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 인증 프로세스 변경 시도를 탐지할 수 있습니다. LSA Notification Packages 레지스트리 키에 대한 비정상적인 수정/생성/접근, 시스템 디렉터리 내 의심스러운 DLL 파일 생성/수정, LSASS 프로세스에 대한 고수준 권한 핸들 접근, 또는 PowerShell/CMD를 통한 가역 암호화 설정 및 Active Directory 사용자 정보 변경 시도를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 시스템 활동에 대한 심층적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 자격 증명 접근 및 방어 회피 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 업데이트, 보안 소프트웨어 설치, 또는 합법적인 시스템 관리 도구가 레지스트리, 파일 시스템, 또는 프로세스에 접근하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스, 파일 경로, 레지스트리 키 변경 패턴, 또는 명령줄 인자에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

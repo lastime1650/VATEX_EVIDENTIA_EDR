@@ -1,0 +1,79 @@
+{
+    "id": "T1036.002-RightToLeftOverride",
+    "name": "Right-to-Left Override",
+    "description": "Detects attempts to abuse the right-to-left override (RTLO or RLO) character (U+202E) to disguise a string and/or file name to make it appear benign. This includes looking for common formats of RTLO characters within filenames such as \\u202E, [U+202E], and %E2%80%AE during file system creation or rename operations. Adversaries use RTLO to trick users into executing what they think is a benign file type, often seen in spearphishing attachments or malicious files.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1036",
+        "subtechnique_id": "T1036.002",
+        "data_sources": [
+            "Enterprise:Defense Evasion:Masquerading:Right-to-Left Override"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_file_creation_or_rename": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "rename"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "superseded"
+                    }
+                ]
+            },
+            "s2_filepath_contains_u202e_literal": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\u202E"
+                    }
+                ]
+            },
+            "s3_filepath_contains_u202e_bracketed": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "[U+202E]"
+                    }
+                ]
+            },
+            "s4_filepath_contains_u202e_encoded": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "%E2%80%AE"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_file_creation_or_rename and (s2_filepath_contains_u202e_literal or s3_filepath_contains_u202e_bracketed or s4_filepath_contains_u202e_encoded)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 파일 시스템에서 RTLO(Right-to-Left Override) 문자를 사용하여 파일 이름을 위장하려는 시도를 탐지할 수 있습니다. 파일 생성, 이름 변경, 덮어쓰기 등의 이벤트에서 파일 경로 내에 \\u202E, [U+202E], 또는 %E2%80%AE와 같은 RTLO 관련 문자열 패턴이 포함되어 있는지 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 파일 및 관련된 프로세스에 대한 심층적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 이는 사용자를 속여 악성 파일을 실행하게 만드는 방어 회피 전술에 대응하는 데 중요합니다.",
+    "false_positive": "매우 드물게, 특정 합법적인 애플리케이션이나 파일 시스템 유틸리티가 파일 경로에 RTLO 문자를 포함할 수 있으나, 이는 일반적이지 않습니다. 대부분의 경우, 이 탐지는 악의적인 활동을 나타냅니다. 오탐 발생 시, 해당 프로세스나 파일 경로를 화이트리스트에 추가하여 조정할 수 있습니다."
+}

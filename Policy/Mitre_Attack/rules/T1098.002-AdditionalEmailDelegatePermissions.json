@@ -1,0 +1,112 @@
+{
+    "id": "T1098.002-AdditionalEmailDelegatePermissions",
+    "name": "Additional Email Delegate Permissions",
+    "description": "Detects attempts by adversaries to grant additional permission levels to email accounts, specifically focusing on PowerShell cmdlets like Add-MailboxPermission. This technique aims to assign access rights to users, particularly 'Anonymous' or 'Default' users, to maintain persistent access or escalate privileges within an email environment.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1098",
+        "subtechnique_id": "T1098.002",
+        "data_sources": [
+            "Group:GroupModification",
+            "ApplicationLog:ApplicationLogContent",
+            "UserAccount:UserAccountModification"
+        ]
+    },
+    "platform": [
+        "windows",
+        "office suite"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_creation": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_powershell_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s3_add_mailbox_permission_cmdlet": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Add-MailboxPermission"
+                    }
+                ]
+            },
+            "s4_target_anonymous_user": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-User Anonymous"
+                    }
+                ]
+            },
+            "s5_target_default_user": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-User Default"
+                    }
+                ]
+            },
+            "s6_access_rights_fullaccess": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-AccessRights FullAccess"
+                    }
+                ]
+            },
+            "s7_access_rights_sendas": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-AccessRights SendAs"
+                    }
+                ]
+            },
+            "s8_access_rights_external_sendas": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-AccessRights ExternalSendAs"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_creation and s2_powershell_execution and s3_add_mailbox_permission_cmdlet and (s4_target_anonymous_user or s5_target_default_user) and (s6_access_rights_fullaccess or s7_access_rights_sendas or s8_access_rights_external_sendas)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Exchange 또는 Office 365 환경에서 이메일 계정에 비정상적인 위임 권한이 부여되는 시도를 탐지할 수 있습니다. 특히 PowerShell을 통해 'Add-MailboxPermission' cmdlet이 'Anonymous' 또는 'Default' 사용자를 대상으로 'FullAccess', 'SendAs', 'ExternalSendAs'와 같은 민감한 권한을 부여하는 명령줄 실행을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스 및 관련 사용자 계정에 대한 심층 조사를 시작하는 데 사용될 수 있습니다. 이는 지속성 유지 또는 권한 에스컬레이션 시도를 나타낼 수 있습니다.",
+    "false_positive": "정상적인 관리 작업, 자동화된 스크립트, 또는 합법적인 애플리케이션이 이메일 계정에 위임 권한을 설정하는 과정에서 오탐이 발생할 수 있습니다. 특히, 특정 관리 계정이나 알려진 관리 스크립트에 의한 작업은 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

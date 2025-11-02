@@ -1,0 +1,153 @@
+{
+    "id": "T1560.003-ArchiveviaCustomMethod",
+    "name": "Archive via Custom Method",
+    "description": "An adversary may compress or encrypt data that is collected prior to exfiltration using a custom method. Adversaries may choose to use custom archival methods, such as encryption with XOR or stream ciphers implemented with no external library or utility references. Custom implementations of well-known compression algorithms have also been used.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0009",
+        "technique_id": "T1560",
+        "subtechnique_id": "T1560.003",
+        "data_sources": [
+            "File:File Creation",
+            "Script:Script Execution",
+            "Process:Process Creation"
+        ]
+    },
+    "platform": [
+        "windows",
+        "linux",
+        "macos"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_script_interpreter_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "cmd.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "wscript.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "cscript.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "python.exe"
+                    }
+                ]
+            },
+            "s3_cmdline_base64_indicators": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "[System.Convert]::ToBase64String"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "[System.Convert]::FromBase64String"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "certutil -encode"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "certutil -decode"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-Expression"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iex "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-Object System.IO.Compression.GzipStream"
+                    }
+                ]
+            },
+            "s4_cmdline_direct_file_output_indicators": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-Content"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Out-File"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Add-Content"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " > "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " >> "
+                    }
+                ]
+            },
+            "s5_filesystem_file_creation_or_overwritten_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and s2_script_interpreter_path and (s3_cmdline_base64_indicators or s4_cmdline_direct_file_output_indicators) and s5_filesystem_file_creation_or_overwritten_action"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 사용자 정의 방식으로 데이터를 압축하거나 암호화하여 수집된 데이터를 외부로 유출하기 전에 준비하는 행위를 탐지할 수 있습니다. 스크립트 인터프리터(PowerShell, CMD, Python 등)의 프로세스 생성 이벤트와 함께 명령줄에서 Base64 인코딩/디코딩, 직접 파일 쓰기 작업, 또는 기타 난독화된 데이터 조작 지시가 탐지될 경우, 이는 사용자 정의 압축/암호화 시도로 간주됩니다. 또한, 이러한 프로세스 활동과 동시에 파일 생성 또는 수정 이벤트가 발생할 경우 알람을 트리거합니다. 탐지된 이벤트는 데이터 유출 전 단계의 중요한 지표로 간주되어 높은 심각도로 분류되며, 즉각적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 스크립트, 소프트웨어 설치 프로그램, 또는 합법적인 애플리케이션이 Base64 인코딩/디코딩, 직접 파일 쓰기, 또는 기타 데이터 조작 기능을 사용하는 경우 오탐이 발생할 수 있습니다. 특히 개발 환경이나 특정 자동화 스크립트에서 이러한 패턴이 흔하게 나타날 수 있습니다. 알려진 정상 프로세스, 스크립트, 또는 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

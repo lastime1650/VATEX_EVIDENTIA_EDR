@@ -1,0 +1,101 @@
+{
+    "id": "T1027.003-Steganography_InvokePSImage",
+    "name": "Steganography via Invoke-PSImage",
+    "description": "Detects the use of Invoke-PSImage PowerShell cmdlet to embed or extract hidden data within image files. This technique is commonly used by adversaries for defense evasion by concealing malicious code or data within legitimate-looking media files.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1027",
+        "subtechnique_id": "T1027.003",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Command:CommandExecution",
+            "Execution:Command and Scripting Interpreter:PowerShell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s3_powershell_pwsh_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s4_invoke_psimage_cmdlet": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-PSImage"
+                    }
+                ]
+            },
+            "s5_image_file_extension": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".png"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".jpg"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".jpeg"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".bmp"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".gif"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".tiff"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and (s2_powershell_exe_path or s3_powershell_pwsh_exe_path) and s4_invoke_psimage_cmdlet and s5_image_file_extension"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Invoke-PSImage PowerShell 모듈을 사용한 스테가노그래피 시도를 탐지할 수 있습니다. PowerShell 프로세스 생성 이벤트와 함께 Invoke-PSImage cmdlet 및 이미지 파일 확장자가 포함된 명령줄 인자를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 파일에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다.",
+    "false_positive": "합법적인 개발, 테스트, 또는 보안 연구 활동에서 Invoke-PSImage를 사용하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 Invoke-PSImage 호출 패턴이나 특정 사용자/스크립트/경로를 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

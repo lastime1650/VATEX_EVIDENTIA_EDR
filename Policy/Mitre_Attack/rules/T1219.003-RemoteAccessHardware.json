@@ -1,0 +1,140 @@
+{
+    "id": "T1219.003-RemoteAccessHardware",
+    "name": "Remote Access Hardware Detection",
+    "description": "Detects the presence and potential use of remote access hardware devices (e.g., IP-based KVMs like TinyPilot, PiKVM) by monitoring suspicious filesystem activities, such as the creation or modification of auto-run files or executable binaries on newly mounted removable drives. Adversaries may use these devices to establish covert command and control, bypassing software-based security controls.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0011",
+        "technique_id": "T1219",
+        "subtechnique_id": "T1219.003",
+        "data_sources": [
+            "file:filecreation",
+            "file:filemodification"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_action_create_or_write": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    }
+                ]
+            },
+            "s2_filepath_autorun_inf": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "autorun.inf"
+                    }
+                ]
+            },
+            "s3_filepath_on_removable_drive": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "D:\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "E:\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "F:\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "G:\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "H:\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "I:\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "J:\\"
+                    }
+                ]
+            },
+            "s4_filepath_suspicious_extension": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".sys"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".bat"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".ps1"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".vbs"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".cmd"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".hta"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_action_create_or_write and (s2_filepath_autorun_inf or (s3_filepath_on_removable_drive and s4_filepath_suspicious_extension))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 원격 접근 하드웨어 장치의 잠재적 설치 또는 사용 시도를 탐지할 수 있습니다. 특히, 시스템에 새로 연결된 드라이브에서 'autorun.inf' 파일이 생성/수정되거나, 실행 가능한 스크립트/바이너리 파일이 생성/수정되는 파일 시스템 이벤트를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 장치 및 관련 프로세스에 대한 포렌식 조사를 시작하는 데 사용될 수 있습니다. 이는 소프트웨어 기반 방어 시스템을 우회하려는 시도를 식별하는 데 중요합니다.",
+    "false_positive": "정상적인 USB 드라이브, 외장 하드 드라이브, 또는 합법적인 소프트웨어 설치/업데이트 프로세스가 이동식 미디어에 파일을 생성하거나 수정하는 경우 오탐이 발생할 수 있습니다. 특히, 'autorun.inf' 파일은 합법적인 용도로 사용될 수 있으며, 일반적인 이동식 미디어 사용 패턴과 충돌할 수 있습니다. 알려진 정상적인 파일 및 경로, 또는 특정 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

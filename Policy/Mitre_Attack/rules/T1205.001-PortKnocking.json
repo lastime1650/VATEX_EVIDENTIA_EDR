@@ -1,0 +1,54 @@
+{
+    "id": "T1205.001-PortKnocking",
+    "name": "Port Knocking",
+    "description": "Detects network activity characteristic of port knocking, where an adversary sends a predefined sequence of connection attempts to closed ports to trigger a hidden action, such as opening a C2 channel or enabling persistence. This rule identifies individual small, outbound TCP packets that could be part of such a sequence, aiming to detect the initial 'knocks'.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1205",
+        "subtechnique_id": "T1205.001",
+        "data_sources": [
+            "Enterprise:Command and Control:Traffic Signaling:Port Knocking"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_direction_out": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    }
+                ]
+            },
+            "s2_protocol_tcp": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "TCP"
+                    }
+                ]
+            },
+            "s3_small_packet_size": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.packetsize",
+                        "operator": "lte",
+                        "value": 64
+                    }
+                ]
+            }
+        },
+        "condition": "s1_direction_out and s2_protocol_tcp and s3_small_packet_size"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 발생하는 포트 노킹 시도의 초기 단계를 탐지할 수 있습니다. 특히, 작은 크기의 외부 TCP 패킷이 비정상적인 프로세스에서 발생하거나, 다른 의심스러운 활동과 연관될 경우 추가 조사를 위한 중요한 단서가 됩니다. 이 탐지는 잠재적인 명령 및 제어(C2) 채널 설정이나 방어 회피 시도의 초기 지표로 활용되어, 침해사고 대응팀이 신속하게 대응할 수 있도록 돕습니다.",
+    "false_positive": "이 규칙은 외부로 나가는 작은 TCP 패킷을 탐지하므로, 합법적인 네트워크 스캔 도구, 시스템 진단 유틸리티, 실패한 연결 시도, 또는 일부 애플리케이션의 네트워크 상태 확인 작업 등으로 인해 오탐이 발생할 수 있습니다. 특정 IP 주소, 포트 범위, 또는 정상적인 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄이는 것이 필요합니다."
+}

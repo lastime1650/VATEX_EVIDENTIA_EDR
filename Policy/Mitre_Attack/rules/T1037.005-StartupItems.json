@@ -1,0 +1,132 @@
+{
+    "id": "T1037.005-StartupItems",
+    "name": "Startup Items",
+    "description": "Adversaries may use startup items automatically executed at boot initialization to establish persistence. Startup items execute during the final phase of the boot process and contain shell scripts or other executable files along with configuration information used by the system to determine the execution order for all startup items. This is technically a deprecated technology (superseded by Launch Daemon), and thus the appropriate folder, /Library/StartupItems isn’t guaranteed to exist on the system by default, but does appear to exist by default on macOS Sierra. A startup item is a directory whose executable and configuration property list (plist), StartupParameters.plist, reside in the top-level directory. An adversary can create the appropriate folders/files in the StartupItems directory to register their own persistence mechanism. Additionally, since StartupItems run during the bootup phase of macOS, they will run as the elevated root user.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1037",
+        "subtechnique_id": "T1037.005",
+        "data_sources": [
+            "Command:CommandExecution",
+            "File:FileCreation",
+            "Process:ProcessCreation",
+            "File:FileModification"
+        ]
+    },
+    "platform": [
+        "macos"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_creation_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_process_exe_path_startupitems": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "/Library/StartupItems"
+                    }
+                ]
+            },
+            "s3_process_cmdline_startupitems": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/Library/StartupItems"
+                    }
+                ]
+            },
+            "s4_filesystem_action_create_or_write": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    }
+                ]
+            },
+            "s5_filesystem_filepath_startupitems": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/Library/StartupItems"
+                    }
+                ]
+            },
+            "s6_filesystem_suspicious_extensions": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".sh"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".py"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".pl"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".rb"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".command"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".app"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".plist"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".exec"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_creation_action and (s2_process_exe_path_startupitems or s3_process_cmdline_startupitems) or (s4_filesystem_action_create_or_write and s5_filesystem_filepath_startupitems and s6_filesystem_suspicious_extensions)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 macOS 시스템에서 'Startup Items'를 통한 지속성 메커니즘 구축 시도를 탐지할 수 있습니다. 이는 /Library/StartupItems 디렉토리 내에서 실행 파일 또는 스크립트가 생성되거나 수정되는 파일 시스템 이벤트와, 해당 디렉토리 내의 파일이 프로세스로 생성되는 이벤트를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 파일 및 프로세스에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 시스템 부팅 시 루트 권한으로 실행될 수 있으므로 중요도가 높습니다.",
+    "false_positive": "정상적인 시스템 업데이트, 소프트웨어 설치 프로그램, 또는 합법적인 관리 도구가 /Library/StartupItems 디렉토리에 파일을 생성하거나 수정하는 경우 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 파일 경로에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다. 또한, 이 기능은 macOS에서 더 이상 권장되지 않으므로, 정상적인 사용 사례는 드물 수 있습니다."
+}

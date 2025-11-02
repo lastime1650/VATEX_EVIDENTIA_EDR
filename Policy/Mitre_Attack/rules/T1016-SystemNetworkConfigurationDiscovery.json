@@ -1,0 +1,203 @@
+{
+    "id": "T1016-SystemNetworkConfigurationDiscovery",
+    "name": "System Network Configuration Discovery",
+    "description": "Detects attempts by adversaries to gather details about the network configuration and settings of systems, including IP/MAC addresses, network interfaces, and routing tables. This is often performed using built-in operating system utilities like ipconfig, nbtstat, route, arp, netstat, or PowerShell cmdlets, as well as direct API calls or registry access.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1016",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Discovery:System Network Configuration Discovery",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Execution:Native API",
+            "Enterprise:Discovery:Query Registry"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmdline_ipconfig": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ipconfig"
+                    }
+                ]
+            },
+            "s3_cmdline_nbtstat": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "nbtstat"
+                    }
+                ]
+            },
+            "s4_cmdline_route": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "route"
+                    }
+                ]
+            },
+            "s5_cmdline_arp": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "arp"
+                    }
+                ]
+            },
+            "s6_cmdline_netstat": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "netstat"
+                    }
+                ]
+            },
+            "s7_cmdline_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s8_cmdline_powershell_net_cmdlet": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-NetAdapter"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-NetIPConfiguration"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-NetRoute"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-DnsClientServerAddress"
+                    }
+                ]
+            },
+            "s9_registry_network_key_access_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "Query"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "OpenKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "Enumerate"
+                    }
+                ]
+            },
+            "s10_registry_network_config_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Network"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\NetworkCards"
+                    }
+                ]
+            },
+            "s11_apicall_network_enumeration_function": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetAdaptersInfo"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetAdaptersAddresses"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetIpNetTable"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetTcpTable"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetUdpTable"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "DnsQuery_A"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "DnsQuery_W"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and (s2_cmdline_ipconfig or s3_cmdline_nbtstat or s4_cmdline_route or s5_cmdline_arp or s6_cmdline_netstat or (s7_cmdline_powershell_exe and s8_cmdline_powershell_net_cmdlet)) or (s9_registry_network_key_access_action and s10_registry_network_config_path) or s11_apicall_network_enumeration_function"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템 네트워크 구성 정보 수집 시도를 탐지할 수 있습니다. 'ipconfig', 'nbtstat', 'route', 'arp', 'netstat' 등의 명령 실행, PowerShell을 통한 네트워크 관련 cmdlet 호출, 네트워크 설정 관련 레지스트리 키 접근, 또는 네트워크 정보 조회 API 호출 등을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히 다른 Discovery 또는 Lateral Movement 활동과 결합될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 네트워크 모니터링 소프트웨어, 또는 합법적인 애플리케이션이 네트워크 정보를 조회하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

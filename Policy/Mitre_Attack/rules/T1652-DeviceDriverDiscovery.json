@@ -1,0 +1,112 @@
+{
+    "id": "T1652-DeviceDriverDiscovery",
+    "name": "Device Driver Discovery",
+    "description": "Detects attempts to enumerate local device drivers on a victim host. This includes execution of commands like 'driverquery.exe', API calls such as 'EnumDeviceDrivers()', or accessing specific registry keys related to driver information. Adversaries may use this information to understand the host's function, identify security tools, or find potential vulnerabilities.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1652",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Discovery:Device Driver Discovery",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Native API",
+            "Enterprise:Discovery:Query Registry"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_driverquery_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "driverquery.exe"
+                    }
+                ]
+            },
+            "s3_enumdevicedrivers_api_call": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "EnumDeviceDrivers"
+                    }
+                ]
+            },
+            "s4_registry_driver_keyclass_access": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "QueryKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "OpenKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "EnumerateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "QueryValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "EnumerateValueKey"
+                    }
+                ]
+            },
+            "s5_registry_driver_paths": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\HARDWARE\\DEVICEMAP"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Enum"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Class"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_driverquery_command) or s3_enumdevicedrivers_api_call or (s4_registry_driver_keyclass_access and s5_registry_driver_paths)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템 장치 드라이버 정보 수집 시도를 탐지할 수 있습니다. 'driverquery.exe'와 같은 명령 실행, 'EnumDeviceDrivers' API 호출, 또는 드라이버 관련 레지스트리 키 접근 등을 모니터링합니다. 탐지된 이벤트는 자동 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히 다른 Discovery 또는 Privilege Escalation 활동과 결합될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 백신 소프트웨어, 진단 유틸리티, 또는 합법적인 애플리케이션이 드라이버 정보를 조회하는 과정에서 탐지될 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

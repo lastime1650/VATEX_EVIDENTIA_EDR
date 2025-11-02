@@ -1,0 +1,180 @@
+{
+    "id": "T1546.013-PowerShellProfile",
+    "name": "PowerShell Profile",
+    "description": "Detects attempts to establish persistence or escalate privileges by modifying or creating PowerShell profile scripts (e.g., profile.ps1). These scripts execute automatically when PowerShell starts, allowing adversaries to run arbitrary commands, functions, or modules. This includes monitoring file system activities on known profile locations and suspicious PowerShell command-line executions that modify these files.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1546",
+        "subtechnique_id": "T1546.013",
+        "data_sources": [
+            "Enterprise:Defense Evasion:File and Directory Permissions Modification",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_filesystem_action_modify": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "superseded"
+                    }
+                ]
+            },
+            "s2_filepath_is_profile_ps1": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "\\Profile.ps1"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "\\Microsoft.PowerShell_profile.ps1"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "\\Microsoft.PowerShellISE_profile.ps1"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "\\Microsoft.VSCode_profile.ps1"
+                    }
+                ]
+            },
+            "s3_filepath_in_pshome": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
+                    }
+                ]
+            },
+            "s4_filepath_in_user_documents": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\Documents\\PowerShell\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\My Documents\\PowerShell\\"
+                    }
+                ]
+            },
+            "s5_filepath_in_user_appdata": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\AppData\\Roaming\\Microsoft\\Windows\\PowerShell\\"
+                    }
+                ]
+            },
+            "s6_process_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s7_process_is_powershell": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s8_cmdline_modifies_profile_content": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-Content"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Add-Content"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Out-File"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ">"
+                    }
+                ]
+            },
+            "s9_cmdline_targets_profile_filename": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Profile.ps1"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Microsoft.PowerShell_profile.ps1"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Microsoft.PowerShellISE_profile.ps1"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Microsoft.VSCode_profile.ps1"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_filesystem_action_modify and s2_filepath_is_profile_ps1 and (s3_filepath_in_pshome or s4_filepath_in_user_documents or s5_filepath_in_user_appdata)) or (s6_process_action_create and s7_process_is_powershell and s8_cmdline_modifies_profile_content and s9_cmdline_targets_profile_filename)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 PowerShell 프로필 스크립트의 악의적인 생성 또는 수정 시도를 탐지할 수 있습니다. 이는 시스템 부팅 또는 PowerShell 세션 시작 시 자동 실행되는 악성 코드의 지속성 확보 및 권한 상승에 사용될 수 있습니다. 파일 시스템 이벤트에서 Profile.ps1 파일의 생성/쓰기 활동과 함께, PowerShell 프로세스의 명령줄에서 프로필 파일을 직접 수정하는 패턴을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 추가적인 포렌식 조사 및 침해사고 대응의 우선순위를 지정하는 데 활용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 작업, PowerShell 스크립트 개발, 또는 합법적인 소프트웨어 설치 및 업데이트 과정에서 PowerShell 프로필이 수정될 수 있습니다. 특히 사용자가 자신의 환경을 사용자 정의하기 위해 프로필을 직접 수정하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 PowerShell 스크립트나 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,167 @@
+{
+    "id": "T1018-RemoteSystemDiscovery",
+    "name": "Remote System Discovery",
+    "description": "Detects attempts by adversaries to discover other systems on a network, which may be used for lateral movement. This includes the use of utilities like ping, net view, tracert, PowerShell cmdlets (e.g., Get-NetNeighbor), and access to local host files (e.g., C:\\Windows\\System32\\Drivers\\etc\\hosts) or relevant API calls.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1018",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Discovery:File and Directory Discovery",
+            "Enterprise:Discovery:Network Service Discovery",
+            "Enterprise:Execution:Native API"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmdline_ping_tracert_nbtscan": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ping.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "tracert.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "nbtscan.exe"
+                    }
+                ]
+            },
+            "s3_cmdline_net_view": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "net view"
+                    }
+                ]
+            },
+            "s4_cmdline_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s5_cmdline_powershell_network_cmdlets": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-NetNeighbor"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-NetAdapter"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-WmiObject -Class Win32_NetworkAdapterConfiguration"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-CimInstance -ClassName Win32_NetworkAdapterConfiguration"
+                    }
+                ]
+            },
+            "f1_filesystem_access_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "read"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "open"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "exists"
+                    }
+                ]
+            },
+            "f2_filepath_hosts_file": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "C:\\Windows\\System32\\Drivers\\etc\\hosts"
+                    }
+                ]
+            },
+            "a1_apicall_network_discovery": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetIpNetTable"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetAdaptersInfo"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetNetworkParams"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "NetServerEnum"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetComputerNameW"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetComputerNameA"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and (s2_cmdline_ping_tracert_nbtscan or s3_cmdline_net_view or (s4_cmdline_powershell_exe and s5_cmdline_powershell_network_cmdlets)) or (f1_filesystem_access_action and f2_filepath_hosts_file) or a1_apicall_network_discovery"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템 및 네트워크 환경에서 원격 시스템을 탐지하려는 시도를 식별할 수 있습니다. 'ping', 'tracert', 'net view'와 같은 명령 실행, PowerShell을 통한 네트워크 정보 수집, 'hosts' 파일 접근, 또는 관련 Windows API 호출을 모니터링합니다. 탐지된 이벤트는 자동 알람을 트리거하고, 특히 다른 Discovery 또는 Lateral Movement 활동과 연계될 때 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 네트워크 모니터링 소프트웨어, 또는 합법적인 애플리케이션이 네트워크 상태를 점검하거나 원격 시스템 정보를 조회하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

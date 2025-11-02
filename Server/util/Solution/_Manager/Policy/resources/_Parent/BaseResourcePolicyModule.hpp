@@ -41,7 +41,7 @@
                     */
                     // [수정] override 키워드를 추가하여 순수 가상 함수를 재정의함을 명시합니다.
                     // 자식 클래스가 반드시 이 함수를 구현해야 합니다.
-                    virtual bool Match(json& InoutEvent) override = 0;
+                    virtual bool Match(const json& AgentEvent) override = 0;
 
                     /*
                         Default (from Interface)
@@ -107,16 +107,21 @@
                         if(Get_is_rule_saved_dir_path().empty())
                             return false;
                         
+
                         std::vector<std::filesystem::path> rule_abs_paths;
-                        if(!_get_rule_file_paths(rule_abs_paths))
+                        if(!_get_rule_file_paths(rule_abs_paths) || rule_abs_paths.size() == 0)
                             return false;
                         
+                        std::cout << rule_abs_paths.size() << std::endl;
+
                         // 규칙을 디스크로부터 읽고 json으로 변환하여 등록
                         for(const auto& path : rule_abs_paths)
                         {
                             auto JSON_BIN = FileHandle.readFromFile(path.string());
                             if(JSON_BIN.empty())
                                 continue;
+                            std::cout << "JSON PATH: " << path.string() << std::endl;
+                            std::cout << "JSON STRING SIZE: " << JSON_BIN.size() << std::endl;
 
                             try{
                                 json RULE = json::parse( std::string( JSON_BIN.begin(), JSON_BIN.end() ) );
@@ -130,6 +135,7 @@
                                 }
 
                                 //rules[rule_id] = RuleClass(RULE);s
+                                std::cout << "emplace call" << std::endl;
                                 rules.emplace(rule_id, RuleClass(RULE));
 
                             } catch (const std::exception& e)
@@ -138,6 +144,9 @@
                                 continue;
                             }
                         }
+
+                        
+
                         return true;
                     }
                     

@@ -1,0 +1,111 @@
+{
+    "id": "T1136.001-LocalAccountCreation",
+    "name": "Persistence via Local Account Creation",
+    "description": "Adversaries may create a local account to maintain access to victim systems. Local accounts are those configured by an organization for use by users, remote support, services, or for administration on a single system or service. For example, with a sufficient level of access, the Windows `net user /add` command can be used to create a local account. Such accounts may be used to establish secondary credentialed access that do not require persistent remote access tools to be deployed on the system.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1136",
+        "subtechnique_id": "T1136.001",
+        "data_sources": [
+            "Enterprise:Persistence:Create Account:Local Account",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_net_user_add_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "net.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "user"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/add"
+                    }
+                ]
+            },
+            "s3_wmic_useraccount_create_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "wmic.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "useraccount"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s4_powershell_new_localuser_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-LocalUser"
+                    }
+                ]
+            },
+            "s5_powershell_add_localgroupmember_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Add-LocalGroupMember"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-Group Administrators"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and (s2_net_user_add_command or s3_wmic_useraccount_create_command or s4_powershell_new_localuser_command or s5_powershell_add_localgroupmember_command)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에 로컬 계정 생성 시도를 탐지할 수 있습니다. 'net user /add', 'wmic useraccount create'와 같은 명령 실행, 또는 PowerShell을 통한 'New-LocalUser', 'Add-LocalGroupMember'와 같은 cmdlet 사용을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 생성된 계정의 합법성 및 관련 프로세스에 대한 추가적인 조사를 시작하는 데 사용될 수 있습니다. 특히, 관리자 그룹에 추가되는 행위는 권한 상승 또는 지속성 유지의 지표가 될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 스크립트, 또는 합법적인 애플리케이션이 사용자 계정을 생성하거나 수정하는 과정에서 오탐이 발생할 수 있습니다. 예를 들어, 특정 소프트웨어 설치 시 서비스 계정 생성, IT 관리 스크립트, 또는 도메인 조인 프로세스 등이 이에 해당할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,292 @@
+{
+    "id": "T1570-LateralToolTransferProcess",
+    "name": "Lateral Tool Transfer via Process Execution",
+    "description": "Detects attempts by adversaries to transfer tools or files between systems using command-line utilities or scripting tools that initiate network connections or file copies to remote shares. This includes common tools like FTP, Curl, BITSAdmin, PowerShell, PsExec, and native Windows commands like 'copy' or 'xcopy' targeting network paths.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0008",
+        "technique_id": "T1570",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Command:CommandExecution",
+            "Process:ProcessCreation",
+            "NetworkShare:NetworkShareAccess",
+            "File:FileCreation"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_ftp_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "ftp.exe"
+                    }
+                ]
+            },
+            "s3_ftp_cmdline_transfer_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " put "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " get "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " mput "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " mget "
+                    }
+                ]
+            },
+            "s4_curl_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "curl.exe"
+                    }
+                ]
+            },
+            "s5_curl_cmdline_output_flags": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " -o "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " --output "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " -O "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " --remote-name "
+                    }
+                ]
+            },
+            "s6_bitsadmin_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "bitsadmin.exe"
+                    }
+                ]
+            },
+            "s7_bitsadmin_cmdline_transfer_flag": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " /transfer "
+                    }
+                ]
+            },
+            "s8_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s9_powershell_webrequest_cmdlets": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-WebRequest"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iwr"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-Expression"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iex"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "System.Net.WebClient"
+                    }
+                ]
+            },
+            "s10_powershell_webrequest_output_target": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " -OutFile "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " -o "
+                    }
+                ]
+            },
+            "s11_copy_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "startswith",
+                        "value": "copy "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " copy "
+                    }
+                ]
+            },
+            "s12_xcopy_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "startswith",
+                        "value": "xcopy "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " xcopy "
+                    }
+                ]
+            },
+            "s13_robocopy_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "startswith",
+                        "value": "robocopy "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " robocopy "
+                    }
+                ]
+            },
+            "s14_remote_path_indicator": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "\\\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ftp://"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "http://"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "https://"
+                    }
+                ]
+            },
+            "s15_net_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "net.exe"
+                    }
+                ]
+            },
+            "s16_net_use_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " use "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " view "
+                    }
+                ]
+            },
+            "s17_psexec_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "psexec.exe"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create and ( (s2_ftp_exe and s3_ftp_cmdline_transfer_keywords) or (s4_curl_exe and s5_curl_cmdline_output_flags) or (s6_bitsadmin_exe and s7_bitsadmin_cmdline_transfer_flag) or (s8_powershell_exe and s9_powershell_webrequest_cmdlets and s10_powershell_webrequest_output_target) or ( (s11_copy_command or s12_xcopy_command or s13_robocopy_command) and s14_remote_path_indicator ) or (s15_net_exe and s16_net_use_cmdline) or (s17_psexec_exe) )"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템 간의 악성 도구 또는 파일 전송 시도를 탐지할 수 있습니다. FTP, Curl, BITSAdmin, PowerShell, PsExec과 같은 도구의 실행 및 비정상적인 명령줄 인자를 모니터링하며, 특히 네트워크 경로를 대상으로 하는 파일 복사 명령들을 주시합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 네트워크 활동에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 이는 초기 침투 후 내부망 확산 단계에서 중요한 지표가 됩니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 소프트웨어 배포 도구, 업데이트 프로세스, 또는 합법적인 파일 공유 활동으로 인해 오탐이 발생할 수 있습니다. 예를 들어, IT 관리자가 스크립트를 통해 원격 서버에 파일을 배포하거나, 개발자가 Curl을 사용하여 파일을 다운로드하는 경우입니다. 알려진 정상적인 프로세스, 특정 명령줄 패턴, 또는 화이트리스트에 등록된 네트워크 경로에 대해 예외 처리를 적용하여 오탐을 줄일 수 있습니다."
+}

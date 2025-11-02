@@ -1,0 +1,111 @@
+{
+    "id": "T1651-CloudAdministrationCommand",
+    "name": "Cloud Administration Command",
+    "description": "Detects attempts by adversaries to abuse cloud management services, such as AWS Systems Manager, Azure RunCommand, or Google Cloud compute commands, to execute commands within virtual machines. This technique leverages installed virtual machine agents to remotely run scripts or commands, often indicating administrative access compromise within the cloud environment.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1651",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Command:CommandExecution",
+            "Process:ProcessCreation",
+            "Script:ScriptExecution"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_aws_cli_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "aws.exe"
+                    }
+                ]
+            },
+            "s3_aws_ssm_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ssm send-command"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ssm start-session"
+                    }
+                ]
+            },
+            "s4_az_cli_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "az.exe"
+                    }
+                ]
+            },
+            "s5_az_vm_run_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "vm run-command invoke"
+                    }
+                ]
+            },
+            "s6_gcloud_cli_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "gcloud.cmd"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "gcloud.exe"
+                    }
+                ]
+            },
+            "s7_gcloud_compute_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "compute instances run"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "compute ssh"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create and ( (s2_aws_cli_execution and s3_aws_ssm_command) or (s4_az_cli_execution and s5_az_vm_run_command) or (s6_gcloud_cli_execution and s7_gcloud_compute_command) )"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 클라우드 환경 내 가상 머신에서 명령이 원격으로 실행되는 시도를 탐지할 수 있습니다. AWS CLI, Azure CLI, 또는 Google Cloud CLI와 같은 클라우드 관리 도구의 프로세스 생성 이벤트와 함께 'ssm send-command', 'vm run-command invoke', 'compute instances run' 등의 특정 명령줄 인자를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 클라우드 계정 및 관련 활동에 대한 심층적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 클라우드 관리 작업, CI/CD 파이프라인, 자동화된 스크립트, 또는 합법적인 개발/운영 도구가 클라우드 관리 명령을 실행하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 클라우드 관리 명령 패턴이나 특정 서비스 계정/프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

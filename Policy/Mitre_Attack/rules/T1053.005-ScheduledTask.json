@@ -1,0 +1,220 @@
+{
+    "id": "T1053.005-ScheduledTask",
+    "name": "Scheduled Task",
+    "description": "Detects attempts to create, modify, or run scheduled tasks for initial execution, persistence, or privilege escalation. Adversaries often abuse the Windows Task Scheduler through utilities like schtasks.exe, PowerShell cmdlets (e.g., Register-ScheduledTask, Invoke-CimMethod), direct API calls, or by manipulating registry keys and task definition files.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1053",
+        "subtechnique_id": "T1053.005",
+        "data_sources": [
+            "Command:CommandExecution",
+            "Process:ProcessCreation",
+            "Process:OSAPIExecution",
+            "Registry:Registry Key Creation",
+            "Registry:Registry Key Modification",
+            "File:File Creation",
+            "File:File Modification"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "schtasks_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "schtasks.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/change"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/run"
+                    }
+                ]
+            },
+            "powershell_scheduled_task_creation": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Register-ScheduledTask"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-ScheduledTask"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-ScheduledTask"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-CimMethod"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "PS_ScheduledTask"
+                    }
+                ]
+            },
+            "registry_task_key_access_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "Create"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "Set"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "Rename"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "Delete"
+                    }
+                ]
+            },
+            "registry_task_key_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tasks"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tree"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Task"
+                    }
+                ]
+            },
+            "filesystem_task_file_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "rename"
+                    }
+                ]
+            },
+            "filesystem_task_file_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\System32\\Tasks"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".xml"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".job"
+                    }
+                ]
+            },
+            "apicall_task_scheduler_functions": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.apicall.function",
+                        "operator": "contains",
+                        "value": "SchRpc"
+                    },
+                    {
+                        "field": "body.apicall.apicall.function",
+                        "operator": "contains",
+                        "value": "TaskService"
+                    },
+                    {
+                        "field": "body.apicall.apicall.function",
+                        "operator": "contains",
+                        "value": "ITaskFolder"
+                    },
+                    {
+                        "field": "body.apicall.apicall.function",
+                        "operator": "contains",
+                        "value": "ITaskDefinition"
+                    },
+                    {
+                        "field": "body.apicall.apicall.function",
+                        "operator": "contains",
+                        "value": "RegisterTaskDefinition"
+                    }
+                ]
+            }
+        },
+        "condition": "schtasks_execution or powershell_scheduled_task_creation or (registry_task_key_access_action and registry_task_key_path) or (filesystem_task_file_action and filesystem_task_file_path) or apicall_task_scheduler_functions"
+    },
+    "operational_usage": "이 룰은 SOC(보안 운영 센터)에서 예약된 작업(Scheduled Task)을 이용한 공격 시도를 실시간으로 탐지하는 데 활용될 수 있습니다. 탐지된 이벤트는 자동 알람을 트리거하고, 관련 프로세스, 레지스트리, 파일 시스템 활동 및 API 호출 로그를 포함하는 상세 보고서를 생성하여 침해사고 조사 및 대응 우선순위 지정에 기여합니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 소프트웨어 설치 및 업데이트, 백업 솔루션 또는 기타 합법적인 자동화 스크립트가 예약된 작업을 생성하거나 수정할 때 오탐이 발생할 수 있습니다. 특히, PowerShell 스크립트나 WMI를 사용하는 관리 도구에서 오탐 가능성이 높습니다."
+}

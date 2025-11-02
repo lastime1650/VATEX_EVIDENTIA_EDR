@@ -1,0 +1,152 @@
+{
+    "id": "T1548-AbuseElevationControlMechanism",
+    "name": "Abuse Elevation Control Mechanism",
+    "description": "Detects attempts by adversaries to circumvent mechanisms designed to control elevated privileges, such as User Account Control (UAC) on Windows. This includes monitoring for the execution of UAC bypass tools and techniques, modifications to specific registry keys used for UAC bypass, and attempts to gain high-level access to elevated system processes.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0004",
+        "technique_id": "T1548",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Command:CommandExecution",
+            "Process:OSAPIExecution",
+            "WindowsRegistry:WindowsRegistryKeyModification"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_uac_bypass_executables": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "fodhelper.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "sdclt.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "eventvwr.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "compmgmt.msc"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "computerdefaults.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wsreset.exe"
+                    }
+                ]
+            },
+            "s3_registry_set_value_key": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreSetValueKey"
+                    }
+                ]
+            },
+            "s4_registry_uac_bypass_paths": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\Software\\Classes\\ms-settings\\shell\\open\\command"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\Software\\Classes\\mscfile\\shell\\open\\command"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\Software\\Classes\\Folder\\shell\\open\\command"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\Software\\Classes\\exefile\\shell\\open\\command"
+                    }
+                ]
+            },
+            "s5_processaccess_target_elevated_process": {
+                "event_type": "processaccess",
+                "conditions": [
+                    {
+                        "field": "body.processaccess.filepath",
+                        "operator": "endswith",
+                        "value": "explorer.exe"
+                    },
+                    {
+                        "field": "body.processaccess.filepath",
+                        "operator": "endswith",
+                        "value": "svchost.exe"
+                    },
+                    {
+                        "field": "body.processaccess.filepath",
+                        "operator": "endswith",
+                        "value": "lsass.exe"
+                    }
+                ]
+            },
+            "s6_processaccess_high_access_rights": {
+                "event_type": "processaccess",
+                "conditions": [
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_ALL_ACCESS"
+                    },
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_VM_WRITE"
+                    },
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_CREATE_THREAD"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_uac_bypass_executables) or (s3_registry_set_value_key and s4_registry_uac_bypass_paths) or (s5_processaccess_target_elevated_process and s6_processaccess_high_access_rights)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 권한 상승 제어 메커니즘을 우회하려는 시도를 탐지할 수 있습니다. 특히 Windows UAC(사용자 계정 컨트롤) 우회 기법에 중점을 둡니다. 'fodhelper.exe', 'sdclt.exe', 'eventvwr.exe' 등 알려진 UAC 우회에 사용되는 실행 파일의 프로세스 생성 이벤트를 모니터링하고, UAC 우회에 활용되는 레지스트리 키('HKEY_CURRENT_USER\\Software\\Classes\\ms-settings\\shell\\open\\command' 등)에 대한 값 설정 이벤트를 추적합니다. 또한, 'explorer.exe', 'svchost.exe', 'lsass.exe'와 같은 중요 시스템 프로세스에 대해 'PROCESS_ALL_ACCESS'나 'PROCESS_VM_WRITE'와 같은 높은 권한으로 핸들을 생성하거나 복제하는 시도를 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 추가적인 포렌식 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 소프트웨어 설치 프로그램, 업데이트 프로세스, 또는 합법적인 애플리케이션이 UAC 우회에 사용될 수 있는 명령어를 실행하거나, 관련 레지스트리 키를 수정하거나, 시스템 프로세스에 높은 권한으로 접근하는 경우 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다. 특히, 개발 환경이나 시스템 관리 스크립트에서 이러한 동작이 발생할 수 있습니다."
+}

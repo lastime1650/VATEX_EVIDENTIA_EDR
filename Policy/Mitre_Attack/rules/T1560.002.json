@@ -1,0 +1,230 @@
+{
+    "id": "T1560.002",
+    "name": "Archive via Library",
+    "description": "Detects attempts by an adversary to compress or encrypt data that is collected prior to exfiltration using 3rd party libraries or built-in system utilities. This includes monitoring for the execution of archiving tools (like zip.exe, tar.exe), PowerShell compression cmdlets, and the creation of files with common compressed or encrypted extensions. Adversaries use this technique to reduce the size of collected data and/or hide its contents, making it harder to detect during exfiltration.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0009",
+        "technique_id": "T1560",
+        "subtechnique_id": "T1560.002",
+        "data_sources": [
+            "Collection:Archive Collected Data:Archive via Library",
+            "Execution:Command and Scripting Interpreter:PowerShell",
+            "Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Defense Evasion:Obfuscated Files or Information:Compression",
+            "Defense Evasion:Obfuscated Files or Information:Encrypted/Encoded File",
+            "Collection:Data from Local System",
+            "Execution:Native API"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_event": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_archiving_tool_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "\\zip.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "\\tar.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "\\7z.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "\\7za.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "\\winrar.exe"
+                    }
+                ]
+            },
+            "s3_powershell_compression_tool": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "\\powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "\\pwsh.exe"
+                    }
+                ]
+            },
+            "s4_powershell_compress_cmdlets": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Compress-Archive"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Compress-Item"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-Content -As Encrypted"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Add-Type -AssemblyName System.IO.Compression.FileSystem"
+                    }
+                ]
+            },
+            "s5_filesystem_create_modify_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    }
+                ]
+            },
+            "s6_compressed_encrypted_file_extension": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".zip"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".rar"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".7z"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".tar"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".gz"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".tgz"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".bz2"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".aes"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".gpg"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".enc"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".crypt"
+                    }
+                ]
+            },
+            "s7_apicall_compression_encryption_functions": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "contains",
+                        "value": "RtlCompressBuffer"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "contains",
+                        "value": "RtlDecompressBuffer"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "contains",
+                        "value": "CryptEncrypt"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "contains",
+                        "value": "CryptProtectData"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "contains",
+                        "value": "CryptGenKey"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "contains",
+                        "value": "Compress"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "contains",
+                        "value": "Encrypt"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_event and (s2_archiving_tool_execution or (s3_powershell_compression_tool and s4_powershell_compress_cmdlets))) or (s5_filesystem_create_modify_action and s6_compressed_encrypted_file_extension) or s7_apicall_compression_encryption_functions"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 공격자가 데이터를 압축하거나 암호화하는 시도를 탐지할 수 있습니다. 이는 일반적으로 데이터 수집 후 유출 전 단계에서 발생합니다. zip.exe, tar.exe, 7z.exe, winrar.exe와 같은 아카이빙 도구의 실행, 또는 PowerShell의 Compress-Archive/Compress-Item과 같은 압축 cmdlet 사용을 모니터링합니다. 또한, .zip, .rar, .7z, .enc, .aes 등과 같은 압축/암호화 파일 확장자를 가진 파일의 생성 또는 쓰기 활동을 탐지합니다. CryptEncrypt, RtlCompressBuffer와 같은 관련 API 호출도 탐지 대상에 포함됩니다. 탐지된 이벤트는 데이터 유출 전의 중요한 전술적 지표로 간주되며, 높은 심각도로 분류되어 즉각적인 알람과 함께 관련 프로세스 및 파일에 대한 상세 조사를 시작하는 데 활용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 백업, 소프트웨어 설치/업데이트, 사용자 데이터 압축, 또는 합법적인 애플리케이션(예: 문서 관리 시스템, 암호화 소프트웨어)이 파일을 압축하거나 암호화하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스, 특정 경로, 또는 특정 API 호출 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,108 @@
+{
+    "id": "T1037.002-LoginHookPersistence",
+    "name": "Persistence via Login Hook",
+    "description": "Detects attempts to establish persistence by modifying or creating Login Hooks or Logout Hooks on macOS systems. Adversaries use this technique to execute malicious scripts with root privileges upon user logon or logout by manipulating the /Library/Preferences/com.apple.loginwindow.plist file, often via the 'defaults' command.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1037",
+        "subtechnique_id": "T1037.002",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Command:CommandExecution",
+            "File:FileCreation",
+            "File:FileModification",
+            "Persistence:Boot or Logon Initialization Scripts:Login Hook"
+        ]
+    },
+    "platform": [
+        "macos"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmdline_defaults_write": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "defaults write"
+                    }
+                ]
+            },
+            "s3_cmdline_loginwindow_plist": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "com.apple.loginwindow.plist"
+                    }
+                ]
+            },
+            "s4_cmdline_loginhook_or_logouthook_key": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "LoginHook"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "LogoutHook"
+                    }
+                ]
+            },
+            "s5_filesystem_plist_modification_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "superseded"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s6_filepath_loginwindow_plist": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "equals",
+                        "value": "/Library/Preferences/com.apple.loginwindow.plist"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_action_create and s2_cmdline_defaults_write and s3_cmdline_loginwindow_plist and s4_cmdline_loginhook_or_logouthook_key or (s5_filesystem_plist_modification_action and s6_filepath_loginwindow_plist)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 macOS 시스템에서 로그인/로그아웃 훅을 통한 지속성 메커니즘 설정 시도를 탐지할 수 있습니다. 'defaults' 명령어를 사용하여 'com.apple.loginwindow.plist' 파일의 'LoginHook' 또는 'LogoutHook' 키를 수정하는 프로세스 생성 이벤트나, 해당 plist 파일 자체에 대한 파일 시스템 쓰기/생성 이벤트를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 파일 변경에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 관리자 권한이 필요한 작업이므로 권한 상승 시도와 연계하여 분석할 필요가 있습니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 백업 솔루션, 또는 합법적인 애플리케이션이 시스템 시작/종료 스크립트를 관리하는 과정에서 오탐이 발생할 수 있습니다. 예를 들어, MDM 솔루션이나 개발 환경 설정 스크립트가 로그인 훅을 합법적으로 수정할 수 있습니다. 알려진 정상적인 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

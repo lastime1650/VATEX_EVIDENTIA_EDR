@@ -1,0 +1,143 @@
+{
+    "id": "T1021-RemoteServices",
+    "name": "Remote Services Access",
+    "description": "Detects attempts by adversaries to access remote services such as RDP, SSH, Telnet, or VNC. This technique often leverages valid accounts for lateral movement or remote execution. This rule monitors for the execution of common client tools and outbound network connections to standard remote service ports.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0008",
+        "technique_id": "T1021",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Lateral Movement:Remote Services:Remote Desktop Protocol",
+            "Enterprise:Lateral Movement:Remote Services:SSH",
+            "Enterprise:Lateral Movement:Remote Services:VNC",
+            "Enterprise:Command and Control:Non-Application Layer Protocol"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s_rdp_client_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "mstsc.exe"
+                    }
+                ]
+            },
+            "s_ssh_client_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "ssh.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "putty.exe"
+                    }
+                ]
+            },
+            "s_telnet_client_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "telnet.exe"
+                    }
+                ]
+            },
+            "s_vnc_client_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "vncviewer.exe"
+                    }
+                ]
+            },
+            "s_network_outbound": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    }
+                ]
+            },
+            "s_rdp_port": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 3389
+                    }
+                ]
+            },
+            "s_ssh_port": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 22
+                    }
+                ]
+            },
+            "s_telnet_port": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 23
+                    }
+                ]
+            },
+            "s_vnc_port": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 5900
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 5901
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 5902
+                    }
+                ]
+            }
+        },
+        "condition": "(s_process_create_action and (s_rdp_client_path or s_ssh_client_path or s_telnet_client_path or s_vnc_client_path)) or (s_network_outbound and (s_rdp_port or s_ssh_port or s_telnet_port or s_vnc_port))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 RDP, SSH, Telnet, VNC와 같은 원격 서비스에 대한 접근 시도를 탐지할 수 있습니다. 이는 원격 서비스 클라이언트 실행 또는 해당 서비스의 표준 포트를 대상으로 하는 아웃바운드 네트워크 연결을 모니터링하여 이루어집니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스 및 네트워크 활동에 대한 추가적인 조사를 시작하여 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히, 비정상적인 사용자 계정 또는 시스템에서 발생하는 원격 서비스 접근 시도는 중요하게 다루어져야 합니다.",
+    "false_positive": "정상적인 시스템 관리 작업, IT 지원 활동, 개발자 도구, 또는 합법적인 애플리케이션이 원격 서비스에 연결하는 경우 오탐이 발생할 수 있습니다. 예를 들어, 관리자가 'mstsc.exe'를 사용하여 서버에 접속하거나, 개발자가 'putty.exe'로 SSH 연결을 하는 경우입니다. 알려진 정상적인 원격 서비스 사용 패턴이나 특정 사용자/프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

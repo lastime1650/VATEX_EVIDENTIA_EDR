@@ -1,0 +1,200 @@
+{
+    "id": "T1598.001-SpearphishingService",
+    "name": "Spearphishing Service",
+    "description": "Detects attempts by adversaries to send spearphishing messages via third-party services (e.g., social media, personal webmail) to elicit sensitive information or credentials. While direct detection of the service usage from an endpoint is challenging, this rule focuses on suspicious network activity or subsequent actions (e.g., downloading malicious payloads) that may result from user interaction with a spearphishing lure.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1598",
+        "subtechnique_id": "T1598.001",
+        "data_sources": [
+            "NetworkTraffic:NetworkConnection",
+            "Process:ProcessCreation"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_net_direction_out": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    }
+                ]
+            },
+            "s2_net_protocol_tcp": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "TCP"
+                    }
+                ]
+            },
+            "s3_net_port_http": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 80
+                    }
+                ]
+            },
+            "s4_net_port_https": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 443
+                    }
+                ]
+            },
+            "s5_net_large_packet_size": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.packetsize",
+                        "operator": "gt",
+                        "value": 5000
+                    }
+                ]
+            },
+            "s6_net_unusual_c2_ports": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 53
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 21
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 22
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 23
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 445
+                    }
+                ]
+            },
+            "s7_proc_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s8_proc_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s9_proc_powershell_download_cmdlets": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-WebRequest"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "IWR"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Net.WebClient"
+                    }
+                ]
+            },
+            "s10_proc_certutil_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "certutil.exe"
+                    }
+                ]
+            },
+            "s11_proc_certutil_urlcache_options": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "urlcache"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "retrieve"
+                    }
+                ]
+            },
+            "s12_proc_cmdline_contains_url": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "http"
+                    }
+                ]
+            },
+            "s13_proc_bitsadmin_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "bitsadmin.exe"
+                    }
+                ]
+            },
+            "s14_proc_bitsadmin_transfer_option": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/transfer"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_net_direction_out and s2_net_protocol_tcp and s3_net_port_http and s5_net_large_packet_size) or (s1_net_direction_out and s2_net_protocol_tcp and s4_net_port_https and s5_net_large_packet_size) or (s1_net_direction_out and s2_net_protocol_tcp and s6_net_unusual_c2_ports) or (s7_proc_create_action and s8_proc_powershell_exe and s9_proc_powershell_download_cmdlets) or (s7_proc_create_action and s10_proc_certutil_exe and s11_proc_certutil_urlcache_options and s12_proc_cmdline_contains_url) or (s7_proc_create_action and s13_proc_bitsadmin_exe and s14_proc_bitsadmin_transfer_option and s12_proc_cmdline_contains_url)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 스피어피싱 서비스와 연관될 수 있는 비정상적인 네트워크 통신이나 악성 코드 다운로드 시도를 탐지할 수 있습니다. 특히, 웹 브라우저나 메일 클라이언트와 같은 일반적인 통신 애플리케이션에서 발생하는 비표준 포트 통신, 대량의 HTTP/HTTPS POST 요청, 또는 PowerShell, Certutil, Bitsadmin과 같은 시스템 유틸리티를 통한 웹 콘텐츠 다운로드 시도를 모니터링합니다. 탐지된 이벤트는 잠재적인 초기 접근 또는 정찰 활동의 후속 단계로 간주되어 높은 우선순위의 알람을 트리거하고, 추가적인 조사 및 침해사고 대응 계획 수립에 활용될 수 있습니다.",
+    "false_positive": "정상적인 애플리케이션의 대용량 데이터 전송, 합법적인 시스템 관리 도구의 웹 콘텐츠 다운로드, 또는 개발/테스트 환경에서의 특수 통신 등으로 인해 오탐이 발생할 수 있습니다. 특정 프로세스, IP 주소, 또는 도메인을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

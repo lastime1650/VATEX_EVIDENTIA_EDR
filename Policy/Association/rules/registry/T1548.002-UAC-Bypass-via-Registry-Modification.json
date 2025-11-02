@@ -1,0 +1,48 @@
+{
+    "id": "T1548.002-UAC-Bypass-via-Registry-Modification",
+    "name": "User Account Control (UAC) Bypass Attempt via Registry",
+    "description": "Detects attempts to disable or weaken User Account Control (UAC) by modifying critical registry values. Disabling UAC allows processes to gain administrative privileges without user consent.",
+    "severity": "high",
+    "mitre_attack": [
+        {
+            "tactic": "TA0004",
+            "technique_id": "T1548",
+            "subtechnique_id": "T1548.002",
+            "data_sources": [
+                "Windows Registry:Windows Registry Key Modification"
+            ]
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "uac_disable",
+                "selections": {
+                    "selection_modify_uac_policy": {
+                        "event_type": "registry",
+                        "condition_method": "and",
+                        "conditions": [
+                            {
+                                "field": "body.registry.keyclass", 
+                                "operator": "equals", 
+                                "value": "RegNtPreSetValueKey"
+                            },
+                            {
+                                "field": "body.registry.name", 
+                                "operator": "endswith", 
+                                "value": "\\Policies\\System\\EnableLUA"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "A process attempted to modify the 'EnableLUA' registry value, which is a core component of UAC. This is a strong indicator of a privilege escalation or defense evasion attempt."
+                }
+            }
+        ]
+    },
+    "operational_usage": "Investigate the process responsible for this change. This action is often performed by malware attempting to operate with higher privileges silently. The value is typically set to '0' to disable UAC.",
+    "false_positive": "Extremely rare for legitimate applications. May occur with certain legacy software installers or system administration scripts, but such activity should be heavily scrutinized."
+}

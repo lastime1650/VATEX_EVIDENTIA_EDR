@@ -1,0 +1,181 @@
+{
+    "id": "T1027.010-CommandObfuscation",
+    "name": "Command Obfuscation",
+    "description": "Detects attempts by adversaries to obfuscate commands during execution to impede detection and analysis. This includes techniques like using encoded commands (e.g., PowerShell -EncodedCommand), abusing syntax with special characters, string splitting/concatenation, and directory traversals to hide the true intent or target of commands.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1027",
+        "subtechnique_id": "T1027.010",
+        "data_sources": [
+            "Enterprise:Defense Evasion:Obfuscated Files or Information:Command Obfuscation",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s3_cmd_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "cmd.exe"
+                    }
+                ]
+            },
+            "s4_encoded_command_arg": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-EncodedCommand"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-eNc"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-enc"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-encodedc"
+                    }
+                ]
+            },
+            "s5_powershell_obfuscation_chars": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "`"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "+"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "$"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "join"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "split"
+                    }
+                ]
+            },
+            "s6_cmd_obfuscation_chars": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "^"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "%"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "&&"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "||"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "<"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ">"
+                    }
+                ]
+            },
+            "s7_dir_traversal_obfuscation": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "..\\\\..\\\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "\\\\.\\\\UNC"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "C:\\\\WINDOWS\\\\~1"
+                    }
+                ]
+            },
+            "s8_invoke_obfuscation_tool_keyword": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-Obfuscation"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-DOSfucation"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and ((s2_powershell_exe_path and (s4_encoded_command_arg or s5_powershell_obfuscation_chars)) or (s3_cmd_exe_path and s6_cmd_obfuscation_chars) or s7_dir_traversal_obfuscation or s8_invoke_obfuscation_tool_keyword)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 명령줄 난독화 시도를 탐지할 수 있습니다. 프로세스 생성 이벤트에서 PowerShell의 -EncodedCommand 사용, 특수 문자(`^`, `%`, `+`, `$`, `` ` ``)를 이용한 명령줄 조작, 디렉터리 트래버설(`..\\\\..\\\\`, `\\\\.\\\\UNC`)을 통한 경로 숨김, 또는 알려진 난독화 도구(`Invoke-Obfuscation`) 키워드 사용을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 명령줄에 대한 심층 분석을 통해 악성 행위의 초기 단계를 식별하고 방어 회피 전술을 무력화하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 스크립트, 개발 도구, 또는 일부 합법적인 애플리케이션이 복잡한 명령줄 인자나 인코딩된 스크립트를 사용할 수 있어 오탐이 발생할 수 있습니다. 특히, PowerShell의 `-EncodedCommand`는 합법적인 관리 작업에도 사용될 수 있습니다. 특정 프로세스나 명령줄 패턴을 화이트리스트에 추가하거나, 다른 탐지 규칙과 연계하여 컨텍스트를 강화함으로써 오탐을 줄일 수 있습니다."
+}

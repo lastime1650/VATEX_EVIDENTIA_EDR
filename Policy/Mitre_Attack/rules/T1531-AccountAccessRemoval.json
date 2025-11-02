@@ -1,0 +1,208 @@
+{
+    "id": "T1531-AccountAccessRemoval",
+    "name": "Account Access Removal",
+    "description": "Detects attempts by adversaries to interrupt availability of system and network resources by inhibiting access to accounts utilized by legitimate users. This includes deleting accounts, locking them, or manipulating credentials (e.g., changing passwords) using utilities like 'net.exe', PowerShell cmdlets (e.g., Set-LocalUser, Remove-ADAccount), or direct API calls.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0040",
+        "technique_id": "T1531",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Impact:Account Access Removal",
+            "Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Execution:Command and Scripting Interpreter:PowerShell",
+            "Execution:Native API",
+            "Persistence:Modify Registry"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_net_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "net.exe"
+                    }
+                ]
+            },
+            "s3_net_account_delete_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "user"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/del"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "localgroup"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/delete"
+                    }
+                ]
+            },
+            "s4_net_account_modify_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "user"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/active:no"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "matches",
+                        "value": "user\\s+\\S+\\s+\\S+"
+                    }
+                ]
+            },
+            "s5_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s6_powershell_local_account_manipulation_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Remove-LocalUser"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-LocalUser -Name"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-Password"
+                    }
+                ]
+            },
+            "s7_powershell_ad_account_manipulation_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Remove-ADAccount"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Disable-ADAccount"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Unlock-ADAccount"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-ADAccountPassword"
+                    }
+                ]
+            },
+            "s8_apicall_netuserdel": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "NetUserDel"
+                    }
+                ]
+            },
+            "s9_apicall_netusersetinfo": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "NetUserSetInfo"
+                    }
+                ]
+            },
+            "s10_registry_account_key_access": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "SetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "DeleteKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "RenameKey"
+                    }
+                ]
+            },
+            "s11_registry_sam_or_profile_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SAM\\SAM\\Domains\\Account"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_net_exe_path and (s3_net_account_delete_cmd or s4_net_account_modify_cmd)) or (s1_process_create_action and s5_powershell_exe_path and (s6_powershell_local_account_manipulation_cmd or s7_powershell_ad_account_manipulation_cmd)) or s8_apicall_netuserdel or s9_apicall_netusersetinfo or (s10_registry_account_key_access and s11_registry_sam_or_profile_path)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템 사용자 계정 접근 제거 시도를 탐지할 수 있습니다. 'net.exe' 및 PowerShell을 통한 계정 삭제, 암호 변경, 비활성화 명령 실행, 또는 관련 API 호출 및 레지스트리 키 변경을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 추가적인 포렌식 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히 랜섬웨어 공격 등 다른 Impact 전술과 결합될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 사용자 관리 스크립트, 또는 합법적인 애플리케이션이 계정 정보를 변경하거나 삭제하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상적인 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

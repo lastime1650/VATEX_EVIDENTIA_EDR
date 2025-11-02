@@ -1,0 +1,133 @@
+{
+    "id": "T1592.003-FirmwareDiscovery",
+    "name": "Firmware Discovery",
+    "description": "Adversaries may gather information about the victim's host firmware that can be used during targeting. Information about host firmware may include a variety of details such as type and versions on specific hosts, which may be used to infer more information about hosts in the environment (ex: configuration, purpose, age/patch level, etc.). Adversaries may gather this information in various ways, such as direct elicitation via Phishing for Information. Information about host firmware may only be exposed to adversaries via online or other accessible data sets (ex: job postings, network maps, assessment reports, resumes, or purchase invoices). Gathering this information may reveal opportunities for other forms of reconnaissance (ex: Search Open Websites/Domains or Search Open Technical Databases), establishing operational resources (ex: Develop Capabilities or Obtain Capabilities), and/or initial access (ex: Supply Chain Compromise or Exploit Public-Facing Application).",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0043",
+        "technique_id": "T1592",
+        "subtechnique_id": "T1592.003",
+        "data_sources": [
+            "Enterprise:Reconnaissance:Gather Victim Host Information:Firmware",
+            "Enterprise:Discovery:System Information Discovery",
+            "Enterprise:Discovery:Query Registry",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Native API"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_wmic_bios_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wmic"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "bios get"
+                    }
+                ]
+            },
+            "s3_msinfo32_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "msinfo32.exe"
+                    }
+                ]
+            },
+            "s4_powershell_firmware_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-WmiObject -Class Win32_BIOS"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-CimInstance -ClassName Win32_BIOS"
+                    }
+                ]
+            },
+            "s5_registry_access_keyclass": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "QueryKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "OpenKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "EnumerateKey"
+                    }
+                ]
+            },
+            "s6_registry_bios_paths": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\HARDWARE\\DESCRIPTION\\System\\BIOS"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Firmware"
+                    }
+                ]
+            },
+            "s7_apicall_firmware_functions": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetSystemFirmwareTable"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "EnumSystemFirmwareTables"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create and s2_wmic_bios_command) or (s1_process_create and s3_msinfo32_command) or (s1_process_create and s4_powershell_firmware_cmd) or (s5_registry_access_keyclass and s6_registry_bios_paths) or s7_apicall_firmware_functions"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템 펌웨어 정보 수집 시도를 탐지할 수 있습니다. 'wmic bios get', 'msinfo32.exe'와 같은 명령 실행, PowerShell을 통한 BIOS 정보 조회 시도, 펌웨어 관련 레지스트리 키 접근, 또는 펌웨어 정보 조회 API 호출 등을 모니터링합니다. 탐지된 이벤트는 자동 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히 다른 Reconnaissance 또는 Discovery 활동과 결합될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 진단 소프트웨어, 하드웨어 인벤토리 스크립트, 또는 합법적인 애플리케이션이 시스템 펌웨어 정보를 조회하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

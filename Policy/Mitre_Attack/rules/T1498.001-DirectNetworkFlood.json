@@ -1,0 +1,152 @@
+{
+    "id": "T1498.001-DirectNetworkFlood",
+    "name": "Direct Network Flood",
+    "description": "Detects attempts to cause a denial of service (DoS) by directly sending a high-volume of network traffic to a target, often using tools like hping3, LOIC, or specific ping commands, or by observing unusually large UDP/ICMP packets originating from the host. This technique aims to reduce the availability and functionality of targeted systems and networks.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0040",
+        "technique_id": "T1498",
+        "subtechnique_id": "T1498.001",
+        "data_sources": [
+            "Enterprise:Impact:Network Denial of Service:Direct Network Flood",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:Python",
+            "Enterprise:Command and Control:Non-Application Layer Protocol"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_creation_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmdline_ping_flood_options": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ping.exe -t"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ping.exe -l 65500"
+                    }
+                ]
+            },
+            "s3_cmdline_hping3_tool": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "hping3"
+                    }
+                ]
+            },
+            "s4_cmdline_loic_tool": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "loic.exe"
+                    }
+                ]
+            },
+            "s5_cmdline_python_interpreter": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "python"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "python.exe"
+                    }
+                ]
+            },
+            "s6_cmdline_dos_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "flood.py"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "dos.py"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "udpflood"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "icmpflood"
+                    }
+                ]
+            },
+            "s7_network_outbound_udp": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "UDP"
+                    },
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    }
+                ]
+            },
+            "s8_network_outbound_icmp": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "ICMP"
+                    },
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    }
+                ]
+            },
+            "s9_network_large_packet": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.packetsize",
+                        "operator": "gte",
+                        "value": 1400
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_creation_action and (s2_cmdline_ping_flood_options or s3_cmdline_hping3_tool or s4_cmdline_loic_tool or (s5_cmdline_python_interpreter and s6_cmdline_dos_keywords)) or (s9_network_large_packet and (s7_network_outbound_udp or s8_network_outbound_icmp))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 직접 네트워크 플러드 공격을 시도하는 행위를 탐지할 수 있습니다. 이는 'ping.exe -t'와 같은 연속적인 핑 명령, 'hping3' 또는 'LOIC'과 같은 DoS 도구 실행, 또는 'python' 스크립트를 통한 플러드 시도와 같은 프로세스 생성 이벤트를 모니터링합니다. 또한, 단일 네트워크 이벤트에서 비정상적으로 큰 UDP 또는 ICMP 아웃바운드 패킷을 탐지하여 플러드 공격의 잠재적 지표로 활용합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스 및 네트워크 활동에 대한 심층적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용됩니다.",
+    "false_positive": "정상적인 네트워크 진단 도구(예: 고급 핑 유틸리티), 네트워크 성능 테스트, 또는 합법적인 애플리케이션의 대용량 데이터 전송으로 인해 오탐이 발생할 수 있습니다. 또한, 특정 개발 환경에서 테스트 목적으로 사용되는 스크립트나 도구도 탐지될 수 있습니다. 알려진 정상 프로세스나 특정 IP 주소 대역에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

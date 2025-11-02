@@ -1,0 +1,214 @@
+{
+    "id": "T1596-SearchOpenTechnicalDatabases",
+    "name": "Search Open Technical Databases",
+    "description": "Detects attempts by an adversary to query open technical databases (like WHOIS, DNS records, SSL certificates) from a compromised endpoint using command-line tools or PowerShell. This activity indicates reconnaissance to gather information about the victim organization.",
+    "severity": "low",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1596",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Reconnaissance:Search Open Technical Databases:DNS/Passive DNS",
+            "Enterprise:Reconnaissance:Search Open Technical Databases:WHOIS",
+            "Enterprise:Reconnaissance:Search Open Technical Databases:Digital Certificates",
+            "Enterprise:Reconnaissance:Search Open Technical Databases:CDNs",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_whois_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "whois.exe"
+                    }
+                ]
+            },
+            "s3_nslookup_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "nslookup.exe"
+                    }
+                ]
+            },
+            "s4_dig_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "dig.exe"
+                    }
+                ]
+            },
+            "s5_curl_or_wget_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "curl.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "wget.exe"
+                    }
+                ]
+            },
+            "s6_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s7_cmdline_recon_keywords_whois_web": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "whois"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "domaintools"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "dnsdumpster"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "circl.lu"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ssllabs"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "sslshopper"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "shodan.io"
+                    }
+                ]
+            },
+            "s8_cmdline_nslookup_dig_suspicious_types": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-query=any"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-type=any"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-query=axfr"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-type=axfr"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-query=soa"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-type=soa"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-query=ns"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-type=ns"
+                    }
+                ]
+            },
+            "s9_cmdline_powershell_webrequest_recon": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-WebRequest"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "whois"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "dns"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ssl"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "cert"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create and (s2_whois_exe or (s3_nslookup_exe and s8_cmdline_nslookup_dig_suspicious_types) or (s4_dig_exe and s8_cmdline_nslookup_dig_suspicious_types) or (s5_curl_or_wget_exe and s7_cmdline_recon_keywords_whois_web) or (s6_powershell_exe and s9_cmdline_powershell_webrequest_recon))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 침해된 시스템에서 공개 기술 데이터베이스를 조회하려는 시도를 탐지할 수 있습니다. `whois`, `nslookup`, `dig`, `curl`, `wget` 또는 PowerShell의 `Invoke-WebRequest`와 같은 도구를 사용하여 도메인, DNS 기록, SSL 인증서 등 외부 정보를 수집하는 명령줄 활동을 모니터링합니다. 탐지된 이벤트는 초기 침투 후 정찰 활동의 지표로 사용될 수 있으며, 추가적인 조사 및 위협 분석의 우선순위를 지정하는 데 기여합니다.",
+    "false_positive": "합법적인 시스템 관리자, 개발자, 또는 보안 연구원이 네트워크 문제 해결, 도메인 정보 조회, SSL 인증서 확인 등을 위해 유사한 명령을 실행하는 경우 오탐이 발생할 수 있습니다. 특정 IP 주소 범위, 사용자 계정, 또는 알려진 관리 스크립트를 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

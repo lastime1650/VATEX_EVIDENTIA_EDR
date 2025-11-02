@@ -1,0 +1,133 @@
+{
+    "id": "T1187-ForcedAuthentication",
+    "name": "Forced Authentication",
+    "description": "Detects attempts by adversaries to gather credential material by forcing a user to automatically provide authentication information (e.g., SMB/WebDAV hashes) through mechanisms such as specially crafted .LNK or .SCF files, or by directing traffic to adversary-controlled servers. This technique leverages automatic authentication behaviors in Windows.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0006",
+        "technique_id": "T1187",
+        "subtechnique_id": "",
+        "data_sources": [
+            "File:FileAccess",
+            "Network Traffic:Network Flow",
+            "File:FileModification",
+            "File:FileCreation",
+            "Network Traffic:Network Content"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s_net_direction_out": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    }
+                ]
+            },
+            "s_net_proto_tcp": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "TCP"
+                    }
+                ]
+            },
+            "s_net_proto_udp": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "UDP"
+                    }
+                ]
+            },
+            "s_net_destport_smb_tcp": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 139
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 445
+                    }
+                ]
+            },
+            "s_net_destport_smb_udp": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 137
+                    }
+                ]
+            },
+            "s_net_destport_webdav_http": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 80
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 443
+                    }
+                ]
+            },
+            "s_fs_action_create_or_overwritten": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    }
+                ]
+            },
+            "s_fs_filepath_lnk": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".lnk"
+                    }
+                ]
+            },
+            "s_fs_filepath_scf": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".scf"
+                    }
+                ]
+            }
+        },
+        "condition": "( (s_net_direction_out and s_net_proto_tcp and s_net_destport_smb_tcp) or (s_net_direction_out and s_net_proto_udp and s_net_destport_smb_udp) or (s_net_direction_out and s_net_proto_tcp and s_net_destport_webdav_http) or (s_fs_action_create_or_overwritten and (s_fs_filepath_lnk or s_fs_filepath_scf)) )"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 강제 인증 시도를 탐지할 수 있습니다. 시스템이 SMB(TCP 139, 445, UDP 137) 또는 WebDAV/HTTP/HTTPS(TCP 80, 443) 프로토콜을 사용하여 외부 시스템으로 인증 정보를 전송하려는 아웃바운드 네트워크 트래픽을 모니터링합니다. 또한, 외부 네트워크 리소스를 참조하는 .LNK 또는 .SCF 파일의 생성 또는 수정을 탐지하여 잠재적인 자격 증명 수집 시도를 식별합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 엔드포인트 및 네트워크 활동에 대한 추가적인 조사를 시작하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 기능, 합법적인 소프트웨어 또는 스크립트가 외부 네트워크 리소스와 통신하거나, .LNK 또는 .SCF 파일을 생성/수정하는 경우 오탐이 발생할 수 있습니다. 특히, 네트워크 공유 접근, 웹 기반 애플리케이션 사용, 또는 시스템 관리 도구에 의해 유사한 트래픽이나 파일 활동이 발생할 수 있습니다. 알려진 정상적인 통신 패턴이나 파일 활동에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

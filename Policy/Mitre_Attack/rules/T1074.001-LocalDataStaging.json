@@ -1,0 +1,226 @@
+{
+    "id": "T1074.001-LocalDataStaging",
+    "name": "Local Data Staging",
+    "description": "Detects attempts by adversaries to stage collected data in a central location or directory on the local system prior to exfiltration. This includes using command-line tools for copying/moving/archiving data into temporary or recycle bin directories, PowerShell cmdlets for file manipulation, or writing data to the Windows Registry.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0009",
+        "technique_id": "T1074",
+        "subtechnique_id": "001",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Collection:Data Staged:Local Data Staging",
+            "Enterprise:Collection:Data from Local System"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmdline_compression_tool": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "7z.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "rar.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "zip.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "tar.exe"
+                    }
+                ]
+            },
+            "s3_cmdline_copy_move_commands": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "copy "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "xcopy "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "move "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "type "
+                    }
+                ]
+            },
+            "s4_cmdline_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s5_cmdline_powershell_staging_cmdlets": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Copy-Item"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Move-Item"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Add-Content"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-Content"
+                    }
+                ]
+            },
+            "s6_filesystem_write_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    }
+                ]
+            },
+            "s7_filesystem_temp_or_recycle_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\Windows\\Temp\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "AppData\\Local\\Temp\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\$Recycle.Bin\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\ProgramData\\"
+                    }
+                ]
+            },
+            "s8_filesystem_archive_extension": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".zip"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".rar"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".7z"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".tar"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".gz"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".enc"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".crypt"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".tmp"
+                    }
+                ]
+            },
+            "s9_registry_set_value_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPostSetValueKey"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create and (s2_cmdline_compression_tool or s3_cmdline_copy_move_commands or (s4_cmdline_powershell_exe and s5_cmdline_powershell_staging_cmdlets))) or (s6_filesystem_write_action and s7_filesystem_temp_or_recycle_path and s8_filesystem_archive_extension) or s9_registry_set_value_action"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 수집된 데이터의 로컬 스테이징 시도를 탐지할 수 있습니다. 압축 도구, 파일 복사/이동 명령, PowerShell 스크립트 등을 사용한 프로세스 생성 이벤트와 함께, 임시 폴더나 휴지통과 같은 일반적인 스테이징 위치에 아카이브 또는 암호화된 파일이 생성/수정되는 파일 시스템 이벤트를 모니터링합니다. 또한, 레지스트리 키 값 설정 이벤트도 잠재적인 스테이징 활동으로 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 파일에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 프로세스, 소프트웨어 설치/업데이트, 백업 유틸리티, 또는 합법적인 애플리케이션이 임시 파일을 생성하거나 데이터를 압축/이동하는 과정에서 오탐이 발생할 수 있습니다. 특히, 레지스트리 키 값 설정 이벤트는 매우 흔하므로, 이 부분에서 오탐이 발생할 가능성이 높습니다. 알려진 정상 프로세스나 특정 파일 경로, 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

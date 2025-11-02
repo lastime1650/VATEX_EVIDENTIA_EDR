@@ -1,0 +1,122 @@
+{
+    "id": "T1552.006-GroupPolicyPreferences",
+    "name": "Group Policy Preferences Credential Access",
+    "description": "Detects attempts by adversaries to discover and exploit unsecured credentials embedded within Group Policy Preferences (GPP) XML files. These files, often stored in the SYSVOL share on a domain controller, can contain encrypted passwords that can be decrypted using publicly known AES keys, allowing adversaries to obtain domain user credentials. This includes monitoring for commands used to enumerate XML files in SYSVOL and execution of tools designed to extract and decrypt GPP passwords.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0006",
+        "technique_id": "T1552",
+        "subtechnique_id": "T1552.006",
+        "data_sources": [
+            "Enterprise:Credential Access:Unsecured Credentials:Credentials In Files",
+            "Enterprise:Discovery:File and Directory Discovery",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmdline_dir_sysvol_xml": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "dir"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/s"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "*.xml"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "SYSVOL"
+                    }
+                ]
+            },
+            "s3_cmdline_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s4_cmdline_get_gpppassword": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-GPPPassword"
+                    }
+                ]
+            },
+            "s5_cmdline_gpprefdecrypt_py": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "gpprefdecrypt.py"
+                    }
+                ]
+            },
+            "s6_filesystem_read_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "read"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "open"
+                    }
+                ]
+            },
+            "s7_filepath_sysvol_xml": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "SYSVOL"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".xml"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_cmdline_dir_sysvol_xml) or (s1_process_create_action and s3_cmdline_powershell_exe and s4_cmdline_get_gpppassword) or (s1_process_create_action and s5_cmdline_gpprefdecrypt_py) or (s6_filesystem_read_action and s7_filepath_sysvol_xml)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 그룹 정책 기본 설정(GPP)에서 자격 증명을 수집하려는 시도를 탐지할 수 있습니다. 특히, SYSVOL 공유에서 XML 파일을 검색하는 'dir /s *.xml'과 같은 명령 실행, 'Get-GPPPassword' 또는 'gpprefdecrypt.py'와 같은 GPP 암호 추출 도구 실행, 또는 SYSVOL 내의 XML 파일에 대한 직접적인 읽기/열기 파일 시스템 접근을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 파일 접근에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 이는 자격 증명 접근 전술의 중요한 지표로 활용됩니다.",
+    "false_positive": "합법적인 시스템 관리자가 그룹 정책 설정을 감사하거나, 백업/복구 솔루션이 SYSVOL 내용을 스캔하는 경우 오탐이 발생할 수 있습니다. 또한, 개발자가 테스트 목적으로 GPP 관련 스크립트를 실행하거나, 보안 도구가 GPP 취약점을 스캔하는 경우에도 탐지될 수 있습니다. 알려진 정상 프로세스 또는 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

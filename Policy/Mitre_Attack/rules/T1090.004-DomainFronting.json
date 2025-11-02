@@ -1,0 +1,64 @@
+{
+    "id": "T1090.004-DomainFronting",
+    "name": "Domain Fronting",
+    "description": "Adversaries may use domain fronting to obfuscate the intended destination of HTTPS traffic or traffic tunneled through HTTPS, often leveraging Content Delivery Networks (CDNs). This rule aims to detect outbound HTTPS (TCP 443) network connections, which could be part of a domain fronting attempt. **Note: Direct detection of the core domain fronting mechanism (mismatch between TLS SNI and HTTP Host headers) is not possible with the current agent event telemetry, which only provides network layer information. Therefore, this rule serves as a broad indicator of suspicious outbound web traffic.**",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0011",
+        "technique_id": "T1090",
+        "subtechnique_id": "T1090.004",
+        "data_sources": [
+            "NetworkTraffic:NetworkTrafficContent"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_outbound_direction": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    }
+                ]
+            },
+            "s2_tcp_protocol": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "TCP"
+                    }
+                ]
+            },
+            "s3_https_destination_port": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 443
+                    }
+                ]
+            },
+            "s4_http_destination_port": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 80
+                    }
+                ]
+            }
+        },
+        "condition": "s1_outbound_direction and s2_tcp_protocol and (s3_https_destination_port or s4_http_destination_port)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 발생하는 비정상적인 외부 네트워크 연결을 모니터링할 수 있습니다. 특히, HTTPS (TCP 443) 또는 HTTP (TCP 80)를 사용하는 아웃바운드 트래픽 중 도메인 프론팅과 연관될 수 있는 패턴을 탐지하는 데 사용됩니다. 탐지된 이벤트는 잠재적 C2 통신 또는 데이터 유출 시도를 나타낼 수 있으므로, 높은 심각도로 분류하여 즉각적인 알람을 트리거하고, 연관된 프로세스 및 네트워크 흐름에 대한 추가적인 심층 분석을 시작하는 데 활용됩니다. **이 규칙은 네트워크 계층 정보만으로 도메인 프론팅을 직접 식별하기 어려우므로, 추가적인 TLS/HTTP 헤더 분석 도구와 연동하여 사용해야 합니다.**",
+    "false_positive": "이 규칙은 모든 아웃바운드 HTTPS/HTTP 트래픽을 탐지하므로, 정상적인 웹 브라우징, 클라우드 서비스 통신, 소프트웨어 업데이트, 그리고 합법적인 애플리케이션의 API 통신 등에서 광범위한 오탐이 발생할 수 있습니다. 알려진 정상적인 프로세스나 IP 주소/도메인에 대한 화이트리스트를 적용하거나, 더 심층적인 네트워크 트래픽 분석 (예: SNI/Host 헤더 불일치 확인)을 통해 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,117 @@
+{
+    "id": "T1548.001-SetuidSetgidAbuse",
+    "name": "Setuid and Setgid Bit Abuse",
+    "description": "Detects attempts by adversaries to abuse setuid or setgid bits on executables to achieve privilege escalation or defense evasion. This includes monitoring for 'chmod' command executions that set these bits, or 'find' commands used to discover existing setuid/setgid binaries.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0004",
+        "technique_id": "T1548",
+        "subtechnique_id": "T1548.001",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Unix Shell",
+            "Enterprise:Defense Evasion:File and Directory Permissions Modification:Linux and Mac File and Directory Permissions Modification",
+            "Enterprise:Discovery:File and Directory Discovery"
+        ]
+    },
+    "platform": [
+        "linux",
+        "macos"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_chmod_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "chmod"
+                    }
+                ]
+            },
+            "s3_chmod_setuid_shorthand": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "u+s"
+                    }
+                ]
+            },
+            "s4_chmod_setgid_shorthand": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "g+s"
+                    }
+                ]
+            },
+            "s5_chmod_setuid_bitmask": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "matches",
+                        "value": "4[0-7]{3}"
+                    }
+                ]
+            },
+            "s6_chmod_setgid_bitmask": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "matches",
+                        "value": "2[0-7]{3}"
+                    }
+                ]
+            },
+            "s7_find_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "find"
+                    }
+                ]
+            },
+            "s8_find_setuid_perm": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-perm +4000"
+                    }
+                ]
+            },
+            "s9_find_setgid_perm": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-perm +2000"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create and s2_chmod_execution and (s3_chmod_setuid_shorthand or s4_chmod_setgid_shorthand or s5_chmod_setuid_bitmask or s6_chmod_setgid_bitmask)) or (s1_process_create and s7_find_execution and (s8_find_setuid_perm or s9_find_setgid_perm))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Linux/macOS 시스템에서 Setuid/Setgid 비트의 악용 시도를 탐지할 수 있습니다. 'chmod' 명령이 실행되어 권한 상승 비트(setuid/setgid)를 설정하는 경우나, 'find' 명령이 이 비트가 설정된 파일을 검색하는 경우를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 파일에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 이는 권한 상승 및 방어 회피 전술에 대한 중요한 지표입니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 소프트웨어 설치 또는 업데이트 스크립트가 파일 권한을 수정하거나, 개발자가 특정 애플리케이션의 동작을 테스트하기 위해 setuid/setgid 비트를 설정하는 경우 오탐이 발생할 수 있습니다. 특정 경로의 파일이나 알려진 정상적인 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

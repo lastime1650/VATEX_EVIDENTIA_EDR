@@ -1,0 +1,46 @@
+{
+    "id": "FEATURE-REG-Service-Deletion",
+    "name": "Windows Service Deleted via Registry",
+    "description": "Detects the deletion of a service key from 'CurrentControlSet\\Services'. This provides a feature for identifying attempts to remove services, which could be legitimate uninstalls or malicious actions to impair defenses.",
+    "severity": "low",
+    "mitre_attack": [
+        {
+            "tactic": "TA0005",
+            "technique_id": "T1562",
+            "subtechnique_id": "",
+            "data_sources": ["Windows Registry"]
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "delete_service",
+                "selections": {
+                    "selection_delete_service_key": {
+                        "event_type": "registry",
+                        "condition_method": "and",
+                        "conditions": [
+                            {
+                                "field": "body.registry.keyclass", 
+                                "operator": "equals", 
+                                "value": "RegNtPreDeleteKey"
+                            },
+                            {
+                                "field": "body.registry.name", 
+                                "operator": "regex", 
+                                "value": ".*\\\\SYSTEM\\\\CurrentControlSet\\\\Services\\\\[^\\\\]+$"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "A Windows service was deleted from the registry. SIEM should analyze the name of the deleted service."
+                }
+            }
+        ]
+    },
+    "operational_usage": "This event provides context for system changes. SIEM should have a list of critical services to monitor. Deletion of a security or logging service is a red flag. Correlate with the responsible process (e.g., sc.exe delete).",
+    "false_positive": "Expected during legitimate software uninstallation. The context of which service was deleted is paramount."
+}

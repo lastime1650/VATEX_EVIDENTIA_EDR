@@ -1,0 +1,126 @@
+{
+    "id": "T1534-InternalSpearphishing",
+    "name": "Internal Spearphishing",
+    "description": "After they already have access to accounts or systems within the environment, adversaries may use internal spearphishing to gain access to additional information or compromise other users within the same organization. Internal spearphishing is multi-staged campaign where a legitimate account is initially compromised either by controlling the user's device or by compromising the account credentials of the user. Adversaries may then attempt to take advantage of the trusted internal account to increase the likelihood of tricking more victims into falling for phish attempts, often incorporating Impersonation. For example, adversaries may leverage Spearphishing Attachment or Spearphishing Link as part of internal spearphishing to deliver a payload or redirect to an external site to capture credentials through Input Capture on sites that mimic login interfaces. Adversaries may also leverage internal chat apps, such as Microsoft Teams, to spread malicious content or engage users in attempts to capture sensitive information and/or credentials.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0008",
+        "technique_id": "T1534",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Command and Control:Application Layer Protocol:Mail Protocols"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s3_powershell_sendmail_cmdlet": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Send-MailMessage"
+                    }
+                ]
+            },
+            "s4_cmd_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "cmd.exe"
+                    }
+                ]
+            },
+            "s5_cmd_blat_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "blat.exe"
+                    }
+                ]
+            },
+            "s6_cmd_telnet_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "telnet"
+                    }
+                ]
+            },
+            "s7_cmd_port_25_in_commandline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " 25"
+                    }
+                ]
+            },
+            "n1_outgoing_network_direction": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    }
+                ]
+            },
+            "n2_smtp_ports": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 25
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 465
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 587
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and ((s2_powershell_exe_path and s3_powershell_sendmail_cmdlet) or (s4_cmd_exe_path and s5_cmd_blat_execution) or (s4_cmd_exe_path and s6_cmd_telnet_execution and s7_cmd_port_25_in_commandline) or (n1_outgoing_network_direction and n2_smtp_ports))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 내부 시스템에서 발생하는 스피어 피싱 시도를 탐지할 수 있습니다. PowerShell의 Send-MailMessage cmdlet 사용, Blat.exe와 같은 명령줄 SMTP 클라이언트 실행, 또는 Telnet을 이용한 SMTP 통신 시도와 같은 프로세스 생성 이벤트를 모니터링합니다. 또한, 내부 시스템에서 외부 SMTP 포트(25, 465, 587)로의 비정상적인 네트워크 연결을 탐지하여 내부 스피어 피싱 캠페인을 식별할 수 있습니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 네트워크 활동에 대한 추가적인 조사를 시작하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 스크립트, 자동화된 보고서 발송 시스템, 개발/테스트 환경에서의 이메일 테스트, 또는 합법적인 애플리케이션이 이메일을 전송하는 과정에서 오탐이 발생할 수 있습니다. 특히, 모든 외부 SMTP 연결을 탐지하는 조건은 정상적인 이메일 클라이언트나 서비스로 인해 많은 오탐을 유발할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴, 또는 특정 IP/도메인에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

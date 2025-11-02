@@ -1,0 +1,130 @@
+{
+    "id": "T1583.005-BotnetActivity",
+    "name": "Botnet Activity Detection (Indirect)",
+    "description": "Detects unusual outbound network connections to non-standard high ports, which could indicate a compromised system participating in or managing botnet activities like C2 communication, DDoS, or spam. While T1583.005 specifically refers to the adversary's acquisition of a botnet (a resource development activity typically outside the target's visibility), this rule aims to detect the *consequences* or *related activities* on the endpoint if it's being used as part of a botnet or to manage one. This is an indirect detection method for the broader 'Botnet' concept.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0042",
+        "technique_id": "T1583",
+        "subtechnique_id": "T1583.005",
+        "data_sources": [
+            "Network Traffic:Network Connection Detection",
+            "Process:Process Creation"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_outbound_connection": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    }
+                ]
+            },
+            "s2_high_port_range": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "gt",
+                        "value": 1024
+                    }
+                ]
+            },
+            "s3_common_web_ports": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 80
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 443
+                    }
+                ]
+            },
+            "s4_common_transfer_ports": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 21
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 22
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 23
+                    }
+                ]
+            },
+            "s5_common_mail_dns_ports": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 25
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 53
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 110
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 143
+                    }
+                ]
+            },
+            "s6_common_remote_ports": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 3389
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 5900
+                    }
+                ]
+            },
+            "s7_common_proxy_port": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 8080
+                    }
+                ]
+            }
+        },
+        "condition": "s1_outbound_connection and s2_high_port_range and not (s3_common_web_ports or s4_common_transfer_ports or s5_common_mail_dns_ports or s6_common_remote_ports or s7_common_proxy_port)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 발생하는 비정상적인 외부 네트워크 연결을 탐지합니다. 특히 잘 알려진 서비스 포트가 아닌 높은 포트 번호로의 통신을 모니터링하여, 시스템이 봇넷의 명령 및 제어(C2) 통신을 수행하거나 DDoS/스팸 활동에 참여하는 등의 악성 활동을 식별하는 데 사용될 수 있습니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 추가적인 네트워크 및 프로세스 조사를 시작하는 데 활용됩니다. 이는 T1583.005 '봇넷 획득' 자체의 직접적인 탐지보다는, 봇넷의 존재 또는 활용을 간접적으로 시사하는 활동에 중점을 둡니다.",
+    "false_positive": "합법적인 사용자 지정 애플리케이션, 개발 도구, P2P 소프트웨어, 또는 특정 게임 클라이언트가 비표준 포트를 사용하여 통신하는 경우 오탐이 발생할 수 있습니다. 또한, 일부 클라우드 서비스나 VPN 솔루션도 비표준 포트를 사용할 수 있습니다. 이러한 정상적인 트래픽 패턴을 분석하여 화이트리스트에 추가하거나, 특정 프로세스에 대한 예외 처리를 통해 오탐을 줄일 수 있습니다."
+}

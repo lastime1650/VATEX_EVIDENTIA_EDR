@@ -1,0 +1,159 @@
+{
+    "id": "T1591.004-IdentifyRoles",
+    "name": "Identify Roles",
+    "description": "Detects attempts to identify the primary user, currently logged-in user, or a set of users on a system, which can reveal valuable information about targetable personnel and their access. This includes execution of commands like 'net user', 'whoami', 'query user', PowerShell cmdlets for user enumeration, access to user-related registry keys, or API calls to retrieve user information.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0001",
+        "technique_id": "T1591",
+        "subtechnique_id": "T1591.004",
+        "data_sources": [
+            "Enterprise:Discovery:Account Discovery:Local Account",
+            "Enterprise:Discovery:Account Discovery:Domain Account",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Execution:Native API",
+            "Enterprise:Discovery:Query Registry"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmd_user_enum_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "net user"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "net localgroup"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "whoami"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "query user"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "quser"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wmic useraccount"
+                    }
+                ]
+            },
+            "s3_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s4_powershell_user_enum_cmdlets": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-LocalUser"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-ADUser"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Win32_UserAccount"
+                    }
+                ]
+            },
+            "s5_registry_discovery_actions": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "Query"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "Open"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "Enumerate"
+                    }
+                ]
+            },
+            "s6_registry_user_profile_paths": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_USERS"
+                    }
+                ]
+            },
+            "s7_apicall_user_enumeration_functions": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "NetUserEnum"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "WTSQuerySessionInformationW"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "WTSQuerySessionInformationA"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_cmd_user_enum_keywords) or (s1_process_create_action and s3_powershell_exe_path and s4_powershell_user_enum_cmdlets) or (s5_registry_discovery_actions and s6_registry_user_profile_paths) or s7_apicall_user_enumeration_functions"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템 사용자 및 역할 정보 수집 시도를 탐지할 수 있습니다. 'net user', 'whoami', 'query user'와 같은 명령 실행, PowerShell을 통한 사용자 열거 시도, 사용자 프로필 관련 레지스트리 키 접근, 또는 사용자 정보 조회 API 호출 등을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히 다른 Discovery 또는 Collection 활동과 결합될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 백신 소프트웨어, 사용자 환경 설정 스크립트, 또는 합법적인 애플리케이션이 시스템 사용자 정보를 조회하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

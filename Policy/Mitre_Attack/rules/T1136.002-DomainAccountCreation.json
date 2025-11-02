@@ -1,0 +1,80 @@
+{
+    "id": "T1136.002-DomainAccountCreation",
+    "name": "Persistence via Domain Account Creation",
+    "description": "Detects attempts to create new domain accounts using the 'net user /add /domain' command. Adversaries create domain accounts to maintain access, establish secondary credentialed access, and blend in with legitimate activity within an Active Directory environment.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1136",
+        "subtechnique_id": "T1136.002",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Persistence:Create Account:Domain Account"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_net_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "net.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "net1.exe"
+                    }
+                ]
+            },
+            "s3_cmdline_user_keyword": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "user"
+                    }
+                ]
+            },
+            "s4_cmdline_add_flag": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/add"
+                    }
+                ]
+            },
+            "s5_cmdline_domain_flag": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/domain"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_action_create and s2_net_exe_path and s3_cmdline_user_keyword and s4_cmdline_add_flag and s5_cmdline_domain_flag"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 'net user /add /domain' 명령을 통해 도메인 계정을 생성하려는 시도를 탐지할 수 있습니다. 이는 공격자가 시스템 접근을 유지하기 위한 영구적인 백도어를 설정하는 행위일 수 있으므로, 탐지 시 높은 심각도로 분류하여 즉각적인 알람을 트리거하고 관련 프로세스, 사용자, 그리고 생성된 계정에 대한 철저한 조사를 시작해야 합니다. 특히, 비정상적인 계정 이름이나 비업무 시간대의 계정 생성 시도와 결합될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 시스템 관리자가 도메인 계정을 생성하거나, 자동화된 스크립트 또는 프로비저닝 도구가 'net user /add /domain' 명령을 사용하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 관리 계정이나 스크립트의 실행 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

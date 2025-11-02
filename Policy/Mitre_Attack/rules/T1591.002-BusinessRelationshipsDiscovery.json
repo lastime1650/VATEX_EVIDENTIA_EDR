@@ -1,0 +1,198 @@
+{
+    "id": "T1591.002-BusinessRelationshipsDiscovery",
+    "name": "Business Relationships Discovery",
+    "description": "Detects on-host activities potentially related to gathering information about an organization's business relationships, such as partners, vendors, or subsidiaries. This may involve using command-line tools to query external sources or saving documents containing relevant keywords.",
+    "severity": "low",
+    "mitre_attack": {
+        "tactic": "TA0043",
+        "technique_id": "T1591",
+        "subtechnique_id": "T1591.002",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Command:CommandExecution",
+            "File:FileCreation",
+            "File:FileModification",
+            "Network:NetworkConnection"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_powershell": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s2_powershell_web_request": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-WebRequest"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-RestMethod"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "System.Net.WebClient"
+                    }
+                ]
+            },
+            "s3_cmdline_business_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "partner"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "vendor"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "supplier"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "client list"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "contract"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "acquisition"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "merger"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "subsidiary"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "affiliate"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "relationship"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "organization profile"
+                    }
+                ]
+            },
+            "s4_filesystem_write_event": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    }
+                ]
+            },
+            "s5_filepath_business_keywords": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "partners.txt"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "vendors.csv"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "suppliers.xlsx"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "company_relationships.docx"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "client_list.pdf"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "acquisition_targets.txt"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "merger_candidates.txt"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "org_chart.txt"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "business_contacts.txt"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "contract_summary.txt"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_powershell and s2_powershell_web_request and s3_cmdline_business_keywords) or (s4_filesystem_write_event and s5_filepath_business_keywords)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템 내부에서 비즈니스 관계 정보를 수집하려는 시도를 탐지할 수 있습니다. PowerShell을 이용한 웹 요청과 함께 특정 비즈니스 관련 키워드가 명령줄에 포함되거나, 관련 키워드를 포함하는 파일이 생성/수정되는 이벤트를 모니터링합니다. 탐지된 이벤트는 낮은 심각도로 분류되지만, 다른 Discovery 또는 Collection 활동과 결합될 경우 조사 우선순위를 높여 초기 정찰 단계의 위협을 식별하는 데 기여할 수 있습니다. 자동 알람을 통해 추가 분석을 유도하고, 사후 조사 보고서에 포함하여 침해사고 대응 프로세스를 지원합니다.",
+    "false_positive": "정상적인 시스템 관리 스크립트, 데이터 분석 도구, 또는 일반 사용자가 업무 관련 문서를 저장하거나 웹에서 정보를 검색하는 과정에서 오탐이 발생할 수 있습니다. 특히 'partner', 'vendor'와 같은 일반적인 비즈니스 용어는 오탐의 주된 원인이 될 수 있습니다. 특정 프로세스, 사용자 또는 파일 경로를 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

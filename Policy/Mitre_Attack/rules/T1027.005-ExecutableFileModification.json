@@ -1,0 +1,64 @@
+{
+    "id": "T1027.005-ExecutableFileModification",
+    "name": "Indicator Removal from Tools - Executable File Modification",
+    "description": "Detects suspicious modifications (write/overwrite) to executable files (.exe, .dll, .sys, .bin) on the file system. This activity could indicate an adversary attempting to remove detectable indicators from their malicious tools to evade security controls.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1027",
+        "subtechnique_id": "T1027.005",
+        "data_sources": [
+            "file:filemodification"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_file_write_or_overwrite_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    }
+                ]
+            },
+            "s2_target_is_executable_extension": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".sys"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".bin"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_file_write_or_overwrite_action and s2_target_is_executable_extension"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 사용하여 실행 가능한 파일(.exe, .dll 등)에 대한 의심스러운 쓰기 또는 덮어쓰기 활동을 탐지할 수 있습니다. 이는 공격자가 보안 탐지를 회피하기 위해 악성 도구에서 탐지 지표를 제거하려는 시도를 나타낼 수 있습니다. 탐지된 이벤트는 중간 심각도로 분류되어 추가 조사를 트리거하고, 해당 파일 및 관련된 프로세스에 대한 포렌식 분석을 수행하여 악의적인 변경 여부를 확인할 수 있습니다.",
+    "false_positive": "정상적인 소프트웨어 업데이트, 패치 적용, 컴파일러 또는 빌드 도구의 실행, 안티바이러스 소프트웨어의 자체 방어 메커니즘, 또는 합법적인 애플리케이션의 자가 수정 기능으로 인해 오탐이 발생할 수 있습니다. 알려진 정상 프로세스 또는 특정 파일 경로에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

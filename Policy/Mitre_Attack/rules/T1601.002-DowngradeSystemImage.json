@@ -1,0 +1,208 @@
+{
+    "id": "T1601.002-DowngradeSystemImage",
+    "name": "Downgrade System Image",
+    "description": "Adversaries may install an older version of the operating system of a network device to weaken security. Older operating system versions on network devices often have weaker encryption ciphers and, in general, fewer/less updated defensive features. On embedded devices, downgrading the version typically only requires replacing the operating system file in storage. With most embedded devices, this can be achieved by downloading a copy of the desired version of the operating system file and reconfiguring the device to boot from that file on next system restart. The adversary could then restart the device to implement the change immediately or they could wait until the next time the system restarts. Downgrading the system image to an older versions may allow an adversary to evade defenses by enabling behaviors such as Weaken Encryption. Downgrading of a system image can be done on its own, or it can be used in conjunction with Patch System Image.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1601",
+        "subtechnique_id": "T1601.002",
+        "data_sources": [
+            "Enterprise:Defense Evasion:Modify System Image:Downgrade System Image",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s_tftp_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "tftp.exe"
+                    }
+                ]
+            },
+            "s_ftp_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "ftp.exe"
+                    }
+                ]
+            },
+            "s_scp_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "scp.exe"
+                    }
+                ]
+            },
+            "s_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s_cmd_firmware_ext": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".bin"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".img"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".ios"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".tar"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".gz"
+                    }
+                ]
+            },
+            "s_cmd_firmware_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "firmware"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "image"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "downgrade"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "version"
+                    }
+                ]
+            },
+            "s_cmd_tftp_put_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " put "
+                    }
+                ]
+            },
+            "s_cmd_ftp_put_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " put "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " send "
+                    }
+                ]
+            },
+            "s_cmd_scp_upload_syntax": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "@",
+                        "comment": "username@host syntax"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ":/",
+                        "comment": "host:/path syntax"
+                    }
+                ]
+            },
+            "s_cmd_powershell_tftp_ftp_client": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "TftpClient"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "FtpClient"
+                    }
+                ]
+            },
+            "s_cmd_powershell_invoke_webrequest_upload": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-WebRequest"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-Method Put"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-Method Post"
+                    }
+                ]
+            }
+        },
+        "condition": "s_process_create and ((s_tftp_exe and s_cmd_tftp_put_action and (s_cmd_firmware_ext or s_cmd_firmware_keywords)) or (s_ftp_exe and s_cmd_ftp_put_action and (s_cmd_firmware_ext or s_cmd_firmware_keywords)) or (s_scp_exe and s_cmd_scp_upload_syntax and (s_cmd_firmware_ext or s_cmd_firmware_keywords)) or (s_powershell_exe and (s_cmd_powershell_tftp_ftp_client or s_cmd_powershell_invoke_webrequest_upload) and (s_cmd_firmware_ext or s_cmd_firmware_keywords)))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Windows 호스트에서 네트워크 장치의 시스템 이미지를 다운그레이드하려는 시도를 탐지할 수 있습니다. TFTP, FTP, SCP와 같은 파일 전송 도구의 실행, 또는 PowerShell 스크립트를 통한 이미지 업로드 시도를 모니터링합니다. 특히 명령줄 인자에 펌웨어 파일 확장자(.bin, .img, .ios, .tar 등)나 'firmware', 'image', 'downgrade'와 같은 키워드가 포함된 경우를 주의 깊게 분석합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스 및 관련 네트워크 활동에 대한 심층 조사를 시작하여 침해사고 대응의 우선순위를 지정하는 데 활용될 수 있습니다. 이는 방어 회피 전술의 중요한 지표가 됩니다.",
+    "false_positive": "정상적인 시스템 관리자가 네트워크 장치 펌웨어 업데이트, 백업, 또는 특정 테스트를 위해 파일 전송 도구를 사용하는 경우 오탐이 발생할 수 있습니다. 또한, 합법적인 소프트웨어 설치 또는 업데이트 프로세스에서 유사한 명령줄 패턴이 나타날 수 있습니다. 알려진 정상적인 펌웨어 관리 활동에 대한 화이트리스트를 적용하거나, 특정 사용자 계정 및 IP 주소 범위를 예외 처리하여 오탐을 줄일 수 있습니다."
+}

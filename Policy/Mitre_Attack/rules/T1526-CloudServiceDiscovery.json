@@ -1,0 +1,331 @@
+{
+    "id": "T1526-CloudServiceDiscovery",
+    "name": "Cloud Service Discovery",
+    "description": "Detects attempts by an adversary to enumerate cloud services, resources, and configurations from a compromised system using various cloud provider command-line interfaces (CLIs) or PowerShell cmdlets. This includes discovery of virtual machines, storage, functions, identity services, and security/logging configurations across platforms like Azure, AWS, and Google Cloud.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1526",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Discovery:Cloud Service Discovery",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s0_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s1_az_cli_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "az.exe"
+                    }
+                ]
+            },
+            "s1_az_cli_discovery_commands": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "account show"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "group list"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "vm list"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "functionapp list"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "webapp list"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "storage account list"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "keyvault list"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ad user list"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ad group list"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "monitor log-analytics workspace list"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "security alert list"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "network vnet list"
+                    }
+                ]
+            },
+            "s2_aws_cli_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "aws.exe"
+                    }
+                ]
+            },
+            "s2_aws_cli_discovery_commands": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ec2 describe-instances"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "s3 ls"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iam list-users"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iam list-roles"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "lambda list-functions"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "cloudtrail describe-trails"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "guardduty list-detectors"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "rds describe-db-instances"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "eks list-clusters"
+                    }
+                ]
+            },
+            "s3_gcloud_cli_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "gcloud.exe"
+                    }
+                ]
+            },
+            "s3_gcloud_cli_discovery_commands": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "compute instances list"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "projects list"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "container clusters list"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "functions list"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "sql instances list"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "logging sinks list"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "auth list"
+                    }
+                ]
+            },
+            "s4_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s4_powershell_az_discovery_cmdlets": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-AzVM"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-AzResourceGroup"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-AzStorageAccount"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-AzKeyVault"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-AzSubscription"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-AzADUser"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-AzADGroup"
+                    }
+                ]
+            },
+            "s5_powershell_aws_discovery_cmdlets": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-EC2Instance"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-S3Bucket"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-IAMUser"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-IAMRole"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-LFunction"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-CTTrail"
+                    }
+                ]
+            },
+            "s6_powershell_gcp_discovery_cmdlets": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-GcpInstance"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-GcpProject"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-GcpContainerCluster"
+                    }
+                ]
+            }
+        },
+        "condition": "s0_process_create_action and ((s1_az_cli_exe and s1_az_cli_discovery_commands) or (s2_aws_cli_exe and s2_aws_cli_discovery_commands) or (s3_gcloud_cli_exe and s3_gcloud_cli_discovery_commands) or (s4_powershell_exe and (s4_powershell_az_discovery_cmdlets or s5_powershell_aws_discovery_cmdlets or s6_powershell_gcp_discovery_cmdlets)))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 클라우드 서비스 정보 수집 시도를 탐지할 수 있습니다. Azure CLI (az.exe), AWS CLI (aws.exe), Google Cloud SDK (gcloud.exe)와 같은 클라우드 공급자 명령줄 도구의 실행 및 PowerShell을 통한 관련 cmdlet 호출을 모니터링합니다. 탐지된 이벤트는 클라우드 환경에 대한 정찰 활동을 나타낼 수 있으며, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용됩니다. 특히, 다른 Discovery 또는 Initial Access 활동과 결합될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 클라우드 관리 작업, 자동화 스크립트, DevOps 파이프라인, 또는 보안/감사 도구가 클라우드 서비스 정보를 조회하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상적인 스크립트, 사용자 계정, 또는 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

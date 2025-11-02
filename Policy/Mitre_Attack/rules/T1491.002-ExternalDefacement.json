@@ -1,0 +1,235 @@
+{
+    "id": "T1491.002-ExternalDefacement",
+    "name": "External Defacement",
+    "description": "Detects attempts by an adversary to deface external-facing systems, such as web servers, to deliver messaging, intimidate, or mislead an organization. This includes monitoring for unauthorized modifications, creations, or deletions of web content files and suspicious processes executing commands that target web server directories.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0040",
+        "technique_id": "T1491",
+        "subtechnique_id": "T1491.002",
+        "data_sources": [
+            "Enterprise:Collection:Data from Local System",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "fs_relevant_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "superseded"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "rename"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "remove"
+                    }
+                ]
+            },
+            "fs_web_root_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\inetpub\\wwwroot"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\Program Files\\Apache Group\\Apache2\\htdocs"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\xampp\\htdocs"
+                    }
+                ]
+            },
+            "fs_web_file_type": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".html"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".htm"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".php"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".asp"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".aspx"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".js"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".css"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".xml"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".json"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".jpg"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".png"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".gif"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".txt"
+                    }
+                ]
+            },
+            "proc_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "proc_cmd_web_path_in_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "C:\\inetpub\\wwwroot"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "C:\\Program Files\\Apache Group\\Apache2\\htdocs"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "C:\\xampp\\htdocs"
+                    }
+                ]
+            },
+            "proc_cmd_content_manipulation_keyword": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "echo"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "type"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-Content"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Add-Content"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Out-File"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-WebRequest -Method PUT"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "copy"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "move"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "del"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "rename"
+                    }
+                ]
+            }
+        },
+        "condition": "(fs_relevant_action and fs_web_root_path and fs_web_file_type) or (proc_create_action and proc_cmd_web_path_in_cmdline and proc_cmd_content_manipulation_keyword)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 웹 서버와 같은 외부 공개 시스템에 대한 변조 시도를 탐지할 수 있습니다. 웹 루트 디렉터리 내의 HTML, PHP, ASP, JS, CSS, 이미지 파일 등 웹 콘텐츠 파일의 생성, 수정, 이름 변경 또는 삭제와 같은 파일 시스템 이벤트를 모니터링합니다. 또한, 웹 디렉터리를 대상으로 'echo', 'type', 'Set-Content' 등의 명령어를 포함하는 의심스러운 프로세스 생성 이벤트를 추적합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하며, 침해된 웹 서버에 대한 신속한 조사 및 복구 조치를 시작하는 데 활용될 수 있습니다.",
+    "false_positive": "정상적인 웹 애플리케이션 업데이트, 콘텐츠 관리 시스템(CMS)에 의한 파일 변경, 웹 개발자의 수동 파일 업로드, 또는 웹 서버 자체의 로그 파일 생성 등으로 인해 오탐이 발생할 수 있습니다. 알려진 정상적인 프로세스나 특정 웹 관리 도구의 활동에 대해 화이트리스트를 적용하거나, 특정 사용자 계정의 활동을 예외 처리하여 오탐을 줄일 수 있습니다."
+}

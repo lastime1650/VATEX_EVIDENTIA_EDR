@@ -1,0 +1,185 @@
+{
+    "id": "T1564.005-HiddenFileSystem",
+    "name": "Hidden File System",
+    "description": "Detects attempts by adversaries to conceal malicious activity by creating or interacting with hidden file systems. This rule focuses on anomalous low-level disk I/O, suspicious command-line executions involving raw disk devices or partition management tools, and modifications to critical boot or filesystem-related registry keys that could indicate the setup or interaction with a hidden file system. This technique is often used to evade security tools and hide persistence mechanisms or malicious payloads.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1564",
+        "subtechnique_id": "T1564.005",
+        "data_sources": [
+            "Enterprise:Defense Evasion:Pre-OS Boot:System Firmware",
+            "Enterprise:Defense Evasion:File and Directory Permissions Modification",
+            "Enterprise:Defense Evasion:Hide Artifacts:Hidden Files and Directories",
+            "Enterprise:Defense Evasion:Modify Registry",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Discovery:File and Directory Discovery",
+            "Enterprise:Discovery:Query Registry"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmdline_raw_disk_path_ref": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "\\\\.\\PhysicalDrive"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "\\\\.\\GLOBALROOT\\Device\\Harddisk"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "\\\\Device\\Harddisk"
+                    }
+                ]
+            },
+            "s3_cmdline_disk_manipulation_tool": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "diskpart"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "dd.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "format.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "rawcopy.exe"
+                    }
+                ]
+            },
+            "s4_filesystem_io_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "read"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "open"
+                    }
+                ]
+            },
+            "s5_filesystem_raw_disk_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\\\.\\PhysicalDrive"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\\\.\\GLOBALROOT\\Device\\Harddisk"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\\\.\\BootPartition"
+                    }
+                ]
+            },
+            "s6_registry_mod_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "SetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "CreateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "RenameKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "PostCreateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "PostSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "PostRenameKey"
+                    }
+                ]
+            },
+            "s7_registry_critical_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "HKEY_LOCAL_MACHINE\\\\SYSTEM\\\\CurrentControlSet\\\\Control\\\\Session Manager\\\\BootExecute"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "HKEY_LOCAL_MACHINE\\\\SYSTEM\\\\CurrentControlSet\\\\Control\\\\EarlyLaunch"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "HKEY_LOCAL_MACHINE\\\\SYSTEM\\\\CurrentControlSet\\\\Services"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "HKEY_LOCAL_MACHINE\\\\SYSTEM\\\\CurrentControlSet\\\\Control\\\\FileSystem"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_cmdline_raw_disk_path_ref and s3_cmdline_disk_manipulation_tool) or (s4_filesystem_io_action and s5_filesystem_raw_disk_path) or (s6_registry_mod_action and s7_registry_critical_path)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 숨겨진 파일 시스템의 생성 또는 상호작용 시도를 탐지할 수 있습니다. 특히, 원시 디스크 장치에 직접 접근하는 프로세스 명령줄, 파일 시스템 I/O 활동, 또는 부팅 관련 및 파일 시스템 제어 레지스트리 키의 비정상적인 변경을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스, 파일, 레지스트리 활동에 대한 심층적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 이는 특히 부트킷 활동이나 고급 방어 회피 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "합법적인 디스크 관리 도구(예: 백업 소프트웨어, 가상화 솔루션, 디스크 진단 유틸리티)가 원시 디스크에 접근하거나 시스템 레지스트리 설정을 변경하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

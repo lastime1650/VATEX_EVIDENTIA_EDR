@@ -1,0 +1,131 @@
+{
+    "id": "T1550.004-WebSessionCookie",
+    "name": "Web Session Cookie",
+    "description": "Adversaries can use stolen session cookies to authenticate to web applications and services, bypassing some multi-factor authentication protocols. After a cookie is obtained, the adversary may import it into a controlled browser to use the site or application as the victim for as long as the session cookie is active. This allows access to sensitive information, email, or other actions the victim account has permissions to perform.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0004",
+        "technique_id": "T1550",
+        "subtechnique_id": "T1550.004",
+        "data_sources": [
+            "File:FileAccess",
+            "Process:ProcessAccess",
+            "WebCredential:WebCredentialUsage"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_fs_action_read_open": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "read"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "open"
+                    }
+                ]
+            },
+            "s2_fs_filepath_chrome_cookies": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "Google\\Chrome\\User Data\\Default\\Cookies"
+                    }
+                ]
+            },
+            "s3_fs_filepath_edge_cookies": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "Microsoft\\Edge\\User Data\\Default\\Cookies"
+                    }
+                ]
+            },
+            "s4_fs_filepath_firefox_profile": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "Mozilla\\Firefox\\Profiles\\"
+                    }
+                ]
+            },
+            "s5_fs_filepath_firefox_sqlite": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "cookies.sqlite"
+                    }
+                ]
+            },
+            "s6_pa_handletype_create_duplicate": {
+                "event_type": "processaccess",
+                "conditions": [
+                    {
+                        "field": "body.processaccess.handletype",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.processaccess.handletype",
+                        "operator": "equals",
+                        "value": "duplicate"
+                    }
+                ]
+            },
+            "s7_pa_target_browser_exe": {
+                "event_type": "processaccess",
+                "conditions": [
+                    {
+                        "field": "body.processaccess.TargetProcess_Path",
+                        "operator": "endswith",
+                        "value": "chrome.exe"
+                    },
+                    {
+                        "field": "body.processaccess.TargetProcess_Path",
+                        "operator": "endswith",
+                        "value": "msedge.exe"
+                    },
+                    {
+                        "field": "body.processaccess.TargetProcess_Path",
+                        "operator": "endswith",
+                        "value": "firefox.exe"
+                    }
+                ]
+            },
+            "s8_pa_desired_access_read_memory": {
+                "event_type": "processaccess",
+                "conditions": [
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_VM_READ"
+                    },
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_ALL_ACCESS"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_fs_action_read_open and (s2_fs_filepath_chrome_cookies or s3_fs_filepath_edge_cookies or (s4_fs_filepath_firefox_profile and s5_fs_filepath_firefox_sqlite))) or (s6_pa_handletype_create_duplicate and s7_pa_target_browser_exe and s8_pa_desired_access_read_memory)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 웹 세션 쿠키 탈취 및 악용 시도를 탐지할 수 있습니다. 브라우저의 쿠키 파일에 대한 비정상적인 읽기/열기 접근, 또는 브라우저 프로세스의 메모리에 대한 의심스러운 접근 시도를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 파일 활동에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 다단계 인증(MFA) 우회 가능성이 있어 중요도가 매우 높습니다.",
+    "false_positive": "정상적인 브라우저 확장 프로그램, 보안 소프트웨어, 백업 유틸리티, 또는 시스템 관리 도구가 브라우저 데이터나 메모리에 접근하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 파일 경로에 대한 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

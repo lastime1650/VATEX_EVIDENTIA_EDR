@@ -1,0 +1,262 @@
+{
+    "id": "T1070.002-ClearLinuxOrMacSystemLogs",
+    "name": "Clear Linux or Mac System Logs",
+    "description": "Adversaries may clear system logs to hide evidence of an intrusion. macOS and Linux both keep track of system or user-initiated actions via system logs. The majority of native system logging is stored under the /var/log/ directory. Subfolders in this directory categorize logs by their related functions, such as: /var/log/messages: General and system-related messages, /var/log/secure or /var/log/auth.log: Authentication logs, /var/log/utmp or /var/log/wtmp: Login records, /var/log/kern.log: Kernel logs, /var/log/cron.log: Crond logs, /var/log/maillog: Mail server logs, /var/log/httpd/: Web server access and error logs.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1070",
+        "subtechnique_id": "T1070.002",
+        "data_sources": [
+            "File:FileDeletion",
+            "File:FileModification",
+            "Command:CommandExecution"
+        ]
+    },
+    "platform": [
+        "linux",
+        "macos"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_event": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_commandline_log_clearing_utilities": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "rm "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "truncate "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "echo >"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "cat /dev/null >"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "history -c"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "unset HISTFILE"
+                    }
+                ]
+            },
+            "s3_commandline_log_paths": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/var/log/messages"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/var/log/secure"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/var/log/auth.log"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/var/log/utmp"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/var/log/wtmp"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/var/log/kern.log"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/var/log/cron.log"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/var/log/maillog"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/var/log/httpd/"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".bash_history"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".zsh_history"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".history"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".mysql_history"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".psql_history"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".lesshst"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".local/share/recently-used.xbel"
+                    }
+                ]
+            },
+            "s4_filesystem_log_modification_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "remove"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    }
+                ]
+            },
+            "s5_filesystem_log_paths": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/var/log/messages"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/var/log/secure"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/var/log/auth.log"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/var/log/utmp"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/var/log/wtmp"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/var/log/kern.log"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/var/log/cron.log"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/var/log/maillog"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/var/log/httpd/"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": ".bash_history"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": ".zsh_history"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": ".history"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": ".mysql_history"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": ".psql_history"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": ".lesshst"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": ".local/share/recently-used.xbel"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_event and s2_commandline_log_clearing_utilities and s3_commandline_log_paths) or (s4_filesystem_log_modification_action and s5_filesystem_log_paths)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Linux 또는 macOS 시스템에서 로그 파일 삭제 또는 수정을 통한 침입 흔적 지우기 시도를 탐지할 수 있습니다. 'rm', 'truncate', 'echo >', 'cat /dev/null >' 등과 같은 로그 클리어링 명령의 실행 및 /var/log/ 디렉토리 내의 주요 로그 파일 또는 사용자 셸 히스토리 파일(.bash_history, .zsh_history 등)에 대한 파일 시스템 변경(삭제, 덮어쓰기, 쓰기) 이벤트를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스 및 변경된 파일에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 이는 방어 회피 전술의 중요한 지표입니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 로그 순환(log rotation) 스크립트, 또는 특정 애플리케이션의 자체 로그 정리 기능으로 인해 오탐이 발생할 수 있습니다. 예를 들어, 'logrotate'와 같은 유틸리티는 주기적으로 로그를 정리합니다. 이러한 정상적인 활동에 대한 프로세스나 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

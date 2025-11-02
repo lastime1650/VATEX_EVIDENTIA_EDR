@@ -1,0 +1,169 @@
+{
+    "id": "T1590.005-IPAddressDiscovery",
+    "name": "IP Address Discovery",
+    "description": "Detects attempts by adversaries to gather victim IP addresses from the endpoint. This includes execution of command-line tools like 'ipconfig', 'netstat', 'nslookup', 'arp', 'route', PowerShell cmdlets such as 'Get-NetIPAddress' or 'Resolve-DnsName', and direct API calls to enumerate network interfaces or perform DNS queries.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1590",
+        "subtechnique_id": "T1590.005",
+        "data_sources": [
+            "Enterprise:Reconnaissance:Gather Victim Network Information:IP Addresses",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Execution:Native API",
+            "Enterprise:Discovery:System Network Configuration Discovery",
+            "Enterprise:Discovery:Network Service Discovery"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmd_ipconfig": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ipconfig"
+                    }
+                ]
+            },
+            "s3_cmd_netstat": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "netstat -an"
+                    }
+                ]
+            },
+            "s4_cmd_nslookup": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "nslookup"
+                    }
+                ]
+            },
+            "s5_cmd_arp": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "arp -a"
+                    }
+                ]
+            },
+            "s6_cmd_route_print": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "route print"
+                    }
+                ]
+            },
+            "s7_cmd_hostname": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "hostname"
+                    }
+                ]
+            },
+            "s8_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s9_powershell_get_netipaddress": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-NetIPAddress"
+                    }
+                ]
+            },
+            "s10_powershell_resolve_dnsname": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Resolve-DnsName"
+                    }
+                ]
+            },
+            "s11_powershell_get_netneighbor": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-NetNeighbor"
+                    }
+                ]
+            },
+            "s12_api_getipaddrtable": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetIpAddrTable"
+                    }
+                ]
+            },
+            "s13_api_getadaptersinfo": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetAdaptersInfo"
+                    }
+                ]
+            },
+            "s14_api_dnsquery": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "DnsQuery"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and (s2_cmd_ipconfig or s3_cmd_netstat or s4_cmd_nslookup or s5_cmd_arp or s6_cmd_route_print or s7_cmd_hostname) or (s1_process_create_action and s8_powershell_exe_path and (s9_powershell_get_netipaddress or s10_powershell_resolve_dnsname or s11_powershell_get_netneighbor)) or (s12_api_getipaddrtable or s13_api_getadaptersinfo or s14_api_dnsquery)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템 IP 주소 및 네트워크 구성 정보 수집 시도를 탐지할 수 있습니다. 'ipconfig', 'netstat', 'nslookup', 'arp', 'route print', 'hostname'과 같은 명령 실행, PowerShell을 통한 네트워크 인터페이스 및 DNS 정보 조회 시도, 또는 관련 Native API 호출 등을 모니터링합니다. 탐지된 이벤트는 자동 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히 다른 Discovery 또는 Reconnaissance 활동과 결합될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 네트워크 모니터링 소프트웨어, 스크립트, 또는 합법적인 애플리케이션이 시스템의 IP 주소 및 네트워크 정보를 조회하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

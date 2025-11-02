@@ -1,0 +1,166 @@
+{
+    "id": "T1136.003-CloudAccountCreation",
+    "name": "Persistence via Cloud Account Creation",
+    "description": "Detects attempts to create new cloud user accounts, service principals, or roles from a Windows endpoint using cloud provider command-line interfaces (CLI) or PowerShell modules. Adversaries may create these accounts to maintain access to victim cloud environments without relying on persistent remote access tools on the system, establishing secondary credentialed access.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1136",
+        "subtechnique_id": "T1136.003",
+        "data_sources": [
+            "Enterprise:Persistence:Create Account:Cloud Account",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s_azure_cli_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "az.exe"
+                    }
+                ]
+            },
+            "s_azure_cli_user_create_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ad user create"
+                    }
+                ]
+            },
+            "s_azure_cli_sp_create_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ad sp create"
+                    }
+                ]
+            },
+            "s_aws_cli_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "aws.exe"
+                    }
+                ]
+            },
+            "s_aws_cli_user_create_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iam create-user"
+                    }
+                ]
+            },
+            "s_aws_cli_role_create_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iam create-role"
+                    }
+                ]
+            },
+            "s_gcloud_cli_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "gcloud.exe"
+                    }
+                ]
+            },
+            "s_gcloud_cli_sa_create_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iam service-accounts create"
+                    }
+                ]
+            },
+            "s_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s_powershell_azure_user_create_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-AzADUser"
+                    }
+                ]
+            },
+            "s_powershell_azure_sp_create_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-AzADServicePrincipal"
+                    }
+                ]
+            },
+            "s_powershell_aws_user_create_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-IAMUser"
+                    }
+                ]
+            },
+            "s_powershell_aws_role_create_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-IAMRole"
+                    }
+                ]
+            }
+        },
+        "condition": "s_process_create_action and ((s_azure_cli_exe and s_azure_cli_user_create_cmd) or (s_azure_cli_exe and s_azure_cli_sp_create_cmd) or (s_aws_cli_exe and s_aws_cli_user_create_cmd) or (s_aws_cli_exe and s_aws_cli_role_create_cmd) or (s_gcloud_cli_exe and s_gcloud_cli_sa_create_cmd) or (s_powershell_exe and s_powershell_azure_user_create_cmd) or (s_powershell_exe and s_powershell_azure_sp_create_cmd) or (s_powershell_exe and s_powershell_aws_user_create_cmd) or (s_powershell_exe and s_powershell_aws_role_create_cmd))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Windows 엔드포인트에서 클라우드 계정 생성 시도를 탐지할 수 있습니다. Azure CLI, AWS CLI, Google Cloud CLI 또는 관련 PowerShell 모듈을 사용하여 사용자, 서비스 주체 또는 역할을 생성하는 명령줄 활동을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스의 사용자 및 네트워크 활동에 대한 추가 조사를 시작하여 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히, 다른 권한 상승 또는 방어 회피 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 클라우드 관리 도구, 자동화 스크립트, DevOps 파이프라인, 또는 합법적인 애플리케이션이 클라우드 리소스를 프로비저닝하거나 관리하는 과정에서 클라우드 계정을 생성할 수 있습니다. 알려진 정상적인 클라우드 CLI/PowerShell 호출 패턴, 특정 사용자 또는 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

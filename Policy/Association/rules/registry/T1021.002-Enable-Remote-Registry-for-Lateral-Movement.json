@@ -1,0 +1,48 @@
+{
+    "id": "T1021.002-Enable-Remote-Registry-for-Lateral-Movement",
+    "name": "Remote Registry Service Enabled (Lateral Movement Prep)",
+    "description": "Detects when the RemoteRegistry service is enabled. This service is often disabled by default for security reasons. Adversaries may enable it to modify the registry of remote systems as part of lateral movement.",
+    "severity": "medium",
+    "mitre_attack": [
+        {
+            "tactic": "TA0008",
+            "technique_id": "T1021",
+            "subtechnique_id": "T1021.002",
+            "data_sources": [
+                "Windows Registry:Windows Registry Key Modification"
+            ]
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "enable_remotereg",
+                "selections": {
+                    "selection_set_remotereg_start": {
+                        "event_type": "registry",
+                        "condition_method": "and",
+                        "conditions": [
+                            {
+                                "field": "body.registry.keyclass", 
+                                "operator": "equals", 
+                                "value": "RegNtPreSetValueKey"
+                            },
+                            {
+                                "field": "body.registry.name", 
+                                "operator": "endswith", 
+                                "value": "\\Services\\RemoteRegistry\\Start"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "The start type of the RemoteRegistry service was modified. This could be a preparatory step for lateral movement."
+                }
+            }
+        ]
+    },
+    "operational_usage": "Investigate why this service was enabled. In many environments, this is against security policy. The 'Start' value is typically changed from '4' (Disabled) to '2' (Automatic) or '3' (Manual).",
+    "false_positive": "Legitimate remote administration by a system administrator can cause this alert. It is important to correlate this activity with the user and source host that initiated the change."
+}

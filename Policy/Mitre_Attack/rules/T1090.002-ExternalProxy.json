@@ -1,0 +1,128 @@
+{
+    "id": "T1090.002-ExternalProxy",
+    "name": "External Proxy",
+    "description": "Detects attempts by adversaries to use an external proxy as an intermediary for network communications to a command and control server, avoiding direct connections to their infrastructure. This includes monitoring for known proxy tools and suspicious network connections to common proxy ports.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0011",
+        "technique_id": "T1090",
+        "subtechnique_id": "T1090.002",
+        "data_sources": [
+            "NetworkTraffic:NetworkConnectionCreation",
+            "NetworkTraffic:NetworkTrafficContent",
+            "NetworkTraffic:NetworkTrafficFlow",
+            "Process:ProcessCreation",
+            "Command:CommandExecution"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmdline_htran": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "htran.exe"
+                    }
+                ]
+            },
+            "s3_cmdline_zxproxy": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "zxproxy.exe"
+                    }
+                ]
+            },
+            "s4_cmdline_zxportmap": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "zxportmap.exe"
+                    }
+                ]
+            },
+            "s5_cmdline_netsh": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "netsh"
+                    }
+                ]
+            },
+            "s6_cmdline_portproxy": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "portproxy"
+                    }
+                ]
+            },
+            "n1_outbound_network_direction": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    }
+                ]
+            },
+            "n2_common_proxy_ports": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 8080
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 3128
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 8000
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 8888
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 8443
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and (s2_cmdline_htran or s3_cmdline_zxproxy or s4_cmdline_zxportmap or (s5_cmdline_netsh and s6_cmdline_portproxy))) or (n1_outbound_network_direction and n2_common_proxy_ports)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 외부 프록시를 통한 C2 통신 시도를 탐지할 수 있습니다. HTRAN, ZXProxy, ZXPortMap과 같은 알려진 프록시 도구의 프로세스 생성 및 'netsh portproxy' 명령 사용을 모니터링합니다. 또한, 비정상적인 아웃바운드 네트워크 트래픽이 일반적인 프록시 포트(예: 8080, 3128, 8000, 8888, 8443)로 향하는 것을 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 네트워크 연결에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 이는 C2 인프라를 은폐하려는 공격자의 시도를 식별하는 데 중요합니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 개발 환경의 로컬 프록시 설정, VPN 클라이언트, 또는 합법적인 애플리케이션이 위에서 지정된 포트를 사용하여 통신하거나 유사한 명령줄 인자를 사용하는 경우 오탐이 발생할 수 있습니다. 특정 프로세스나 IP 주소를 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

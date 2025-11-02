@@ -1,0 +1,99 @@
+{
+    "id": "T1176-SoftwareExtensions",
+    "name": "Software Extensions",
+    "description": "Detects the creation or modification of files within common browser extension directories, indicating the installation or update of a software extension. Adversaries may abuse software extensions to establish persistent access to victim systems, often by installing malicious extensions through various methods. Monitoring file system activity in these sensitive directories can help identify unauthorized persistence mechanisms.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1176",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Defense Evasion:File and Directory Permissions Modification:Windows File and Directory Permissions Modification"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_action_create_or_write": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    }
+                ]
+            },
+            "s2_filepath_chrome_extensions": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Extensions\\"
+                    }
+                ]
+            },
+            "s3_filepath_edge_extensions": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\AppData\\Local\\Microsoft\\Edge\\User Data\\Default\\Extensions\\"
+                    }
+                ]
+            },
+            "s4_filepath_firefox_extensions": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\AppData\\Roaming\\Mozilla\\Firefox\\Profiles\\"
+                    }
+                ]
+            },
+            "s5_filepath_suspicious_extension_file_type": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".crx"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".xpi"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".js"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".json"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "manifest.json"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_action_create_or_write and (s2_filepath_chrome_extensions or s3_filepath_edge_extensions or s4_filepath_firefox_extensions) and s5_filepath_suspicious_extension_file_type"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 웹 브라우저 확장 프로그램 디렉터리 내에서 발생하는 의심스러운 파일 생성 또는 수정 활동을 탐지할 수 있습니다. 이는 악성 확장 프로그램 설치 또는 기존 확장 프로그램의 변조 시도를 나타낼 수 있습니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 파일의 SHA256 해시를 기반으로 추가적인 위협 인텔리전스 조회를 수행하며, 관련 시스템에 대한 포렌식 분석을 시작하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 웹 브라우저 확장 프로그램 설치, 업데이트, 또는 웹 개발 도구가 확장 프로그램 파일을 생성하거나 수정하는 과정에서 오탐이 발생할 수 있습니다. 특히, 개발자 모드에서 확장 프로그램을 로드하거나, 기업에서 배포하는 합법적인 확장 프로그램의 경우 오탐 가능성이 있습니다. 알려진 정상적인 확장 프로그램 파일 경로, 해시 또는 프로세스를 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

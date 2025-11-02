@@ -1,0 +1,106 @@
+{
+    "id": "T1016.002-WiFiDiscovery",
+    "name": "Wi-Fi Discovery",
+    "description": "Detects attempts to discover Wi-Fi networks and potentially retrieve their credentials on Windows systems, primarily through the use of 'netsh wlan' commands or direct calls to wlanAPI.dll functions. Adversaries may use this information for account discovery, remote system discovery, or credential access.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1016",
+        "subtechnique_id": "T1016.002",
+        "data_sources": [
+            "Enterprise:Discovery:System Network Configuration Discovery:Wi-Fi Discovery",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Native API"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s_process_create_event": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s_netsh_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "netsh.exe"
+                    }
+                ]
+            },
+            "s_netsh_show_profiles_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wlan show profiles"
+                    }
+                ]
+            },
+            "s_netsh_show_profile_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wlan show profile"
+                    }
+                ]
+            },
+            "s_netsh_key_clear_arg": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "key=clear"
+                    }
+                ]
+            },
+            "s_apicall_wlan_enum_interfaces": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "WlanEnumInterfaces"
+                    }
+                ]
+            },
+            "s_apicall_wlan_get_profile": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "WlanGetProfile"
+                    }
+                ]
+            },
+            "s_apicall_wlan_query_interface": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "WlanQueryInterface"
+                    }
+                ]
+            }
+        },
+        "condition": "(s_process_create_event AND s_netsh_exe_path AND s_netsh_show_profiles_cmd) OR (s_process_create_event AND s_netsh_exe_path AND s_netsh_show_profile_cmd AND s_netsh_key_clear_arg) OR s_apicall_wlan_enum_interfaces OR s_apicall_wlan_get_profile OR s_apicall_wlan_query_interface"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Windows 시스템에서 Wi-Fi 네트워크 정보 및 자격 증명 수집 시도를 탐지할 수 있습니다. 'netsh wlan show profiles' 또는 'netsh wlan show profile [Wi-Fi 이름] key=clear'와 같은 명령 실행, 그리고 WlanEnumInterfaces, WlanGetProfile, WlanQueryInterface와 같은 wlanAPI.dll 함수 호출을 모니터링합니다. 탐지된 이벤트는 자동 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히 다른 Discovery 또는 Credential Access 활동과 결합될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 시스템 관리자가 네트워크 상태를 점검하거나, 네트워크 진단 도구, VPN 클라이언트, 또는 무선 네트워크 관리 소프트웨어가 Wi-Fi 프로필 정보를 합법적으로 조회하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

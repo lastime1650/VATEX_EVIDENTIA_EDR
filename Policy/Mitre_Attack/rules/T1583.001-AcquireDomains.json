@@ -1,0 +1,148 @@
+{
+    "id": "T1583.001-AcquireDomains",
+    "name": "Acquire Domains",
+    "description": "Detects attempts by adversaries to acquire domains for malicious purposes, such as phishing, drive-by compromise, or command and control. This includes monitoring for the use of command-line tools like 'whois', 'nslookup', or cloud CLI tools (e.g., AWS, Azure) to register or manage domains.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0042",
+        "technique_id": "T1583",
+        "subtechnique_id": "T1583.001",
+        "data_sources": [
+            "DomainName:PassiveDNS",
+            "DomainName:DomainRegistration",
+            "DomainName:ActiveDNS",
+            "Process:ProcessCreation",
+            "Command:CommandExecution"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_whois_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "whois.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "whois"
+                    }
+                ]
+            },
+            "s3_nslookup_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "nslookup.exe"
+                    }
+                ]
+            },
+            "s4_nslookup_domain_query": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "set type=ns"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "set q=ns"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-query=ns"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-type=soa"
+                    }
+                ]
+            },
+            "s5_aws_cli_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "aws.exe"
+                    }
+                ]
+            },
+            "s6_aws_route53_domain_management": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "route53"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "register-domain"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "create-hosted-zone"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "change-resource-record-sets"
+                    }
+                ]
+            },
+            "s7_az_cli_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "az.exe"
+                    }
+                ]
+            },
+            "s8_az_network_dns_zone_management": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "network dns zone create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "network dns record-set add"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_action_create and (s2_whois_execution or (s3_nslookup_execution and s4_nslookup_domain_query) or (s5_aws_cli_execution and s6_aws_route53_domain_management) or (s7_az_cli_execution and s8_az_network_dns_zone_management))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 공격자가 도메인을 확보하려는 시도를 탐지할 수 있습니다. 'whois.exe' 실행, 'nslookup'을 통한 비정상적인 DNS 쿼리, 또는 클라우드 CLI 도구(예: 'aws.exe', 'az.exe')를 사용하여 도메인을 등록하거나 DNS 레코드를 변경하는 명령줄 활동을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히, 다른 리소스 개발 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 네트워크 진단 유틸리티, 개발자 스크립트, 또는 합법적인 클라우드 관리 애플리케이션이 도메인 정보를 조회하거나 DNS 설정을 변경하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

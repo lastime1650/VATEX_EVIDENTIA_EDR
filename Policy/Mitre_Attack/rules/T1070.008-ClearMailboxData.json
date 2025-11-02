@@ -1,0 +1,116 @@
+{
+    "id": "T1070.008-ClearMailboxData",
+    "name": "Clear Mailbox Data",
+    "description": "Detects attempts by adversaries to remove evidence of their activity by deleting or modifying mail and mail application data. This includes PowerShell commands like 'Remove-MailboxExportRequest' and direct manipulation of mail client data files (e.g., Outlook PST/OST files) or logs.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1070",
+        "subtechnique_id": "T1070.008",
+        "data_sources": [
+            "Defense Evasion:Indicator Removal:File Deletion",
+            "Execution:Command and Scripting Interpreter:PowerShell",
+            "Execution:Native API"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_powershell_process_create_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s2_remove_mailbox_export_request_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Remove-MailboxExportRequest"
+                    }
+                ]
+            },
+            "s3_filesystem_remove_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "remove"
+                    }
+                ]
+            },
+            "s4_outlook_data_file_extension": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".pst"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".ost"
+                    }
+                ]
+            },
+            "s5_outlook_data_file_path_segment": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\\\Outlook\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\\\Microsoft\\\\Outlook\\\\"
+                    }
+                ]
+            },
+            "s6_thunderbird_data_file_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\\\Thunderbird\\\\Profiles\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "global-messages-db.sqlite"
+                    }
+                ]
+            },
+            "s7_apicall_mapi_delete_messages": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "MapiDeleteMessages"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_powershell_process_create_exe and s2_remove_mailbox_export_request_cmd) or (s3_filesystem_remove_action and (s4_outlook_data_file_extension and s5_outlook_data_file_path_segment)) or (s3_filesystem_remove_action and s6_thunderbird_data_file_path) or s7_apicall_mapi_delete_messages"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 공격자가 메일함 데이터를 지워 활동 흔적을 제거하려는 시도를 탐지할 수 있습니다. 특히 PowerShell을 이용한 'Remove-MailboxExportRequest' 명령 실행, Outlook(.pst, .ost) 또는 Thunderbird 데이터 파일의 삭제, 그리고 메일 관련 API('MapiDeleteMessages') 호출을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스의 활동 및 관련 파일 변경에 대한 심층적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 이는 방어 회피 전술의 핵심 지표이므로, 침해사고 대응 시 우선적으로 처리해야 합니다.",
+    "false_positive": "정상적인 메일 클라이언트의 캐시 정리, 사용자 프로필 재설정, 메일 클라이언트 재설치/업데이트, 또는 합법적인 데이터 백업 및 아카이빙 솔루션이 메일 데이터 파일을 이동하거나 삭제하는 과정에서 오탐이 발생할 수 있습니다. 특히 파일 삭제 이벤트는 오탐 가능성이 높으므로, 특정 사용자, 프로세스 또는 파일 경로에 대한 화이트리스트를 신중하게 적용하여 오탐을 줄여야 합니다."
+}

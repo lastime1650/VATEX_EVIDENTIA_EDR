@@ -1,0 +1,213 @@
+{
+    "id": "T1556.006-MultiFactorAuthenticationModification",
+    "name": "Multi-Factor Authentication Modification",
+    "description": "Detects attempts to disable or modify multi-factor authentication (MFA) mechanisms to enable persistent access to compromised accounts, including modifying the Windows hosts file to redirect MFA calls, using command-line tools to manipulate MFA settings, or making direct API calls related to user account security.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1556",
+        "subtechnique_id": "T1556.006",
+        "data_sources": [
+            "File:FileModification",
+            "WindowsRegistry:WindowsRegistryKeyModification",
+            "Process:ProcessCreation",
+            "Command:CommandExecution",
+            "Process:OSAPIExecution"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_hosts_filepath_match": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "equals",
+                        "value": "C:\\Windows\\System32\\drivers\\etc\\hosts"
+                    }
+                ]
+            },
+            "s1_hosts_file_write_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "superseded"
+                    }
+                ]
+            },
+            "s2_process_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s2_powershell_mfa_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-MsolUser"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-ADUser"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Disable-Mfa"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "StrongAuthenticationRequirements"
+                    }
+                ]
+            },
+            "s2_az_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "az.exe"
+                    }
+                ]
+            },
+            "s2_az_mfa_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ad user update"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "conditional-access policy"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--strong-authentication-requirements"
+                    }
+                ]
+            },
+            "s3_registry_modify_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtDeleteKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtRenameKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreDeleteKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreRenameKey"
+                    }
+                ]
+            },
+            "s3_registry_mfa_paths": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Lsa"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Authentication\\Credential Providers"
+                    }
+                ]
+            },
+            "s4_apicall_mfa_related_functions": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "NetUserSetInfo"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "LsaSetSystemAccessAccount"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "LsaRegisterLogonProcess"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "SetUserAccountControl"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_hosts_filepath_match and s1_hosts_file_write_action) or (s2_process_action_create and s2_powershell_exe and s2_powershell_mfa_keywords) or (s2_process_action_create and s2_az_exe and s2_az_mfa_keywords) or (s3_registry_modify_action and s3_registry_mfa_paths) or s4_apicall_mfa_related_functions"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 다단계 인증(MFA) 메커니즘을 비활성화하거나 변경하려는 시도를 탐지할 수 있습니다. 특히, Windows hosts 파일 수정, PowerShell 또는 Azure CLI를 사용한 MFA 설정 조작 명령 실행, 그리고 사용자 계정 보안 관련 API 호출을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 계정 탈취 후 지속적인 접근을 확보하려는 공격자의 활동을 식별하는 데 사용될 수 있습니다. 이는 침해사고 대응 및 계정 보안 강화에 중요한 정보를 제공합니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 보안 솔루션, 또는 합법적인 애플리케이션이 시스템 설정, 사용자 계정 속성, 또는 네트워크 구성을 변경하는 과정에서 오탐이 발생할 수 있습니다. 특히, hosts 파일 수정이나 LSA/Credential Providers 관련 레지스트리 키 접근은 특정 소프트웨어 설치 또는 업데이트 과정에서 발생할 수 있습니다. 알려진 정상 프로세스, 특정 명령줄 패턴, 또는 특정 레지스트리/파일 경로에 대한 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

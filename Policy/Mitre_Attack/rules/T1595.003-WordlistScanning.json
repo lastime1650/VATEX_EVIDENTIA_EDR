@@ -1,0 +1,121 @@
+{
+    "id": "T1595.003-WordlistScanning",
+    "name": "Wordlist Scanning",
+    "description": "Detects attempts to perform wordlist scanning for web content, directories, or cloud storage objects. This includes the execution of common wordlist scanning tools like Dirb, DirBuster, GoBuster, s3recon, GCPBucketBrute, or Nmap with web enumeration scripts. Adversaries use these techniques to discover vulnerable pages, hidden administrative portals, or public/private cloud storage buckets.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1595",
+        "subtechnique_id": "T1595.003",
+        "data_sources": [
+            "Network Traffic:Network Traffic Content",
+            "Process:Process Creation",
+            "Process:Command-line Parameters"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_creation_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_web_content_discovery_tools_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "dirb"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "dirbuster"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "gobuster"
+                    }
+                ]
+            },
+            "s3_cloud_storage_discovery_tools_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "s3recon"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "GCPBucketBrute"
+                    }
+                ]
+            },
+            "s4_nmap_web_enum_script_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "nmap"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--script http-enum"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--script http-brute"
+                    }
+                ]
+            },
+            "s5_generic_http_client_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "curl.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "wget.exe"
+                    }
+                ]
+            },
+            "s6_generic_http_client_wordlist_flag_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-w"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--wordlist"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_creation_action and (s2_web_content_discovery_tools_cmdline or s3_cloud_storage_discovery_tools_cmdline or s4_nmap_web_enum_script_cmdline or (s5_generic_http_client_exe and s6_generic_http_client_wordlist_flag_cmdline))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 웹 콘텐츠, 디렉터리, 또는 클라우드 스토리지 객체에 대한 워드리스트 스캐닝 시도를 탐지할 수 있습니다. Dirb, GoBuster, s3recon, GCPBucketBrute와 같은 전용 도구의 실행이나 Nmap의 웹 열거 스크립트 사용, 또는 curl/wget과 같은 일반 HTTP 클라이언트가 워드리스트 관련 옵션과 함께 사용되는 경우를 모니터링합니다. 탐지된 이벤트는 정찰 활동의 초기 단계로 분류되어 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히 다른 정찰 또는 초기 접근 활동과 결합될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 개발/테스트 환경에서 웹 애플리케이션 보안 테스트, IT 자산 관리 도구, 또는 합법적인 클라우드 리소스 감사 도구가 유사한 명령줄 패턴을 사용할 경우 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

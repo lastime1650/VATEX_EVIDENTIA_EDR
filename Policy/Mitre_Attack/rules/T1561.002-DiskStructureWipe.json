@@ -1,0 +1,133 @@
+{
+    "id": "T1561.002-DiskStructureWipe",
+    "name": "Disk Structure Wipe",
+    "description": "Detects attempts to corrupt or wipe disk data structures necessary to boot a system, such as the Master Boot Record (MBR) or partition table. This includes direct disk access, use of utilities like 'format.com' or 'diskpart' with wiping commands, and modifications to critical boot-related registry keys.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0040",
+        "technique_id": "T1561",
+        "subtechnique_id": "T1561.002",
+        "data_sources": [
+            "Enterprise:Impact:Disk Wipe:Disk Structure Wipe",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Process Creation",
+            "Enterprise:Defense Evasion:Rootkit",
+            "Enterprise:Persistence:Modify Registry"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmdline_raw_disk_access_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "\\\\.\\"
+                    }
+                ]
+            },
+            "s3_cmdline_format_utility": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "format.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "format "
+                    }
+                ]
+            },
+            "s4_cmdline_diskpart_utility": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "diskpart.exe"
+                    }
+                ]
+            },
+            "s5_cmdline_diskpart_wipe_commands": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "clean"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "overwrite"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "format"
+                    }
+                ]
+            },
+            "s6_registry_modify_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPostSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtRenameKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreRenameKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPostRenameKey"
+                    }
+                ]
+            },
+            "s7_registry_bootexecute_key_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "equals",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\BootExecute"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_cmdline_raw_disk_access_path) or (s1_process_create_action and s3_cmdline_format_utility) or (s1_process_create_action and s4_cmdline_diskpart_utility and s5_cmdline_diskpart_wipe_commands) or (s6_registry_modify_action and s7_registry_bootexecute_key_path)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템 디스크 구조 손상 시도를 탐지할 수 있습니다. 특히 악성 코드가 MBR이나 파티션 테이블을 직접 조작하거나, 'format' 또는 'diskpart'와 같은 시스템 유틸리티를 사용하여 디스크를 지우는 명령을 실행하는 경우를 모니터링합니다. 또한, 시스템 부팅에 필수적인 'BootExecute' 레지스트리 키에 대한 비정상적인 변경 시도를 탐지하여 즉각적인 알람을 트리거하고, 해당 이벤트에 대한 심층 조사를 시작하여 시스템 가용성 침해 사고에 대응할 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 디스크 초기화 소프트웨어, 또는 합법적인 디스크 관리 도구가 디스크를 포맷하거나 파티션을 변경하는 과정에서 오탐이 발생할 수 있습니다. 이러한 경우, 특정 관리 프로세스나 알려진 스크립트를 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

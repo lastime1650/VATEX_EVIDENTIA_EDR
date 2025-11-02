@@ -1,0 +1,46 @@
+{
+    "id": "FEATURE-REG-Untrusted-Root-Certificate-Installation",
+    "name": "Interaction with Root Certificate Store",
+    "description": "Detects the creation of a key in the system's root certificate store. This is a critical event, as it indicates the installation of a new root CA, which could be used to subvert trust for code signing or network traffic.",
+    "severity": "medium",
+    "mitre_attack": [
+        {
+            "tactic": "TA0005",
+            "technique_id": "T1553",
+            "subtechnique_id": "T1553.004",
+            "data_sources": ["Windows Registry"]
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "root_cert_install",
+                "selections": {
+                    "selection_create_root_cert_key": {
+                        "event_type": "registry",
+                        "condition_method": "and",
+                        "conditions": [
+                            {
+                                "field": "body.registry.keyclass", 
+                                "operator": "equals", 
+                                "value": "RegNtPreCreateKeyEx"
+                            },
+                            {
+                                "field": "body.registry.name", 
+                                "operator": "regex", 
+                                "value": ".*\\\\SOFTWARE\\\\Microsoft\\\\SystemCertificates\\\\ROOT\\\\Certificates\\\\"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "A new entry was created in the root certificate store registry key, indicating a new root certificate installation."
+                }
+            }
+        ]
+    },
+    "operational_usage": "This feature flags a fundamental change to system trust. SIEM should correlate this with the responsible process. Legitimate sources are typically Windows Update, Group Policy, or enterprise management software. Any other source is highly suspicious.",
+    "false_positive": "Installation of enterprise-specific root CAs for internal PKI is a common legitimate source. It is crucial to baseline known good certificate thumbprints and installation processes."
+}

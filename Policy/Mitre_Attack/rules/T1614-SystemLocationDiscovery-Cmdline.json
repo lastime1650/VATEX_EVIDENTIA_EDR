@@ -1,0 +1,95 @@
+{
+    "id": "T1614-SystemLocationDiscovery-Cmdline",
+    "name": "System Location Discovery via Command Line",
+    "description": "Detects attempts to gather system location information using command-line utilities such as tzutil.exe, systeminfo, wmic, or PowerShell cmdlets related to locale, language, or time zone settings. Adversaries use these methods to understand the victim's geographical context, which can influence follow-on actions or evasion techniques.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1614",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Command:CommandExecution",
+            "Process:ProcessCreation"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_tzutil_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "tzutil.exe"
+                    }
+                ]
+            },
+            "s3_systeminfo_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "systeminfo"
+                    }
+                ]
+            },
+            "s4_wmic_locale_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wmic os get locale"
+                    }
+                ]
+            },
+            "s5_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s6_powershell_locale_cmdlets": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-WinUserLanguageList"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-Culture"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-TimeZone"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and (s2_tzutil_cmd or s3_systeminfo_cmd or s4_wmic_locale_cmd or (s5_powershell_exe and s6_powershell_locale_cmdlets))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템 위치 정보 수집 시도를 탐지할 수 있습니다. 'tzutil.exe', 'systeminfo', 'wmic os get locale'과 같은 명령 실행, 또는 PowerShell을 통한 언어, 지역, 시간대 관련 정보 조회 시도를 모니터링합니다. 탐지된 이벤트는 자동 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히 다른 Discovery 또는 Reconnaissance 활동과 결합될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 백신 소프트웨어, 사용자 환경 설정 스크립트, 또는 합법적인 애플리케이션이 시스템의 지역 및 시간대 정보를 조회하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

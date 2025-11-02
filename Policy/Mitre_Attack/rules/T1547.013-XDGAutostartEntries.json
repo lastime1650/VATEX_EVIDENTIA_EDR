@@ -1,0 +1,185 @@
+{
+    "id": "T1547.013-XDGAutostartEntries",
+    "name": "XDG Autostart Entries",
+    "description": "Adversaries may add or modify XDG Autostart Entries to execute malicious programs or commands when a user’s desktop environment is loaded at login. XDG Autostart entries are available for any XDG-compliant Linux system. XDG Autostart entries use Desktop Entry files (`.desktop`) to configure the user’s desktop environment upon user login. These configuration files determine what applications launch upon user login, define associated applications to open specific file types, and define applications used to open removable media. Adversaries may abuse this feature to establish persistence by adding a path to a malicious binary or command to the `Exec` directive in the `.desktop` configuration file. When the user’s desktop environment is loaded at user login, the `.desktop` files located in the XDG Autostart directories are automatically executed. System-wide Autostart entries are located in the `/etc/xdg/autostart` directory while the user entries are located in the `~/.config/autostart` directory. Adversaries may combine this technique with Masquerading (T1036) to blend malicious Autostart entries with legitimate programs.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1547",
+        "subtechnique_id": "T1547.013",
+        "data_sources": [
+            "Enterprise:Persistence:Boot or Logon Autostart Execution:XDG Autostart Entries",
+            "Enterprise:Execution:Command and Scripting Interpreter:Unix Shell"
+        ]
+    },
+    "platform": [
+        "linux"
+    ],
+    "detection": {
+        "selections": {
+            "fs_action_create": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "fs_action_modify": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "superseded"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "rename"
+                    }
+                ]
+            },
+            "fs_filepath_etc_autostart_dir": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/etc/xdg/autostart/"
+                    }
+                ]
+            },
+            "fs_filepath_home_prefix": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/home/"
+                    }
+                ]
+            },
+            "fs_filepath_config_autostart_suffix": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/.config/autostart"
+                    }
+                ]
+            },
+            "fs_filepath_desktop_extension": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".desktop"
+                    }
+                ]
+            },
+            "proc_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "proc_cmdline_autostart_tool": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "mv "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "cp "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "echo "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "sed "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "tee "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "install "
+                    }
+                ]
+            },
+            "proc_cmdline_etc_autostart_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/etc/xdg/autostart"
+                    }
+                ]
+            },
+            "proc_cmdline_home_prefix": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/home/"
+                    }
+                ]
+            },
+            "proc_cmdline_config_autostart_suffix": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/.config/autostart"
+                    }
+                ]
+            },
+            "proc_cmdline_desktop_extension": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".desktop"
+                    }
+                ]
+            }
+        },
+        "condition": "( (fs_action_create or fs_action_modify) and (fs_filepath_etc_autostart_dir or (fs_filepath_home_prefix and fs_filepath_config_autostart_suffix)) and fs_filepath_desktop_extension ) or ( proc_action_create and proc_cmdline_autostart_tool and (proc_cmdline_etc_autostart_path or (proc_cmdline_home_prefix and proc_cmdline_config_autostart_suffix)) and proc_cmdline_desktop_extension )"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 XDG Autostart 엔트리를 통한 리눅스 시스템 지속성 확보 시도를 탐지할 수 있습니다. `/etc/xdg/autostart` 또는 `~/.config/autostart` 디렉토리 내 `.desktop` 파일의 생성, 수정, 또는 이름 변경 이벤트를 모니터링합니다. 또한, `mv`, `cp`, `echo`, `sed`, `tee`, `install`과 같은 명령어를 사용하여 해당 디렉토리 내 `.desktop` 파일을 조작하는 프로세스 생성 이벤트를 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련된 파일 내용 및 프로세스 명령줄에 대한 추가적인 조사를 시작하는 데 사용될 수 있습니다. 특히, 다른 지속성 또는 방어 회피 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 소프트웨어 설치, 업데이트, 또는 사용자 정의 데스크톱 환경 설정 과정에서 XDG Autostart 엔트리가 생성되거나 수정될 수 있습니다. 시스템 관리 도구나 합법적인 애플리케이션이 `.desktop` 파일을 조작하는 경우에도 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 파일 경로에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

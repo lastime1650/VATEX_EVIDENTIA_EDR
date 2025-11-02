@@ -1,0 +1,61 @@
+{
+    "id": "T1588-ObtainDigitalCertificates",
+    "name": "Obtain Capabilities: Digital Certificate Installation",
+    "description": "Detects attempts to install or register new digital certificates on the system, which adversaries may obtain to sign malicious code, establish trusted communication channels, or for other nefarious purposes. This rule focuses on observable registry modifications during certificate installation.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1588",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Resource Development:Obtain Capabilities:Code Signing Certificates",
+            "Enterprise:Resource Development:Obtain Capabilities:Digital Certificates",
+            "Certificate:CertificateRegistration"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_registry_action_cert_related": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPostSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPostCreateKeyEx"
+                    }
+                ]
+            },
+            "s2_registry_cert_store_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\SystemCertificates"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "HKEY_CURRENT_USER\\Software\\Microsoft\\SystemCertificates"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\Certificates"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_registry_action_cert_related and s2_registry_cert_store_path"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에 새로운 디지털 인증서가 설치되거나 등록되는 시도를 탐지할 수 있습니다. 이는 악성 코드 서명, 통신 채널 보안 우회, 또는 기타 악의적인 목적으로 사용될 수 있는 인증서 획득 활동을 나타낼 수 있습니다. 탐지된 이벤트는 자동 알람을 트리거하고, 해당 인증서의 출처, 유효성, 그리고 설치를 수행한 프로세스에 대한 추가적인 조사를 시작하는 데 사용될 수 있습니다. 특히, 비정상적인 프로세스에 의한 인증서 설치는 높은 심각도로 분류됩니다.",
+    "false_positive": "정상적인 소프트웨어 설치, 시스템 업데이트, 웹 브라우저 또는 애플리케이션의 인증서 관리 기능, 그리고 합법적인 인증서 관리 도구(예: certmgr.msc, PowerShell의 `Import-Certificate` cmdlet)에 의해 오탐이 발생할 수 있습니다. 알려진 정상적인 프로세스나 특정 인증서 지문에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

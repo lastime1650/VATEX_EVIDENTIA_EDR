@@ -1,0 +1,74 @@
+{
+    "id": "T1562.003-ImpairCommandHistoryLogging",
+    "name": "Impair Command History Logging",
+    "description": "Detects attempts by adversaries to impair command history logging on Windows systems, specifically targeting PowerShell's PSReadLine module. This includes attempts to disable history saving or redirect its storage path to hide executed commands.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1562",
+        "subtechnique_id": "T1562.003",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_powershell_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s2_disable_history_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-PSReadLineOption"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-HistorySaveStyle"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "SaveNothing"
+                    }
+                ]
+            },
+            "s3_change_history_path_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-PSReadLineOption"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-HistorySavePath"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_powershell_process_create and s2_disable_history_cmdline) or (s1_powershell_process_create and s3_change_history_path_cmdline)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 공격자가 PowerShell 명령 기록을 비활성화하거나 저장 경로를 변경하여 활동을 은폐하려는 시도를 탐지할 수 있습니다. PowerShell 프로세스 생성 이벤트와 함께 'Set-PSReadLineOption' cmdlet이 '-HistorySaveStyle SaveNothing' 또는 '-HistorySavePath' 인자와 함께 사용되는지 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스의 활동 및 관련 로그에 대한 심층적인 조사를 시작하는 데 사용될 수 있습니다. 이는 방어 회피 전술의 핵심 지표이므로, 다른 의심스러운 활동과 결합될 때 우선순위가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 스크립트, 개발자 도구, 또는 특정 PowerShell 환경 설정 스크립트가 PSReadLine 옵션을 조정하는 과정에서 오탐이 발생할 수 있습니다. 특히 자동화된 환경에서 PowerShell 기록 설정을 관리하는 경우 발생할 수 있습니다. 알려진 정상적인 스크립트나 관리 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

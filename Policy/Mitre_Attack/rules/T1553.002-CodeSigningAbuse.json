@@ -1,0 +1,146 @@
+{
+    "id": "T1553.002-CodeSigningAbuse",
+    "name": "Code Signing Abuse via Suspicious Execution Path",
+    "description": "Detects the execution of files (executables or DLLs) from suspicious or temporary locations. Adversaries may use valid code signing certificates to sign malicious tools, allowing them to bypass security policies that require signed code. While this rule does not directly validate certificate authenticity, it focuses on the behavioral indicator of signed malicious code executing from unusual paths.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1553",
+        "subtechnique_id": "T1553.002",
+        "data_sources": [
+            "Enterprise:Defense Evasion:Subvert Trust Controls:Code Signing",
+            "Process:ProcessCreation",
+            "Process:ImageLoad"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_process_suspicious_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "\\Temp\\"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "\\AppData\\"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "\\Users\\Public\\"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "\\Downloads\\"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "\\$Recycle.Bin\\"
+                    }
+                ]
+            },
+            "s3_process_suspicious_extension": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": ".sys"
+                    }
+                ]
+            },
+            "s4_imageload_event_type": {
+                "event_type": "imageload",
+                "conditions": [
+                    {
+                        "field": "header.pid",
+                        "operator": "gt",
+                        "value": 0
+                    }
+                ]
+            },
+            "s5_imageload_suspicious_path": {
+                "event_type": "imageload",
+                "conditions": [
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "\\Temp\\"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "\\AppData\\"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "\\Users\\Public\\"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "\\Downloads\\"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "\\$Recycle.Bin\\"
+                    }
+                ]
+            },
+            "s6_imageload_suspicious_extension": {
+                "event_type": "imageload",
+                "conditions": [
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "endswith",
+                        "value": ".sys"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action AND s2_process_suspicious_path AND s3_process_suspicious_extension) OR (s4_imageload_event_type AND s5_imageload_suspicious_path AND s6_imageload_suspicious_extension)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 악의적인 코드 서명 남용 시도를 탐지할 수 있습니다. 특히, 임시 폴더, AppData, 공용 사용자 폴더, 다운로드 폴더, 휴지통 등 일반적으로 신뢰할 수 없는 위치에서 실행 파일(.exe) 또는 동적 링크 라이브러리(.dll, .sys)가 생성되거나 로드되는 이벤트를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 파일의 출처 및 프로세스 체인에 대한 추가적인 조사를 시작하는 데 사용될 수 있습니다. 이는 유효한 서명으로 위장한 악성코드 실행을 식별하는 데 도움을 줍니다.",
+    "false_positive": "정상적인 소프트웨어 설치 프로그램, 업데이트 유틸리티, 또는 특정 애플리케이션(예: 개발 도구, 게임 런처)이 임시 디렉터리에 파일을 생성하고 실행하는 과정에서 오탐이 발생할 수 있습니다. 또한, 포터블 애플리케이션이나 사용자 정의 스크립트가 비표준 경로에서 실행될 때도 오탐이 발생할 수 있습니다. 알려진 정상 프로세스, 특정 경로, 또는 특정 파일 해시를 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

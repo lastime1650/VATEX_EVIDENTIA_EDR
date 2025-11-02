@@ -1,0 +1,150 @@
+{
+    "id": "T1584.007-ServerlessManagementCLI",
+    "name": "Serverless Function Management via CLI",
+    "description": "Detects the execution of cloud provider command-line interface (CLI) tools to manage or interact with serverless functions (e.g., AWS Lambda, Azure Functions, Google Cloud Functions). Adversaries may use compromised endpoints to deploy, update, or invoke serverless functions as part of their resource development or command and control infrastructure.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1584",
+        "subtechnique_id": "T1584.007",
+        "data_sources": [
+            "Enterprise:Resource Development:Acquire Infrastructure:Serverless",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_aws_cli_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "aws.exe"
+                    }
+                ]
+            },
+            "s3_aws_lambda_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "lambda"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "invoke"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "update-function"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "create-function"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "publish-layer"
+                    }
+                ]
+            },
+            "s4_az_cli_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "az.exe"
+                    }
+                ]
+            },
+            "s5_az_functionapp_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "functionapp"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "invoke"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "update"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "deployment"
+                    }
+                ]
+            },
+            "s6_gcloud_cli_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "gcloud.exe"
+                    }
+                ]
+            },
+            "s7_gcloud_functions_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "functions"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "deploy"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "call"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "update"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and ((s2_aws_cli_path and s3_aws_lambda_keywords) or (s4_az_cli_path and s5_az_functionapp_keywords) or (s6_gcloud_cli_path and s7_gcloud_functions_keywords))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 엔드포인트에서 클라우드 서버리스 함수를 관리하는 CLI 도구의 실행을 탐지할 수 있습니다. AWS, Azure, Google Cloud CLI를 통해 Lambda, Function App, Cloud Functions를 배포, 업데이트, 호출하는 명령줄 패턴을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스의 활동 및 관련 클라우드 계정에 대한 추가적인 조사를 시작하는 데 사용될 수 있습니다. 이는 공격자가 침해된 엔드포인트를 통해 자신들의 서버리스 인프라를 구축하거나 제어하려는 시도를 나타낼 수 있습니다.",
+    "false_positive": "개발자, DevOps 엔지니어, 또는 자동화된 스크립트가 합법적으로 클라우드 서버리스 함수를 관리하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 CLI 사용 패턴, 특정 사용자 계정, 또는 개발/운영 환경의 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

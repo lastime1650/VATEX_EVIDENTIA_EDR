@@ -1,0 +1,44 @@
+{
+    "id": "F-PROC-022-PowershellEncodedCommand",
+    "name": "Feature: PowerShell Execution with Encoded Command",
+    "description": "Identifies PowerShell being launched with a Base64 encoded command. This is a very common technique used by adversaries to hide malicious commands from plain sight.",
+    "severity": "info",
+    "mitre_attack": [
+        {
+            "tactic": "TA0005",
+            "technique_id": "T1027",
+            "subtechnique_id": "T1027.010"
+        },
+        {
+            "tactic": "TA0002",
+            "technique_id": "T1059",
+            "subtechnique_id": "T1059.001"
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "powershell_encoded_command_execution",
+                "selections": {
+                    "selection_ps_encoded": {
+                        "event_type": "process",
+                        "condition_method": "and",
+                        "conditions": [
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "powershell.exe"},
+                            {
+                                "field": "body.process.commandline",
+                                "operator": "regex",
+                                "value": "-(e|en|enc|enco|encod|encode|encodedcommand)\\s+"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "Feature Captured: PowerShell executed with an encoded command string."
+                }
+            }
+        ]
+    }
+}

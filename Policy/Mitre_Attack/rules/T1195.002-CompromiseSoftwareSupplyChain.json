@@ -1,0 +1,283 @@
+{
+    "id": "T1195.002-CompromiseSoftwareSupplyChain",
+    "name": "Compromise Software Supply Chain - Suspicious Execution/File Dropping",
+    "description": "Detects suspicious process creation, file system activities, or registry modifications that indicate a compromised software or update is executing malicious payloads or establishing persistence. This includes legitimate-looking installers spawning suspicious child processes, dropping executable files in unusual locations, or modifying critical registry keys for persistence.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0001",
+        "technique_id": "T1195",
+        "subtechnique_id": "T1195.002",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Command:CommandExecution",
+            "File:FileCreation",
+            "File:FileModification",
+            "WindowsRegistry:WindowsRegistryKeyModification"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_parent_is_updater_or_installer": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "endswith",
+                        "value": "update.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "endswith",
+                        "value": "install.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "endswith",
+                        "value": "setup.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "endswith",
+                        "value": "msiexec.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "contains",
+                        "value": "updater"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "contains",
+                        "value": "installer"
+                    }
+                ]
+            },
+            "s3a_cmdline_contains_powershell": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s3b_cmdline_contains_encoded_flag": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-enc"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-e"
+                    }
+                ]
+            },
+            "s4_cmdline_contains_mshta": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "mshta.exe"
+                    }
+                ]
+            },
+            "s5a_cmdline_contains_rundll32": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "rundll32.exe"
+                    }
+                ]
+            },
+            "s5b_cmdline_contains_rundll32_args": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".cpl"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".dll,"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".dll#"
+                    }
+                ]
+            },
+            "s6_filesystem_write_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    }
+                ]
+            },
+            "s7_file_path_temp_or_public": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\Windows\\Temp\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\ProgramData\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\Users\\Public\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\PerfLogs\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\Program Files (x86)\\Common Files\\"
+                    }
+                ]
+            },
+            "s8_file_suspicious_extension": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".ps1"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".vbs"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".js"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".hta"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".bat"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".cmd"
+                    }
+                ]
+            },
+            "s9_registry_persistence_set_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreSetValueKey"
+                    }
+                ]
+            },
+            "s10_registry_persistence_key_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Windows\\AppInit_DLLs"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_parent_is_updater_or_installer and ((s3a_cmdline_contains_powershell and s3b_cmdline_contains_encoded_flag) or s4_cmdline_contains_mshta or (s5a_cmdline_contains_rundll32 and s5b_cmdline_contains_rundll32_args))) or (s6_filesystem_write_action and s7_file_path_temp_or_public and s8_file_suspicious_extension) or (s9_registry_persistence_set_action and s10_registry_persistence_key_path)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 소프트웨어 공급망 침해 공격의 후속 활동을 탐지할 수 있습니다. 정상적인 업데이트 또는 설치 프로세스에서 비정상적인 자식 프로세스(예: PowerShell 인코딩 명령, mshta, rundll32 악용)가 생성되거나, 임시 또는 공용 디렉터리에 의심스러운 확장자를 가진 실행 파일이 생성/수정되는 경우, 또는 영구성을 확보하기 위한 레지스트리 키 변경이 탐지됩니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스, 파일, 레지스트리 활동에 대한 심층적인 포렌식 조사를 시작하는 데 활용됩니다.",
+    "false_positive": "정상적인 소프트웨어 설치 프로그램, 업데이트 유틸리티, 시스템 관리 스크립트, 또는 합법적인 애플리케이션이 임시 파일을 생성하거나 시스템 기능을 호출하는 과정에서 오탐이 발생할 수 있습니다. 특히 개발 환경이나 특정 레거시 애플리케이션에서 이러한 패턴이 나타날 수 있습니다. 알려진 정상 프로세스, 파일 경로, 또는 레지스트리 변경 패턴에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

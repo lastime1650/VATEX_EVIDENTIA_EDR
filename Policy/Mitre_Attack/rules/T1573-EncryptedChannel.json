@@ -1,0 +1,149 @@
+{
+    "id": "T1573-EncryptedChannel",
+    "name": "Encrypted Channel",
+    "description": "Adversaries may employ an encryption algorithm to conceal command and control traffic rather than relying on any inherent protections provided by a communication protocol. Despite the use of a secure algorithm, these implementations may be vulnerable to reverse engineering if secret keys are encoded and/or generated within malware samples/configuration files.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0011",
+        "technique_id": "T1573",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Command and Control:Encrypted Channel"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_protocol_tcp": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "TCP"
+                    }
+                ]
+            },
+            "s2_protocol_udp": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "UDP"
+                    }
+                ]
+            },
+            "s3_port_443": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 443
+                    },
+                    {
+                        "field": "body.network.sourceport",
+                        "operator": "equals",
+                        "value": 443
+                    }
+                ]
+            },
+            "s4_port_22": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 22
+                    },
+                    {
+                        "field": "body.network.sourceport",
+                        "operator": "equals",
+                        "value": 22
+                    }
+                ]
+            },
+            "s5_port_465": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 465
+                    },
+                    {
+                        "field": "body.network.sourceport",
+                        "operator": "equals",
+                        "value": 465
+                    }
+                ]
+            },
+            "s6_port_993": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 993
+                    },
+                    {
+                        "field": "body.network.sourceport",
+                        "operator": "equals",
+                        "value": 993
+                    }
+                ]
+            },
+            "s7_port_995": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 995
+                    },
+                    {
+                        "field": "body.network.sourceport",
+                        "operator": "equals",
+                        "value": 995
+                    }
+                ]
+            },
+            "s8_port_3389": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 3389
+                    },
+                    {
+                        "field": "body.network.sourceport",
+                        "operator": "equals",
+                        "value": 3389
+                    }
+                ]
+            },
+            "s9_port_1194": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 1194
+                    },
+                    {
+                        "field": "body.network.sourceport",
+                        "operator": "equals",
+                        "value": 1194
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_protocol_tcp and s3_port_443) or (s1_protocol_tcp and s4_port_22) or (s1_protocol_tcp and s5_port_465) or (s1_protocol_tcp and s6_port_993) or (s1_protocol_tcp and s7_port_995) or (s1_protocol_tcp and s8_port_3389) or (s2_protocol_udp and s9_port_1194)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 암호화된 채널을 통한 명령 및 제어(C2) 통신 시도를 탐지할 수 있습니다. 특히 HTTPS(443), SSH(22), SMTPS(465), IMAPS(993), POP3S(995), RDP over TLS(3389)와 같은 일반적인 암호화 포트 또는 OpenVPN(1194)과 같은 VPN 포트를 통한 네트워크 트래픽을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스 및 통신에 대한 추가적인 네트워크 포렌식 조사를 시작하는 데 사용될 수 있습니다. 비정상적인 트래픽 패턴이나 알려지지 않은 프로세스의 암호화 통신은 특히 주의 깊게 조사해야 합니다.",
+    "false_positive": "정상적인 웹 브라우징(HTTPS), 원격 접속(SSH, RDP), 이메일 통신(SMTPS, IMAPS, POP3S), VPN 사용(OpenVPN) 등 합법적인 암호화 통신으로 인해 오탐이 발생할 수 있습니다. 기업에서 사용하는 정상적인 애플리케이션이나 서비스의 암호화 통신 패턴을 화이트리스트에 추가하거나, 이상 징후 분석(예: 비정상적인 데이터량, 통신 주기, 대상 IP)과 결합하여 오탐을 줄일 수 있습니다."
+}

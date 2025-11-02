@@ -1,0 +1,191 @@
+{
+    "id": "T1547.009-ShortcutModification",
+    "name": "Shortcut Modification",
+    "description": "Adversaries may create or modify shortcuts that can execute a program during system boot or user login. Shortcuts or symbolic links are used to reference other files or programs that will be opened or executed when the shortcut is clicked or executed by a system startup process. Adversaries may abuse shortcuts in the startup folder to execute their tools and achieve persistence. Adversaries can also edit the target path or entirely replace an existing shortcut so their malware will be executed instead of the intended legitimate program.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1547",
+        "subtechnique_id": "T1547.009",
+        "data_sources": [
+            "file:filecreation",
+            "file:filemodification",
+            "process:processcreation"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_fs_action_mod": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "superseded"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "rename"
+                    }
+                ]
+            },
+            "s2_fs_filepath_is_lnk": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".lnk"
+                    }
+                ]
+            },
+            "s3_fs_filepath_in_user_startup": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup"
+                    }
+                ]
+            },
+            "s4_fs_filepath_in_allusers_startup": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\StartUp"
+                    }
+                ]
+            },
+            "s5_proc_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s6_proc_cmd_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "cmd.exe"
+                    }
+                ]
+            },
+            "s7_proc_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s8_proc_cmdline_contains_lnk": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".lnk"
+                    }
+                ]
+            },
+            "s9_proc_cmdline_lnk_manip_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "copy"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "move"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ren "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "del "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "mklink"
+                    }
+                ]
+            },
+            "s10_proc_powershell_lnk_cmdlets": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-Item"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-ItemProperty"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Copy-Item"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Move-Item"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Remove-Item"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_fs_action_mod and s2_fs_filepath_is_lnk and (s3_fs_filepath_in_user_startup or s4_fs_filepath_in_allusers_startup)) or (s5_proc_action_create and s8_proc_cmdline_contains_lnk and ((s6_proc_cmd_exe_path and s9_proc_cmdline_lnk_manip_keywords) or (s7_proc_powershell_exe_path and s10_proc_powershell_lnk_cmdlets)))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템 부팅 또는 사용자 로그인 시 자동 실행되는 바로가기 파일(.lnk)의 생성 또는 수정을 탐지할 수 있습니다. 특히 시작 프로그램 폴더 내의 .lnk 파일 변경이나, cmd.exe 또는 powershell.exe를 통한 .lnk 파일 조작 시도를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 파일에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 이는 공격자가 지속성(Persistence)을 확보하려는 시도를 조기에 식별하는 데 중요합니다.",
+    "false_positive": "정상적인 소프트웨어 설치, 업데이트, 또는 시스템 관리 도구가 시작 프로그램 폴더에 바로가기 파일을 생성하거나 수정하는 경우 오탐이 발생할 수 있습니다. 또한, 사용자나 관리자가 수동으로 바로가기를 생성하는 경우에도 탐지될 수 있습니다. 알려진 정상적인 프로세스나 특정 파일 경로를 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

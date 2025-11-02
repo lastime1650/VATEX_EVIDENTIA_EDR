@@ -1,0 +1,253 @@
+{
+    "id": "T1590.003-NetworkTrustDependencies",
+    "name": "Network Trust Dependencies Discovery",
+    "description": "Detects attempts to gather information about network trust dependencies, such as domain trusts, domain controllers, and active directory configurations, typically using command-line tools like 'nltest', 'net', 'dsquery', or PowerShell cmdlets, or by accessing relevant registry keys and APIs.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1590",
+        "subtechnique_id": "T1590.003",
+        "data_sources": [
+            "Enterprise:Discovery:Domain Trust Discovery",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Discovery:Query Registry",
+            "Enterprise:Execution:Native API"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_nltest_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "nltest.exe"
+                    }
+                ]
+            },
+            "s3_nltest_domain_trusts_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/domain_trusts"
+                    }
+                ]
+            },
+            "s4_nltest_dclist_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/dclist"
+                    }
+                ]
+            },
+            "s5_net_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "net.exe"
+                    }
+                ]
+            },
+            "s6_net_view_domain_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "view /domain"
+                    }
+                ]
+            },
+            "s7_net_accounts_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "accounts"
+                    }
+                ]
+            },
+            "s8_net_group_domain_admins_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "group \"Domain Admins\" /domain"
+                    }
+                ]
+            },
+            "s9_dsquery_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "dsquery.exe"
+                    }
+                ]
+            },
+            "s10_dsquery_trust_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "trust"
+                    }
+                ]
+            },
+            "s11_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s12_ps_get_adtrust": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-ADTrust"
+                    }
+                ]
+            },
+            "s13_ps_get_netdomaintrust": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-NetDomainTrust"
+                    }
+                ]
+            },
+            "s14_ps_get_netforesttrust": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-NetForestTrust"
+                    }
+                ]
+            },
+            "s15_ps_get_netdomain": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-NetDomain"
+                    }
+                ]
+            },
+            "s16_registry_discovery_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "QueryKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "OpenKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "EnumerateKey"
+                    }
+                ]
+            },
+            "s17_registry_domain_related_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters\\Domain"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\Netlogon\\Parameters"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\DNS\\Parameters"
+                    }
+                ]
+            },
+            "s18_apicall_trust_enum_functions": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "DsEnumerateDomainTrusts"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "NetGetJoinInformation"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "NetGetDCName"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "LsaEnumerateTrustedDomains"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetComputerNameExW"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetComputerNameExA"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and ((s2_nltest_exe and (s3_nltest_domain_trusts_cmd or s4_nltest_dclist_cmd)) or (s5_net_exe and (s6_net_view_domain_cmd or s7_net_accounts_cmd or s8_net_group_domain_admins_cmd)) or (s9_dsquery_exe and s10_dsquery_trust_cmd) or (s11_powershell_exe and (s12_ps_get_adtrust or s13_ps_get_netdomaintrust or s14_ps_get_netforesttrust or s15_ps_get_netdomain))) or (s16_registry_discovery_action and s17_registry_domain_related_path) or s18_apicall_trust_enum_functions"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 네트워크 신뢰 관계(도메인 트러스트, 도메인 컨트롤러 등) 정보를 수집하려는 시도를 탐지할 수 있습니다. 'nltest', 'net', 'dsquery'와 같은 명령 실행, PowerShell을 통한 AD 트러스트 열거 시도, 관련 레지스트리 키 접근, 또는 도메인 정보 조회 API 호출 등을 모니터링합니다. 탐지된 이벤트는 자동 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히 초기 정찰 단계에서 악의적인 행위자의 정보 수집 활동을 조기에 파악하는 데 유용합니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 도메인 조인 스크립트, 그룹 정책 업데이트, 백신 소프트웨어, 또는 합법적인 애플리케이션이 네트워크 구성 또는 도메인 정보를 조회하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

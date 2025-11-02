@@ -1,0 +1,170 @@
+{
+    "id": "T1546.005-Trap",
+    "name": "Trap Command Persistence",
+    "description": "Detects attempts to establish persistence by executing malicious content triggered by an interrupt signal using the 'trap' command. Adversaries can use 'trap' to register code to be executed when the shell encounters specific interrupts, such as Ctrl+C or system exit, as a persistence mechanism.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003,TA0004",
+        "technique_id": "T1546",
+        "subtechnique_id": "T1546.005",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Unix Shell"
+        ]
+    },
+    "platform": [
+        "macos",
+        "linux"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_trap_command_in_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "trap"
+                    }
+                ]
+            },
+            "s3_common_signals_in_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "INT"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "TERM"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "EXIT"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "0"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "1"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "2"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "3"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "15"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "20"
+                    }
+                ]
+            },
+            "s4_suspicious_commands_in_trap_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "trap 'bash -c"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "trap 'sh -c"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "trap 'nc "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "trap 'wget "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "trap 'curl "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "trap 'chmod "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "trap 'rm "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "trap 'mkfifo "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "trap 'echo "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "trap 'python "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "trap 'perl "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "trap 'php "
+                    }
+                ]
+            },
+            "s5_trap_with_quotes_and_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "matches",
+                        "value": "trap\\s+['\"].*['\"]\\s+\\w+"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create and s2_trap_command_in_cmdline and s3_common_signals_in_cmdline and (s4_suspicious_commands_in_trap_action or s5_trap_with_quotes_and_command)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 'trap' 명령을 이용한 비정상적인 영속성(persistence) 설정 시도를 탐지할 수 있습니다. 프로세스 생성 이벤트에서 'trap' 명령의 사용 여부와 함께, 특정 신호(INT, TERM, EXIT 등)에 반응하여 실행될 수 있는 의심스러운 명령(예: 쉘 명령 실행, 네트워크 통신, 파일 조작)이 포함되어 있는지 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스의 명령줄 인자, 부모 프로세스, 사용자 계정 등을 상세히 조사하여 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 스크립트, 개발 환경 설정, 또는 합법적인 애플리케이션이 특정 신호에 대한 정리(cleanup) 작업을 수행하기 위해 'trap' 명령을 사용하는 경우 오탐이 발생할 수 있습니다. 특히, 간단한 로깅이나 상태 메시지 출력 등의 'trap' 명령은 오탐을 유발할 수 있으므로, 알려진 정상적인 'trap' 사용 패턴이나 특정 사용자/스크립트에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다. 'trap' 명령 내부에 포함된 실제 실행 내용에 대한 추가 분석이 필요할 수 있습니다."
+}

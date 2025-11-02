@@ -1,0 +1,156 @@
+{
+    "id": "T1496.002-BandwidthHijacking",
+    "name": "Bandwidth Hijacking",
+    "description": "Adversaries may leverage the network bandwidth resources of co-opted systems to complete resource-intensive tasks, which may impact system and/or hosted service availability. Adversaries may also use malware that leverages a system's network bandwidth as part of a botnet in order to facilitate Network Denial of Service campaigns and/or to seed malicious torrents. Alternatively, they may engage in proxyjacking by selling use of the victims' network bandwidth and IP address to proxyware services. Finally, they may engage in internet-wide scanning in order to identify additional targets for compromise. In addition to incurring potential financial costs or availability disruptions, this technique may cause reputational damage if a victim’s bandwidth is used for illegal activities.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0040",
+        "technique_id": "T1496",
+        "subtechnique_id": "T1496.002",
+        "data_sources": [
+            "NetworkTraffic:NetworkTrafficFlow",
+            "File:FileCreation",
+            "Command:CommandExecution",
+            "Process:ProcessCreation",
+            "NetworkTraffic:NetworkTrafficContent",
+            "NetworkTraffic:NetworkConnectionCreation"
+        ]
+    },
+    "platform": [
+        "windows",
+        "linux",
+        "macos"
+    ],
+    "detection": {
+        "selections": {
+            "proc_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "proc_cmdline_scanning": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "nmap"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "masscan"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "zmap"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "unicornscan"
+                    }
+                ]
+            },
+            "proc_cmdline_torrent": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "bittorrent.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "utorrent.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "qbittorrent.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "deluge.exe"
+                    }
+                ]
+            },
+            "proc_cmdline_proxyware": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "proxyware"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "socks5proxy"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "botclient"
+                    }
+                ]
+            },
+            "net_direction_out": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    }
+                ]
+            },
+            "net_large_packet": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.packetsize",
+                        "operator": "gt",
+                        "value": 100000
+                    }
+                ]
+            },
+            "net_suspicious_port": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 6881
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 6969
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 25565
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 1434
+                    }
+                ]
+            }
+        },
+        "condition": "(proc_action_create and (proc_cmdline_scanning or proc_cmdline_torrent or proc_cmdline_proxyware)) or ((net_direction_out and net_large_packet) or (net_direction_out and net_suspicious_port))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템 대역폭 하이재킹 시도를 탐지할 수 있습니다. 이는 시스템의 네트워크 대역폭을 악용하여 리소스 집약적인 작업을 수행하는 행위를 포함합니다. 특히, nmap, masscan과 같은 스캐닝 도구나 BitTorrent, uTorrent와 같은 토렌트 클라이언트, 또는 알려진 프록시웨어/봇넷 클라이언트의 프로세스 생성 이벤트를 모니터링합니다. 또한, 비정상적으로 큰 패킷이 외부로 전송되거나, P2P 서비스, DoS 공격에 자주 사용되는 의심스러운 포트(예: 6881, 6969, 25565, 1434)로의 아웃바운드 네트워크 연결을 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스의 활동 및 네트워크 트래픽에 대한 추가적인 조사를 시작하여 침해사고 대응의 우선순위를 지정하는 데 활용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 합법적인 P2P 소프트웨어(예: 개발자 도구의 대용량 파일 전송, 일부 게임 업데이트), 대용량 데이터 전송을 수행하는 백업 또는 동기화 애플리케이션, 또는 특정 네트워크 진단 도구 사용 시 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 IP 주소, 또는 특정 네트워크 활동 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,46 @@
+{
+    "id": "FEATURE-REG-Persistence-Location-Interaction",
+    "name": "Interaction with Common Persistence Registry Keys",
+    "description": "An interaction (create, set, delete, query) was detected with a well-known registry location used for automatic program execution at startup or login. This provides a feature for tracking persistence attempts.",
+    "severity": "low",
+    "mitre_attack": [
+        {
+            "tactic": "TA0003",
+            "technique_id": "T1547",
+            "subtechnique_id": "",
+            "data_sources": ["Windows Registry"]
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "common_persistence_keys",
+                "selections": {
+                    "selection_interact_autorun_key": {
+                        "event_type": "registry",
+                        "condition_method": "and",
+                        "conditions": [
+                            {
+                                "field": "body.registry.keyclass", 
+                                "operator": "regex", 
+                                "value": "^RegNtPre(SetValueKey|CreateKeyEx|DeleteKey|QueryKey)$"
+                            },
+                            {
+                                "field": "body.registry.name", 
+                                "operator": "regex", 
+                                "value": "(\\\\CurrentVersion\\\\(Run|RunOnce|RunOnceEx|RunServices|RunServicesOnce|Policies\\\\Explorer\\\\Run)|\\\\(Userinit|Shell|BootExecute|StartupApproved))"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "Interaction detected with a common persistence registry key. SIEM can correlate this with process, file, and network events."
+                }
+            }
+        ]
+    },
+    "operational_usage": "This is a feature-level alert. SIEM should baseline normal software installation behavior and flag interactions from unusual processes (e.g., cmd.exe, powershell.exe, documents in user profiles).",
+    "false_positive": "Frequent during software installation and updates. The value lies in correlating these events, not treating each one as a standalone threat."
+}

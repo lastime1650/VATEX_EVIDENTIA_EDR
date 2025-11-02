@@ -1,0 +1,202 @@
+{
+    "id": "T1547.004-WinlogonHelperDLL",
+    "name": "Persistence via Winlogon Helper DLL",
+    "description": "Adversaries may abuse features of Winlogon to execute DLLs and/or executables when a user logs in. Winlogon.exe is a Windows component responsible for actions at logon/logoff as well as the secure attention sequence (SAS) triggered by Ctrl-Alt-Delete. Registry entries in HKLM\\Software[\\Wow6432Node\\]\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\\ and HKCU\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\\ are used to manage additional helper programs and functionalities that support Winlogon. Malicious modifications to these Registry keys may cause Winlogon to load and execute malicious DLLs and/or executables. Specifically, the following subkeys have been known to be possibly vulnerable to abuse: Winlogon\\Notify - points to notification package DLLs that handle Winlogon events; Winlogon\\Userinit - points to userinit.exe, the user initialization program executed when a user logs on; Winlogon\\Shell - points to explorer.exe, the system shell executed when a user logs on. Adversaries may take advantage of these features to repeatedly execute malicious code and establish persistence.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1547",
+        "subtechnique_id": "T1547.004",
+        "data_sources": [
+            "Enterprise:Persistence:Boot or Logon Autostart Execution:Winlogon Helper DLL",
+            "Enterprise:Persistence:Modify Registry",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Defense Evasion:Shared Modules"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_reg_action_modify": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "Set"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "Create"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "Rename"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "Delete"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "SetInformation"
+                    }
+                ]
+            },
+            "s2_reg_winlogon_key_hklm_software_nt": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon"
+                    }
+                ]
+            },
+            "s3_reg_winlogon_key_hkcu_software_nt": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon"
+                    }
+                ]
+            },
+            "s4_proc_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s5_proc_cmdline_reg_add_set": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "reg add"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "reg set"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell -command Set-ItemProperty"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell -command New-ItemProperty"
+                    }
+                ]
+            },
+            "s6_proc_cmdline_winlogon_path_hklm": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon"
+                    }
+                ]
+            },
+            "s7_proc_cmdline_winlogon_path_hkcu": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "HKCU\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon"
+                    }
+                ]
+            },
+            "s8_fs_action_create_write": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "superseded"
+                    }
+                ]
+            },
+            "s9_fs_filepath_system32": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "System32\\"
+                    }
+                ]
+            },
+            "s10_fs_filepath_dll_extension": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    }
+                ]
+            },
+            "s11_imgload_filepath_system32": {
+                "event_type": "imageload",
+                "conditions": [
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "System32\\"
+                    }
+                ]
+            },
+            "s12_imgload_filepath_dll_extension": {
+                "event_type": "imageload",
+                "conditions": [
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_reg_action_modify and (s2_reg_winlogon_key_hklm_software_nt or s3_reg_winlogon_key_hkcu_software_nt)) or (s4_proc_create_action and s5_proc_cmdline_reg_add_set and (s6_proc_cmdline_winlogon_path_hklm or s7_proc_cmdline_winlogon_path_hkcu)) or (s8_fs_action_create_write and s9_fs_filepath_system32 and s10_fs_filepath_dll_extension) or (s11_imgload_filepath_system32 and s12_imgload_filepath_dll_extension)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Winlogon Helper DLL을 통한 지속성 확보 시도를 탐지할 수 있습니다. Winlogon 관련 레지스트리 키에 대한 직접적인 수정 이벤트, 'reg.exe' 또는 PowerShell을 이용한 레지스트리 수정 명령 실행, System32 디렉터리에 DLL 파일이 생성/수정되는 파일 시스템 이벤트, 또는 System32에서 DLL이 로드되는 이미지 로드 이벤트를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 파일에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 사용자 로그인 시 자동 실행되는 악성 코드의 흔적을 찾는 데 중요합니다.",
+    "false_positive": "정상적인 시스템 업데이트, 드라이버 설치, 보안 소프트웨어 또는 합법적인 애플리케이션이 Winlogon 관련 레지스트리 키를 수정하거나 System32 디렉터리에 DLL을 생성/로드하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상적인 프로세스, 파일 경로, 또는 레지스트리 변경 패턴에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

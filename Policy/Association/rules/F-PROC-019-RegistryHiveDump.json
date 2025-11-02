@@ -1,0 +1,40 @@
+{
+    "id": "F-PROC-019-RegistryHiveDump",
+    "name": "Feature: Registry Hive Dump via reg.exe",
+    "description": "Identifies attempts to save critical registry hives like SAM, SYSTEM, or SECURITY using reg.exe, which is a key step in offline credential theft.",
+    "severity": "info",
+    "mitre_attack": [
+        {
+            "tactic": "TA0006",
+            "technique_id": "T1003",
+            "subtechnique_id": "T1003.002"
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "reg_save_hive_command",
+                "selections": {
+                    "selection_reg_save": {
+                        "event_type": "process",
+                        "condition_method": "and",
+                        "conditions": [
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "reg.exe"},
+                            {"field": "body.process.commandline", "operator": "contains", "value": "save"},
+                            {
+                                "field": "body.process.commandline",
+                                "operator": "regex",
+                                "value": "(hklm\\\\sam|hklm\\\\system|hklm\\\\security)"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "Feature Captured: Registry hive dump attempt (reg.exe)"
+                }
+            }
+        ]
+    }
+}

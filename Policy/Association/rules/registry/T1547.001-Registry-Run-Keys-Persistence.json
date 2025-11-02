@@ -1,0 +1,48 @@
+{
+    "id": "T1547.001-Registry-Run-Keys-Persistence",
+    "name": "Persistence Attempt via Registry Run Keys",
+    "description": "Detects attempts to create or modify registry values in the common 'Run' keys (HKCU/HKLM) to achieve persistence. This is a very common technique for malware and PUPs to ensure they run at startup.",
+    "severity": "high",
+    "mitre_attack": [
+        {
+            "tactic": "TA0003",
+            "technique_id": "T1547",
+            "subtechnique_id": "T1547.001",
+            "data_sources": [
+                "Windows Registry:Windows Registry Key Modification"
+            ]
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "run_key_modification",
+                "selections": {
+                    "selection_modify_run_key": {
+                        "event_type": "registry",
+                        "condition_method": "and",
+                        "conditions": [
+                            {
+                                "field": "body.registry.keyclass", 
+                                "operator": "regex", 
+                                "value": "^RegNtPre(SetValueKey|CreateKeyEx)$"
+                            },
+                            {
+                                "field": "body.registry.name", 
+                                "operator": "contains", 
+                                "value": "\\Microsoft\\Windows\\CurrentVersion\\Run"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "A process attempted to create or set a value in a startup registry key (Run/RunOnce) to establish persistence."
+                }
+            }
+        ]
+    },
+    "operational_usage": "Investigate the process that made the change. Analyze the file path being added to the registry to determine if it is malicious. This is a high-fidelity indicator of persistence.",
+    "false_positive": "Legitimate software installers (e.g., drivers, antivirus, productivity tools) frequently add entries to these keys to start components at boot. Context of the parent process is key to differentiation."
+}

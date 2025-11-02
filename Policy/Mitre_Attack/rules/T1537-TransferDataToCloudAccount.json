@@ -1,0 +1,190 @@
+{
+    "id": "T1537-TransferDataToCloudAccount",
+    "name": "Transfer Data to Cloud Account",
+    "description": "Detects attempts by adversaries to exfiltrate data by transferring it to another cloud account they control on the same service. This often involves using cloud CLI tools to share data, snapshots, or backups.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0010",
+        "technique_id": "T1537",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Command:CommandExecution",
+            "Process:ProcessCreation"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_aws_cli_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "aws.exe"
+                    }
+                ]
+            },
+            "s3_az_cli_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "az.exe"
+                    }
+                ]
+            },
+            "s4_gcloud_cli_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "gcloud.cmd"
+                    }
+                ]
+            },
+            "s4b_gsutil_cli_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "gsutil.cmd"
+                    }
+                ]
+            },
+            "s5_aws_s3_data_transfer_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "s3 cp"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "s3 sync"
+                    }
+                ]
+            },
+            "s6a_aws_ebs_modify_attr_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ec2 modify-snapshot-attribute"
+                    }
+                ]
+            },
+            "s6b_aws_ebs_add_create_perm_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "add --attribute createVolumePermission"
+                    }
+                ]
+            },
+            "s6c_aws_ebs_share_target_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--user-ids"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--group-names all"
+                    }
+                ]
+            },
+            "s7_az_storage_upload_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "storage blob upload"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "storage file upload"
+                    }
+                ]
+            },
+            "s8a_az_snapshot_grant_access_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "snapshot grant-access"
+                    }
+                ]
+            },
+            "s8b_az_snapshot_sas_duration_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--duration-in-seconds"
+                    }
+                ]
+            },
+            "s9_gcloud_storage_transfer_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "storage cp"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "storage rsync"
+                    }
+                ]
+            },
+            "s9b_gsutil_transfer_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "cp"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "rsync"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and ((s2_aws_cli_path and (s5_aws_s3_data_transfer_cmd or (s6a_aws_ebs_modify_attr_cmd and s6b_aws_ebs_add_create_perm_cmd and s6c_aws_ebs_share_target_cmd))) or (s3_az_cli_path and (s7_az_storage_upload_cmd or (s8a_az_snapshot_grant_access_cmd and s8b_az_snapshot_sas_duration_cmd))) or ((s4_gcloud_cli_path and s9_gcloud_storage_transfer_cmd) or (s4b_gsutil_cli_path and s9b_gsutil_transfer_cmd)))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 클라우드 계정으로의 데이터 전송 시도를 탐지할 수 있습니다. AWS, Azure, Google Cloud CLI 도구의 프로세스 생성 이벤트와 함께 데이터 복사, 동기화, 스냅샷 공유 또는 접근 권한 부여와 관련된 특정 명령줄 인자들을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련된 클라우드 활동에 대한 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히, 다른 데이터 수집 또는 방어 회피 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 클라우드 관리 작업, 백업 프로세스, 개발/운영 스크립트, 또는 합법적인 애플리케이션이 클라우드 CLI 도구를 사용하여 데이터를 전송하거나 스냅샷을 관리하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 CLI 호출 패턴이나 특정 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

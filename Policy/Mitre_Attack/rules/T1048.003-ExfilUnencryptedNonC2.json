@@ -1,0 +1,199 @@
+{
+    "id": "T1048.003-ExfilUnencryptedNonC2",
+    "name": "Exfiltration Over Unencrypted Non-C2 Protocol",
+    "description": "Detects attempts to exfiltrate data over unencrypted network protocols such as HTTP, FTP, SMB, DNS, or Telnet, which are not typically used for command and control. This includes the use of command-line tools like ftp.exe, bitsadmin.exe, curl, or PowerShell for unencrypted transfers, as well as unusual outbound network traffic patterns on standard unencrypted ports.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0010",
+        "technique_id": "T1048",
+        "subtechnique_id": "T1048.003",
+        "data_sources": [
+            "Enterprise:Exfiltration:Exfiltration Over Alternative Protocol:Exfiltration Over Unencrypted Non-C2 Protocol",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Command and Control:Application Layer Protocol:Web Protocols",
+            "Enterprise:Command and Control:Application Layer Protocol:File Transfer Protocols",
+            "Enterprise:Command and Control:Application Layer Protocol:DNS",
+            "Enterprise:Execution:Native API"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_ftp_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "ftp.exe"
+                    }
+                ]
+            },
+            "s3_ftp_upload_commands": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "put"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "send"
+                    }
+                ]
+            },
+            "s4_bitsadmin_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "bitsadmin.exe"
+                    }
+                ]
+            },
+            "s5_bitsadmin_cmdline_transfer": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "transfer"
+                    }
+                ]
+            },
+            "s6_unencrypted_proto_in_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "http://"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ftp://"
+                    }
+                ]
+            },
+            "s7_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s8_powershell_invoke_web_cmdlets": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-WebRequest"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-RestMethod"
+                    }
+                ]
+            },
+            "s9_powershell_unencrypted_uri": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-Uri http://"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-Uri ftp://"
+                    }
+                ]
+            },
+            "s10_curl_wget_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "curl.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "wget.exe"
+                    }
+                ]
+            },
+            "s11_net_direction_out": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    }
+                ]
+            },
+            "s12_net_protocol_http": { "event_type": "network", "conditions": [ { "field": "body.network.protocol", "operator": "equals", "value": "HTTP" } ] },
+            "s13_net_protocol_ftp": { "event_type": "network", "conditions": [ { "field": "body.network.protocol", "operator": "equals", "value": "FTP" } ] },
+            "s14_net_protocol_tcp": { "event_type": "network", "conditions": [ { "field": "body.network.protocol", "operator": "equals", "value": "TCP" } ] },
+            "s15_net_protocol_dns": { "event_type": "network", "conditions": [ { "field": "body.network.protocol", "operator": "equals", "value": "DNS" } ] },
+            "s16_net_destport_445": { "event_type": "network", "conditions": [ { "field": "body.network.destinationport", "operator": "equals", "value": 445 } ] },
+            "s17_net_destport_23": { "event_type": "network", "conditions": [ { "field": "body.network.destinationport", "operator": "equals", "value": 23 } ] },
+            "s18_net_size_gte_100k": { "event_type": "network", "conditions": [ { "field": "body.network.packetsize", "operator": "gte", "value": 102400 } ] },
+            "s19_net_size_gte_512": { "event_type": "network", "conditions": [ { "field": "body.network.packetsize", "operator": "gte", "value": 512 } ] },
+            "s20_net_size_gte_10k": { "event_type": "network", "conditions": [ { "field": "body.network.packetsize", "operator": "gte", "value": 10240 } ] },
+            "s21_apicall_ftp_put_file": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "FtpPutFileW"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "FtpPutFileA"
+                    }
+                ]
+            },
+            "s22_apicall_internet_write_file": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "InternetWriteFile"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and ((s2_ftp_exe_path and s3_ftp_upload_commands) or (s4_bitsadmin_exe_path and s5_bitsadmin_cmdline_transfer and s6_unencrypted_proto_in_cmdline) or (s7_powershell_exe_path and s8_powershell_invoke_web_cmdlets and s9_powershell_unencrypted_uri) or (s10_curl_wget_exe_path and s6_unencrypted_proto_in_cmdline))) or (s11_net_direction_out and s12_net_protocol_http and s18_net_size_gte_100k) or (s11_net_direction_out and s13_net_protocol_ftp and s18_net_size_gte_100k) or (s11_net_direction_out and s14_net_protocol_tcp and s16_net_destport_445 and s18_net_size_gte_100k) or (s11_net_direction_out and s15_net_protocol_dns and s19_net_size_gte_512) or (s11_net_direction_out and s14_net_protocol_tcp and s17_net_destport_23 and s20_net_size_gte_10k) or s21_apicall_ftp_put_file or s22_apicall_internet_write_file"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 통해 암호화되지 않은 비-C2 프로토콜을 이용한 데이터 유출 시도를 탐지할 수 있습니다. FTP, BITSAdmin, PowerShell, Curl/Wget과 같은 명령줄 도구의 사용 및 비정상적인 HTTP, FTP, SMB, DNS, Telnet 트래픽 패턴을 모니터링합니다. 특히, 대량의 데이터가 외부로 전송되거나, 일반적으로 해당 프로토콜을 사용하지 않는 프로세스에 의해 발생할 경우 높은 심각도로 분류됩니다. 탐지된 이벤트는 즉각적인 알람을 트리거하고, 추가적인 네트워크 및 호스트 포렌식 조사를 통해 데이터 유출 여부와 유출된 데이터의 종류를 파악하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 파일 전송 (예: FTP 클라이언트 사용), 웹 브라우징 (HTTP), 시스템 업데이트, 소프트웨어 다운로드, 또는 백업 솔루션으로 인해 오탐이 발생할 수 있습니다. 특히 대용량 HTTP/FTP 다운로드나 합법적인 SMB 공유 접근 시 탐지될 수 있습니다. 알려진 정상적인 프로세스, 특정 IP 주소, 도메인, 또는 사용자 계정에 대한 화이트리스트 정책을 적용하여 오탐을 줄일 수 있습니다."
+}

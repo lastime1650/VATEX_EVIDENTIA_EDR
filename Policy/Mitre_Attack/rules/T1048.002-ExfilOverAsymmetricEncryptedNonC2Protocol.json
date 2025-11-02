@@ -1,0 +1,87 @@
+{
+    "id": "T1048.002-ExfilOverAsymmetricEncryptedNonC2Protocol",
+    "name": "Exfiltration Over Asymmetric Encrypted Non-C2 Protocol",
+    "description": "Detects attempts to steal data by exfiltrating it over an asymmetrically encrypted network protocol (e.g., HTTPS/TLS) to an alternate network location, distinct from the primary command and control channel. This often involves a client sending a significantly larger volume of data than it receives, indicating potential data theft.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0010",
+        "technique_id": "T1048",
+        "subtechnique_id": "T1048.002",
+        "data_sources": [
+            "Enterprise:Exfiltration:Exfiltration Over Alternative Protocol:Exfiltration Over Asymmetric Encrypted Non-C2 Protocol",
+            "NetworkTraffic:NetworkConnectionCreation",
+            "NetworkTraffic:NetworkTrafficFlow",
+            "NetworkTraffic:NetworkTrafficContent"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_outbound_direction": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    }
+                ]
+            },
+            "s2_tcp_protocol": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "TCP"
+                    }
+                ]
+            },
+            "s3_common_tls_port": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 443
+                    }
+                ]
+            },
+            "s4_large_packet_size": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.packetsize",
+                        "operator": "gte",
+                        "value": 1048576
+                    }
+                ]
+            },
+            "s5_alternative_tls_port": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "TCP"
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "gte",
+                        "value": 1024
+                    },
+                    {
+                        "field": "body.network.packetsize",
+                        "operator": "gte",
+                        "value": 1048576
+                    }
+                ]
+            }
+        },
+        "condition": "s1_outbound_direction and s2_tcp_protocol and ( (s3_common_tls_port and s4_large_packet_size) or s5_alternative_tls_port )"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 사용하여 시스템에서 발생하는 비정상적인 대용량 암호화된 데이터 유출 시도를 탐지할 수 있습니다. 특히, 클라이언트가 HTTP/TLS(443 포트) 또는 기타 높은 포트에서 평소보다 훨씬 큰 패킷을 외부로 전송하는 이벤트를 모니터링합니다. 탐지 시 즉각적인 알람을 트리거하고, 해당 프로세스 및 통신 대상에 대한 심층 조사를 시작하여 데이터 유출 여부를 확인하고 침해사고 대응 우선순위를 지정합니다.",
+    "false_positive": "정상적인 클라우드 동기화 서비스, 대용량 파일 업로드 (예: 백업, 소프트웨어 업데이트, 미디어 전송), 또는 합법적인 애플리케이션의 암호화된 통신에서 대용량 패킷이 발생하여 오탐될 수 있습니다. 알려진 정상 프로세스 또는 특정 IP 주소/도메인에 대한 화이트리스트를 적용하거나, PacketSize 임계값을 조정하여 오탐을 줄일 수 있습니다."
+}

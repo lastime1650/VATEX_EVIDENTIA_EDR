@@ -1,0 +1,48 @@
+{
+    "id": "T1546.015-Persistence-via-SilentProcessExit-Hijacking",
+    "name": "Process Monitoring and Hijacking via SilentProcessExit",
+    "description": "Detects the configuration of SilentProcessExit registry keys. Adversaries can use this feature to monitor for a process ending and launch a malicious process or DLL in its place for persistence or credential theft.",
+    "severity": "high",
+    "mitre_attack": [
+        {
+            "tactic": "TA0003",
+            "technique_id": "T1546",
+            "subtechnique_id": "T1546.015",
+            "data_sources": [
+                "Windows Registry:Windows Registry Key Modification"
+            ]
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "silentprocessexit_setup",
+                "selections": {
+                    "selection_modify_silentprocessexit": {
+                        "event_type": "registry",
+                        "condition_method": "and",
+                        "conditions": [
+                            {
+                                "field": "body.registry.keyclass", 
+                                "operator": "regex", 
+                                "value": "^RegNtPre(SetValueKey|CreateKeyEx)$"
+                            },
+                            {
+                                "field": "body.registry.name", 
+                                "operator": "contains", 
+                                "value": "\\CurrentVersion\\SilentProcessExit\\"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "A SilentProcessExit monitoring entry was created or modified. This is a sophisticated technique for persistence, credential dumping (e.g., lsass.exe), or process hijacking."
+                }
+            }
+        ]
+    },
+    "operational_usage": "Investigate which process is being monitored (the key name) and what actions are configured (e.g., 'MonitorProcess', 'ReportingMode'). This technique is often used to dump lsass.exe memory upon termination.",
+    "false_positive": "Very rare. Windows Error Reporting may use this mechanism. However, any manual or scripted configuration by non-system processes is highly suspicious and warrants investigation."
+}

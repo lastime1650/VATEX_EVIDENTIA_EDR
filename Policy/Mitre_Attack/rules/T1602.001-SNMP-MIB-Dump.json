@@ -1,0 +1,55 @@
+{
+    "id": "T1602.001-SNMP-MIB-Dump",
+    "name": "SNMP (MIB Dump)",
+    "description": "Adversaries may target the Management Information Base (MIB) to collect and/or mine valuable information in a network managed using Simple Network Management Protocol (SNMP). The MIB is a configuration repository that stores variable information accessible via SNMP in the form of object identifiers (OID). Each OID identifies a variable that can be read or set and permits active management tasks, such as configuration changes, through remote modification of these variables. SNMP can give administrators great insight in their systems, such as, system information, description of hardware, physical location, and software packages. The MIB may also contain device operational information, including running configuration, routing table, and interface details. Adversaries may use SNMP queries to collect MIB content directly from SNMP-managed devices in order to collect network information that allows the adversary to build network maps and facilitate future targeted exploitation.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0009",
+        "technique_id": "T1602",
+        "subtechnique_id": "001",
+        "data_sources": [
+            "NetworkTraffic:NetworkConnectionCreation",
+            "NetworkTraffic:NetworkTrafficContent"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_network_udp_protocol": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "UDP"
+                    }
+                ]
+            },
+            "s2_snmp_destination_port_161": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 161
+                    }
+                ]
+            },
+            "s3_snmp_source_port_161": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.sourceport",
+                        "operator": "equals",
+                        "value": 161
+                    }
+                ]
+            }
+        },
+        "condition": "s1_network_udp_protocol and (s2_snmp_destination_port_161 or s3_snmp_source_port_161)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 EDR 에이전트가 설치된 시스템에서 SNMP MIB 덤프 시도를 탐지할 수 있습니다. 특히 UDP 161 포트를 사용하는 네트워크 통신을 모니터링하여, 비정상적인 SNMP 쿼리 활동을 식별합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스 및 통신 주체에 대한 추가적인 네트워크 포렌식 조사를 시작하는 데 사용될 수 있습니다. 이는 네트워크 정보 수집 및 내부망 탐색 단계에서 공격자의 활동을 조기에 파악하는 데 중요합니다.",
+    "false_positive": "정상적인 네트워크 모니터링 시스템, 네트워크 장비 관리 도구, 또는 합법적인 SNMP 클라이언트가 네트워크 장치의 MIB 정보를 조회하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상적인 SNMP 통신을 수행하는 IP 주소, 프로세스 또는 네트워크 세그먼트에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

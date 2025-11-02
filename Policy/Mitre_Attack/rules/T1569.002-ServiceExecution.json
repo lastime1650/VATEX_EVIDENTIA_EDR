@@ -1,0 +1,152 @@
+{
+    "id": "T1569.002-ServiceExecution",
+    "name": "Service Execution",
+    "description": "Detects attempts to abuse the Windows service control manager to execute malicious commands or payloads. This includes using utilities like sc.exe, net.exe, or PsExec to create, configure, start, or delete services, or direct modifications to service-related registry keys. Adversaries leverage these mechanisms for execution, persistence, or privilege escalation.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1569",
+        "subtechnique_id": "T1569.002",
+        "data_sources": [
+            "Enterprise:Persistence:Modify Registry",
+            "Enterprise:Persistence:Create or Modify System Process:Windows Service",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:System Services:Service Execution"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_sc_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "sc.exe"
+                    }
+                ]
+            },
+            "s3_sc_service_commands": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "config"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "start"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "delete"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "stop"
+                    }
+                ]
+            },
+            "s4_net_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "net.exe"
+                    }
+                ]
+            },
+            "s5_net_service_commands": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "start"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "stop"
+                    }
+                ]
+            },
+            "s6_psexec_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "psexec.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "psexec64.exe"
+                    }
+                ]
+            },
+            "s7_registry_service_key_manipulation": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "SetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "CreateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "SetInformationKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "RenameKey"
+                    }
+                ]
+            },
+            "s8_registry_service_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and ((s2_sc_exe_path and s3_sc_service_commands) or (s4_net_exe_path and s5_net_service_commands) or s6_psexec_exe_path) or (s7_registry_service_key_manipulation and s8_registry_service_path)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Windows 서비스 제어 관리자를 통한 악성 명령 실행 시도를 탐지할 수 있습니다. sc.exe, net.exe, PsExec과 같은 도구의 프로세스 생성 이벤트와 함께 서비스 생성, 구성, 시작, 삭제 관련 명령줄 인자를 모니터링합니다. 또한, 서비스 관련 레지스트리 키에 대한 직접적인 수정 시도(SetValueKey, CreateKey 등)를 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 시스템 변경 사항에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 권한 상승 또는 지속성 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 소프트웨어 설치 프로그램, 업데이트 유틸리티, 또는 합법적인 애플리케이션이 서비스를 관리하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상적인 서비스 관리 활동이나 특정 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,97 @@
+{
+    "id": "T1597.002-PurchasedDataLeverage",
+    "name": "Leveraging Purchased Technical Data (via Runas)",
+    "description": "Detects attempts to leverage potentially purchased technical data, such as compromised credentials, by using 'runas.exe' to execute administrative tools or system utilities. This activity indicates an adversary attempting to gain initial access or escalate privileges using valid accounts obtained through external means.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1597",
+        "subtechnique_id": "T1597.002",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Command:CommandExecution",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Initial Access:Valid Accounts"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_runas_process_creation": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "runas.exe"
+                    }
+                ]
+            },
+            "s2_target_admin_tool_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "cmd.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "net.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "sc.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "tasklist.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "whoami.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wmic.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "reg.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "schtasks.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "mmc.exe"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_runas_process_creation and s2_target_admin_tool_execution"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 'runas.exe'를 통해 관리 도구나 시스템 유틸리티를 실행하려는 시도를 탐지할 수 있습니다. 이는 외부에서 획득한 (예: 구매한) 유효 계정을 사용하여 초기 접근을 시도하거나 권한을 상승시키려는 공격자의 활동을 나타낼 수 있습니다. 탐지된 이벤트는 중간 심각도로 분류되어 알람을 트리거하고, 해당 프로세스의 명령줄 인자와 사용자 계정을 추가로 조사하여 침해사고 대응의 우선순위를 지정하는 데 사용됩니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 합법적인 애플리케이션 또는 스크립트가 'runas.exe'를 사용하여 다른 사용자 계정으로 프로그램을 실행하는 경우 오탐이 발생할 수 있습니다. 특히 관리자 계정으로 실행되는 배치 파일이나 스크립트에서 흔히 발생할 수 있으므로, 알려진 정상적인 사용 패턴에 대한 화이트리스트 적용이 필요합니다."
+}

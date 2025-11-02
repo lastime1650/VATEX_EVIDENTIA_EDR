@@ -1,0 +1,147 @@
+{
+    "id": "T1594-SearchVictimOwnedWebsites",
+    "name": "Search Victim-Owned Websites",
+    "description": "Detects attempts by adversaries to search victim-owned websites for information such as department names, physical locations, employee details, or business operations. This includes using web reconnaissance tools, PowerShell cmdlets for web requests, and accessing common web configuration files like robots.txt and sitemap.xml.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1594",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Reconnaissance:Search Open Websites/Domains:Search Victim-Owned Websites",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Discovery:File and Directory Discovery"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmdline_web_recon_tools": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "curl"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wget"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "nmap"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "dirb"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "gobuster"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "nikto"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "sqlmap"
+                    }
+                ]
+            },
+            "s3_cmdline_powershell_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s4_cmdline_powershell_web_commands": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-WebRequest"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iwr"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "System.Net.WebClient"
+                    }
+                ]
+            },
+            "s5_filesystem_access_actions": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "read"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "open"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "exists"
+                    }
+                ]
+            },
+            "s6_filepath_robots_txt": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "robots.txt"
+                    }
+                ]
+            },
+            "s7_filepath_sitemap_xml": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "sitemap.xml"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_cmdline_web_recon_tools) or (s1_process_create_action and s3_cmdline_powershell_execution and s4_cmdline_powershell_web_commands) or (s5_filesystem_access_actions and s6_filepath_robots_txt) or (s5_filesystem_access_actions and s7_filepath_sitemap_xml)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 피해자 소유 웹사이트를 검색하려는 시도를 탐지할 수 있습니다. 'curl', 'wget', 'nmap'과 같은 웹 정찰 도구의 실행, PowerShell을 이용한 웹 요청, 또는 'robots.txt', 'sitemap.xml'과 같은 웹 구성 파일에 대한 접근을 모니터링합니다. 탐지된 이벤트는 중간 심각도로 분류되어 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히, 다른 Discovery 또는 Collection 활동과 결합될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 웹 개발 도구, SEO 분석 도구, 합법적인 시스템 관리 스크립트, 또는 보안 스캐너가 웹사이트 정보를 수집하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

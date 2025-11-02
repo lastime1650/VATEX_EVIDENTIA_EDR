@@ -1,0 +1,111 @@
+{
+    "id": "T1596.001-DNS_PassiveDNS_Discovery",
+    "name": "DNS/Passive DNS Discovery",
+    "description": "Detects attempts by adversaries to search DNS data for information about victims using command-line tools like nslookup, dig, or PowerShell cmdlets such as Resolve-DnsName. This information can be used for targeting, establishing operational resources, and initial access. Detection focuses on the execution of these tools on the endpoint.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0043",
+        "technique_id": "T1596",
+        "subtechnique_id": "T1596.001",
+        "data_sources": [
+            "Enterprise:Reconnaissance:Search Open Technical Databases:DNS/Passive DNS",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_nslookup_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "nslookup.exe"
+                    }
+                ]
+            },
+            "s3_cmdline_nslookup_keyword": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "nslookup"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "host"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "dig"
+                    }
+                ]
+            },
+            "s4_powershell_dns_cmdlet": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Resolve-DnsName"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-DnsClientServerAddress"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-DnsClient"
+                    }
+                ]
+            },
+            "s5_whois_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "whois.exe"
+                    }
+                ]
+            },
+            "s6_cmdline_whois_keyword": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "whois"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and (s2_nslookup_exe_path or s3_cmdline_nslookup_keyword or s4_powershell_dns_cmdlet or s5_whois_exe_path or s6_cmdline_whois_keyword)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 DNS 및 도메인 정보 수집 시도를 탐지할 수 있습니다. nslookup, dig, whois와 같은 명령줄 도구의 실행이나 PowerShell을 통한 DNS 관련 cmdlet 호출을 모니터링합니다. 탐지된 이벤트는 정찰 활동의 초기 지표로 간주되어 자동 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히, 다른 Discovery 또는 Initial Access 활동과 결합될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 시스템 관리자나 개발자가 네트워크 문제 해결, 도메인 정보 조회, 또는 스크립트를 통한 자동화된 DNS 쿼리를 수행하는 경우 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

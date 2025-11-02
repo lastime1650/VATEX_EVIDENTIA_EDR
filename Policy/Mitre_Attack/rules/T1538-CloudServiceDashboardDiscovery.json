@@ -1,0 +1,175 @@
+{
+    "id": "T1538-CloudServiceDashboardDiscovery",
+    "name": "Cloud Service Dashboard Discovery",
+    "description": "Detects attempts to discover cloud service information using cloud CLI tools. Adversaries may use this technique to gain information about an operational cloud environment to identify specific services, resources, and features.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1538",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Command:CommandExecution"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_azure_cli_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "az.exe"
+                    }
+                ]
+            },
+            "s3_azure_discovery_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "account show"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "resource list"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "vm list"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "network public-ip list"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "storage account list"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "group list"
+                    }
+                ]
+            },
+            "s4_aws_cli_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "aws.exe"
+                    }
+                ]
+            },
+            "s5_aws_discovery_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "sts get-caller-identity"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ec2 describe-instances"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "s3 ls"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iam list-users"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "rds describe-db-instances"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "cloudformation list-stacks"
+                    }
+                ]
+            },
+            "s6_gcloud_cli_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "gcloud.cmd"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "gcloud.exe"
+                    }
+                ]
+            },
+            "s7_gcloud_discovery_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "auth list"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "projects list"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "compute instances list"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "dns managed-zones list"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "storage ls"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "sql instances list"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and ((s2_azure_cli_exe_path and s3_azure_discovery_cmd) or (s4_aws_cli_exe_path and s5_aws_discovery_cmd) or (s6_gcloud_cli_exe_path and s7_gcloud_discovery_cmd))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 클라우드 서비스 대시보드 정보 수집 시도를 탐지할 수 있습니다. `az.exe`, `aws.exe`, `gcloud.cmd`와 같은 클라우드 CLI 도구의 실행 이벤트와 함께 계정 정보 조회, 리소스 열거, 인스턴스 목록 조회 등과 같은 특정 명령줄 인자를 모니터링합니다. 탐지된 이벤트는 중간 심각도로 분류되어 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히, 탈취된 자격 증명을 사용하여 클라우드 환경을 탐색하는 공격자의 활동을 식별하는 데 도움이 됩니다.",
+    "false_positive": "정상적인 클라우드 관리 도구, 자동화 스크립트, 개발자 활동, 또는 CI/CD 파이프라인이 클라우드 리소스 정보를 조회하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,126 @@
+{
+    "id": "T1585-CloudAccountResourceCreation",
+    "name": "Cloud Account/Resource Creation via CLI",
+    "description": "Detects attempts to establish new cloud accounts, users, or core infrastructure resources using cloud provider command-line interface tools (e.g., AWS CLI, Azure CLI, Google Cloud CLI). This activity is often part of resource development for subsequent attack phases, such as setting up trial accounts or provisioning initial attack infrastructure.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1585",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Resource Development:Establish Accounts:Cloud Accounts",
+            "Resource Development:Acquire Infrastructure:Server",
+            "Execution:Command and Scripting Interpreter:Windows Command Shell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_aws_cli_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "aws.exe"
+                    }
+                ]
+            },
+            "s3_aws_cli_iam_create_user_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iam create-user"
+                    }
+                ]
+            },
+            "s4_az_cli_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "az.exe"
+                    }
+                ]
+            },
+            "s5_az_cli_ad_user_create_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ad user create"
+                    }
+                ]
+            },
+            "s6_gcloud_cli_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "gcloud.exe"
+                    }
+                ]
+            },
+            "s7_gcloud_cli_iam_sa_create_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iam service-accounts create"
+                    }
+                ]
+            },
+            "s8_az_cli_vm_create_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "vm create"
+                    }
+                ]
+            },
+            "s9_aws_cli_ec2_run_instances_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ec2 run-instances"
+                    }
+                ]
+            },
+            "s10_gcloud_cli_compute_instance_create_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "compute instances create"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_action_create and ((s2_aws_cli_exe and s3_aws_cli_iam_create_user_cmd) or (s4_az_cli_exe and s5_az_cli_ad_user_create_cmd) or (s6_gcloud_cli_exe and s7_gcloud_cli_iam_sa_create_cmd) or (s4_az_cli_exe and s8_az_cli_vm_create_cmd) or (s2_aws_cli_exe and s9_aws_cli_ec2_run_instances_cmd) or (s6_gcloud_cli_exe and s10_gcloud_cli_compute_instance_create_cmd))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 통해 엔드포인트에서 클라우드 CLI 도구를 사용하여 새로운 클라우드 계정(예: IAM 사용자, AD 사용자, 서비스 계정) 또는 컴퓨팅 리소스(예: 가상 머신 인스턴스)를 생성하려는 시도를 탐지할 수 있습니다. 이는 공격자가 초기 인프라를 구축하거나 공격에 사용할 계정을 확보하는 '자원 개발' 단계의 지표가 될 수 있습니다. 탐지된 이벤트는 자동 알람을 트리거하고, 해당 프로세스의 명령줄 인자를 분석하여 생성된 리소스의 종류와 목적을 파악하는 데 활용될 수 있습니다. 특히, 비정상적인 사용자 계정이나 시스템에서 이러한 활동이 발생할 경우 즉각적인 조사가 필요합니다.",
+    "false_positive": "정상적인 클라우드 관리 작업, 자동화된 배포 스크립트, 개발/운영(DevOps) 환경에서 리소스 프로비저닝, 또는 합법적인 애플리케이션이 클라우드 리소스를 생성하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스, 사용자, 또는 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

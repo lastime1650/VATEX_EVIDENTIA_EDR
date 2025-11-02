@@ -1,0 +1,138 @@
+{
+    "id": "T1484-DomainOrTenantPolicyModification",
+    "name": "Domain or Tenant Policy Modification",
+    "description": "Adversaries may modify the configuration settings of a domain or identity tenant to evade defenses and/or escalate privileges in centrally managed environments. Such services provide a centralized means of managing identity resources such as devices and accounts, and often include configuration settings that may apply between domains or tenants such as trust relationships, identity syncing, or identity federation. This includes modifying Group Policy Objects (GPOs), domain trust settings, or federation configurations.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1484",
+        "subtechnique_id": "",
+        "data_sources": [
+            "ActiveDirectory:ActiveDirectoryObjectDeletion",
+            "ActiveDirectory:ActiveDirectoryObjectCreation",
+            "Command:CommandExecution",
+            "ActiveDirectory:ActiveDirectoryObjectModification",
+            "ApplicationLog:ApplicationLogContent"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_creation": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_powershell_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s3_gpo_cmdlets": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-GPO"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-GPO"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Remove-GPO"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Import-GPO"
+                    }
+                ]
+            },
+            "s4_adtrust_cmdlets": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-ADTrust"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Add-ADTrust"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Remove-ADTrust"
+                    }
+                ]
+            },
+            "s5_federation_cmdlets": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-MsolDomainFederationSettings"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Update-MsolFederatedDomain"
+                    }
+                ]
+            },
+            "s6_legacy_trust_commands": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "dsmod trust"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "netdom trust"
+                    }
+                ]
+            },
+            "s7_gpedit_msc_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "gpedit.msc"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_creation and ((s2_powershell_execution and (s3_gpo_cmdlets or s4_adtrust_cmdlets or s5_federation_cmdlets)) or s6_legacy_trust_commands or s7_gpedit_msc_execution)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 도메인 또는 테넌트 정책 수정 시도를 탐지할 수 있습니다. 특히 PowerShell을 통한 GPO, AD Trust, 또는 페더레이션 설정 변경 시도, 또는 레거시 'dsmod trust', 'netdom trust' 명령 실행, 'gpedit.msc' 실행 등을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 사용자 활동에 대한 추가적인 조사를 시작하는 데 사용될 수 있습니다. 이는 방어 회피 및 권한 상승 전술에 해당하므로 침해사고 대응 시 우선순위가 높습니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 도메인 관리자의 정책 변경, 또는 합법적인 자동화 스크립트가 도메인 또는 테넌트 정책을 수정하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상적인 관리 도구나 특정 계정의 활동을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

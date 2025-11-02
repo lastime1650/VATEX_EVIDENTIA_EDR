@@ -1,0 +1,154 @@
+{
+    "id": "T1195.001-CompromiseSoftwareDependencies",
+    "name": "Compromise Software Dependencies and Development Tools",
+    "description": "Detects suspicious file modifications or creations in common software dependency directories or development tool locations, which may indicate a supply chain compromise affecting software dependencies or development tools. This includes modifications to Node.js modules, Python site-packages, NuGet packages, or critical system libraries.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0001",
+        "technique_id": "T1195",
+        "subtechnique_id": "T1195.001",
+        "data_sources": [
+            "Enterprise:Initial Access:Supply Chain Compromise:Compromise Software Dependencies and Development Tools"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_filesystem_action_modify_or_create": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "superseded"
+                    }
+                ]
+            },
+            "s2_target_path_npm_modules": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\node_modules\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\npm-cache\\"
+                    }
+                ]
+            },
+            "s3_target_path_python_site_packages": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\Lib\\site-packages\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\Scripts\\"
+                    }
+                ]
+            },
+            "s4_target_path_nuget_packages": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\.nuget\\packages\\"
+                    }
+                ]
+            },
+            "s5_target_path_system_dirs": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "C:\\Windows\\System32\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "C:\\Windows\\SysWOW64\\"
+                    }
+                ]
+            },
+            "s5_target_file_type_exec_lib_sys": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".sys"
+                    }
+                ]
+            },
+            "s6_target_path_program_files_dirs": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "C:\\Program Files\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "C:\\Program Files (x86)\\"
+                    }
+                ]
+            },
+            "s6_target_file_type_exec_lib": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_filesystem_action_modify_or_create and (s2_target_path_npm_modules or s3_target_path_python_site_packages or s4_target_path_nuget_packages or (s5_target_path_system_dirs and s5_target_file_type_exec_lib_sys) or (s6_target_path_program_files_dirs and s6_target_file_type_exec_lib))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 소프트웨어 종속성 및 개발 도구 변조 시도를 탐지할 수 있습니다. Node.js, Python, NuGet 패키지 경로 또는 시스템/프로그램 파일 디렉터리 내의 실행 파일/라이브러리 파일에 대한 비정상적인 생성 또는 수정 이벤트를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 파일의 무결성 검증 및 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 알려지지 않은 파일의 수정이나 시스템 핵심 파일의 변경은 높은 우선순위를 가집니다.",
+    "false_positive": "정상적인 소프트웨어 설치, 업데이트, 개발 환경 설정, 또는 백신 소프트웨어의 활동으로 인해 오탐이 발생할 수 있습니다. 특히, 개발자 시스템에서는 빈번한 파일 변경이 발생하므로, 특정 프로세스나 경로를 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

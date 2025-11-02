@@ -1,0 +1,111 @@
+{
+    "id": "T1584.008-NetworkDevicesCompromise",
+    "name": "Compromise Network Devices",
+    "description": "Detects attempts to compromise third-party network devices from a host, which adversaries may use for subsequent operations like phishing, content injection, or command and control. This includes the execution of network scanning tools, remote access utilities, or SNMP tools, as well as outbound network connections to common network device management ports.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1584",
+        "subtechnique_id": "T1584.008",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Command:CommandExecution",
+            "Network:NetworkConnection"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_creation_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_nmap_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "nmap"
+                    }
+                ]
+            },
+            "s3_ssh_telnet_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ssh"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "telnet"
+                    }
+                ]
+            },
+            "s4_snmp_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "snmpwalk"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "snmpget"
+                    }
+                ]
+            },
+            "s5_network_outbound_direction": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    }
+                ]
+            },
+            "s6_network_mgmt_ports_target": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 22
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 23
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 161
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 162
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_creation_action and (s2_nmap_command or s3_ssh_telnet_command or s4_snmp_command)) or (s5_network_outbound_direction and s6_network_mgmt_ports_target)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 호스트에서 네트워크 장치 침해 시도를 탐지할 수 있습니다. Nmap, SSH, Telnet, SNMP 도구와 같은 네트워크 상호작용 도구의 실행 이벤트 및 해당 명령줄 인자를 모니터링합니다. 또한, 호스트에서 네트워크 장치 관리 포트(예: 22, 23, 161, 162)로의 비정상적인 아웃바운드 네트워크 연결을 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 네트워크 활동에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 네트워크 관리 도구, IT 운영 스크립트, 시스템 진단 유틸리티, 또는 합법적인 애플리케이션이 네트워크 장치와 상호작용하거나 스캔하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 프로세스, 특정 IP 주소 범위, 또는 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

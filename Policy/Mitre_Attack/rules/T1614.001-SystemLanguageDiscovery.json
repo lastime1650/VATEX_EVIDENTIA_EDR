@@ -1,0 +1,127 @@
+{
+    "id": "T1614.001-SystemLanguageDiscovery",
+    "name": "System Language Discovery",
+    "description": "Detects attempts by adversaries to gather information about the system language of a victim in order to infer the geographical location of that host. This includes querying specific registry keys (e.g., HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Nls\\Language), calling Windows API functions (GetUserDefaultUILanguage, GetSystemDefaultUILanguage, GetKeyboardLayoutList, GetUserDefaultLangID), or executing PowerShell commands like Get-Culture or Get-WinUserLanguageList. This information may be used to shape follow-on behaviors, including whether the adversary infects the target and/or attempts specific actions.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1614",
+        "subtechnique_id": "T1614.001",
+        "data_sources": [
+            "Enterprise:Discovery:System Location Discovery:System Language Discovery",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Native API",
+            "Enterprise:Discovery:Query Registry"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_registry_discovery_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "QueryKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "OpenKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "EnumerateKey"
+                    }
+                ]
+            },
+            "s2_registry_nls_language_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Nls\\Language"
+                    }
+                ]
+            },
+            "s3_apicall_language_functions": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetUserDefaultUILanguage"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetSystemDefaultUILanguage"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetKeyboardLayoutList"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetUserDefaultLangID"
+                    }
+                ]
+            },
+            "s4_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s5_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s6_powershell_cmd_language_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-Culture"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-WinUserLanguageList"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "[System.Globalization.CultureInfo]::CurrentCulture"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_registry_discovery_action and s2_registry_nls_language_path) or s3_apicall_language_functions or (s4_process_create_action and s5_powershell_exe_path and s6_powershell_cmd_language_keywords)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템 언어 정보 수집 시도를 탐지할 수 있습니다. 특정 레지스트리 키에 대한 접근, Windows API 함수 호출, 또는 PowerShell을 통한 언어 관련 명령 실행 등을 모니터링합니다. 탐지된 이벤트는 자동 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히 다른 Discovery 또는 Reconnaissance 활동과 결합될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 애플리케이션 설치 프로그램, 업데이트 프로세스, 또는 합법적인 소프트웨어가 시스템 언어 설정을 조회하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

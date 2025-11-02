@@ -1,0 +1,172 @@
+{
+    "id": "T1112-ModifyRegistry",
+    "name": "Modify Registry",
+    "description": "Detects attempts to modify Windows Registry keys, which adversaries leverage for defense evasion, persistence, and execution. This includes using command-line utilities like 'reg.exe', PowerShell cmdlets, or direct API calls to create, set, delete, or rename registry entries.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1112",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Command:CommandExecution",
+            "Process:ProcessCreation",
+            "Process:OSAPIExecution",
+            "WindowsRegistry:WindowsRegistryKeyAccess"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_reg_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "reg.exe"
+                    }
+                ]
+            },
+            "s3_reg_command_modify_actions": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " add "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " delete "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " setvalue "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " copy "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " rename "
+                    }
+                ]
+            },
+            "s4_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s5_powershell_cmd_modify_registry": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-ItemProperty"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-ItemProperty"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Remove-ItemProperty"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Rename-Item"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-Item"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Remove-Item"
+                    }
+                ]
+            },
+            "s6_registry_direct_modification_event": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtCreateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreCreateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtDeleteKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreDeleteKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtRenameKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreRenameKey"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_reg_exe_path and s3_reg_command_modify_actions) or (s1_process_create_action and s4_powershell_exe_path and s5_powershell_cmd_modify_registry) or s6_registry_direct_modification_event"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템 레지스트리 변경 시도를 탐지할 수 있습니다. 'reg.exe' 또는 PowerShell을 통한 레지스트리 추가/삭제/수정 명령 실행, 그리고 커널 드라이버를 통해 직접 감지되는 레지스트리 키 생성, 값 설정, 삭제, 이름 변경 이벤트를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 수정된 레지스트리 키에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 방어 회피, 지속성, 또는 실행 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 기능, 소프트웨어 설치 프로그램, 업데이트 유틸리티, 또는 합법적인 애플리케이션이 레지스트리를 수정하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상적인 레지스트리 수정 패턴이나 특정 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

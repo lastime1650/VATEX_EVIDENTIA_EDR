@@ -1,0 +1,360 @@
+{
+    "id": "T1052-ExfiltrationOverPhysicalMedium",
+    "name": "Exfiltration Over Physical Medium",
+    "description": "Detects attempts by adversaries to exfiltrate data via physical media such as USB drives, external hard drives, or other removable storage. This often involves copying, moving, or archiving sensitive files to these devices.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0010",
+        "technique_id": "T1052",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Exfiltration:Exfiltration Over Physical Medium:Exfiltration over USB",
+            "Enterprise:Collection:Data from Local System",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmd_copy_util": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "xcopy.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "robocopy.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "copy "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "move "
+                    }
+                ]
+            },
+            "s3_cmd_archive_util": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "7z.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "winrar.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "tar.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "zip.exe"
+                    }
+                ]
+            },
+            "s4_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    { "field": "body.process.commandline", "operator": "contains", "value": "powershell.exe" }
+                ]
+            },
+            "s4_powershell_cmdlets": {
+                "event_type": "process",
+                "conditions": [
+                    { "field": "body.process.commandline", "operator": "contains", "value": "Copy-Item" },
+                    { "field": "body.process.commandline", "operator": "contains", "value": "Move-Item" }
+                ]
+            },
+            "s5_cmd_target_removable_drive_letter": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " D:\\\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " E:\\\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " F:\\\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " G:\\\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " H:\\\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " I:\\\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " J:\\\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " K:\\\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " L:\\\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " M:\\\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " N:\\\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " O:\\\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " P:\\\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " Q:\\\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " R:\\\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " S:\\\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " T:\\\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " U:\\\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " V:\\\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " W:\\\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " X:\\\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " Y:\\\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " Z:\\\\"
+                    }
+                ]
+            },
+            "s6_fs_write_create_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    }
+                ]
+            },
+            "s7_fs_target_removable_drive_letter": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "D:\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "E:\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "F:\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "G:\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "H:\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "I:\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "J:\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "K:\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "L:\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "M:\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "N:\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "O:\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "P:\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "Q:\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "R:\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "S:\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "T:\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "U:\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "V:\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "W:\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "X:\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "Y:\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "Z:\\\\"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and (s2_cmd_copy_util or s3_cmd_archive_util or (s4_powershell_exe and s4_powershell_cmdlets) ) and s5_cmd_target_removable_drive_letter or (s6_fs_write_create_action and s7_fs_target_removable_drive_letter)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 물리적 매체로의 데이터 유출 시도를 탐지할 수 있습니다. 'xcopy', 'robocopy', 'copy', 'move'와 같은 파일 복사 명령, '7z', 'winrar', 'tar', 'zip'과 같은 압축 명령, 또는 PowerShell의 'Copy-Item', 'Move-Item' cmdlet이 이동식 드라이브를 대상으로 실행되는 프로세스 생성 이벤트를 모니터링합니다. 또한, 이동식 드라이브 경로에 대한 파일 생성 또는 쓰기 파일 시스템 이벤트를 감시합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 데이터 유출 가능성에 대한 심층적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용됩니다.",
+    "false_positive": "정상적인 사용자나 시스템 관리자가 합법적인 목적으로 데이터를 백업하거나 이동식 드라이브에 파일을 저장하는 경우 오탐이 발생할 수 있습니다. 특정 사용자, 프로세스, 또는 파일 경로를 화이트리스트에 추가하거나, EDR/DLP 시스템의 다른 정책과 결합하여 오탐을 줄일 수 있습니다."
+}

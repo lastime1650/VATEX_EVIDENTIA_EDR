@@ -1,0 +1,103 @@
+{
+    "id": "T1556.003-PluggableAuthenticationModules",
+    "name": "Pluggable Authentication Modules Modification",
+    "description": "Detects modifications to Pluggable Authentication Modules (PAM) configuration files or libraries on Linux/macOS systems, which adversaries may use to bypass authentication, create backdoors, or steal credentials. This includes changes to the /etc/pam.d/ directory content, pam_unix.so, /etc/passwd, and /etc/shadow.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0006",
+        "technique_id": "T1556",
+        "subtechnique_id": "T1556.003",
+        "data_sources": [
+            "Enterprise:Persistence:Modify Authentication Process:Pluggable Authentication Modules",
+            "Enterprise:Defense Evasion:Modify Authentication Process:Pluggable Authentication Modules",
+            "Enterprise:Credential Access:Modify Authentication Process:Pluggable Authentication Modules",
+            "Enterprise:Credential Access:OS Credential Dumping:/etc/passwd and /etc/shadow"
+        ]
+    },
+    "platform": [
+        "linux",
+        "macos"
+    ],
+    "detection": {
+        "selections": {
+            "file_modification_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "rename"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "remove"
+                    }
+                ]
+            },
+            "pam_d_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/etc/pam.d/"
+                    }
+                ]
+            },
+            "pam_unix_so_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "equals",
+                        "value": "/lib/security/pam_unix.so"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "equals",
+                        "value": "/usr/lib/security/pam_unix.so"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "equals",
+                        "value": "/usr/local/lib/security/pam_unix.so"
+                    }
+                ]
+            },
+            "passwd_shadow_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "equals",
+                        "value": "/etc/passwd"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "equals",
+                        "value": "/etc/shadow"
+                    }
+                ]
+            }
+        },
+        "condition": "file_modification_action and (pam_d_path or pam_unix_so_path or passwd_shadow_path)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Linux/macOS 시스템에서 PAM 관련 파일에 대한 무단 변경 시도를 탐지할 수 있습니다. 이는 인증 우회, 백도어 생성 또는 자격 증명 탈취 시도에 대한 조기 탐지를 제공합니다. 탐지 시 자동 알람이 트리거되어 즉각적인 조사와 침해사고 대응 우선순위 지정으로 이어집니다. 특히 다른 Persistence 또는 Credential Access 활동과 결합될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 시스템 업데이트, 패키지 설치, 또는 시스템 관리 도구가 PAM 구성이나 관련 파일(예: passwd, shadow)을 수정할 때 이 규칙이 탐지될 수 있습니다. 알려진 정상 프로세스나 특정 파일 해시에 대한 화이트리스트를 구성하여 오탐을 줄일 수 있습니다."
+}

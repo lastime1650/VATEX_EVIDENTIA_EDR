@@ -1,0 +1,147 @@
+{
+    "id": "T1672-EmailSpoofing",
+    "name": "Email Spoofing",
+    "description": "Detects attempts to fake a sender's identity by modifying email headers (e.g., FROM header) to establish contact with victims under false pretenses. Adversaries often abuse absent or weakly configured SPF, DKIM, and/or DMARC policies. This rule focuses on detecting the programmatic execution of tools or scripts commonly used for sending emails with spoofed information.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1672",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Execution:Command and Scripting Interpreter:Python",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Command and Control:Application Layer Protocol:Mail Protocols"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s3_powershell_send_mail_cmdlet": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Send-MailMessage"
+                    }
+                ]
+            },
+            "s4_python_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "python.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pythonw.exe"
+                    }
+                ]
+            },
+            "s5_python_smtp_module": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "smtplib"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "email.message"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "mail.mime"
+                    }
+                ]
+            },
+            "s6_curl_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "curl.exe"
+                    }
+                ]
+            },
+            "s7_curl_smtp_protocol": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "smtp://"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "smtps://"
+                    }
+                ]
+            },
+            "s8_blat_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "blat.exe"
+                    }
+                ]
+            },
+            "s9_blat_from_option": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-f"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-from"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and ((s2_powershell_exe_path and s3_powershell_send_mail_cmdlet) or (s4_python_exe_path and s5_python_smtp_module) or (s6_curl_exe_path and s7_curl_smtp_protocol) or (s8_blat_exe_path and s9_blat_from_option))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 이메일 스푸핑 시도를 탐지할 수 있습니다. PowerShell의 'Send-MailMessage' cmdlet, Python의 SMTP 라이브러리, 또는 curl, Blat과 같은 커맨드라인 도구를 사용하여 이메일을 전송하는 프로세스 생성 이벤트를 모니터링합니다. 특히, 비정상적인 프로세스에서 이러한 명령이 실행되거나, 발신자 주소 조작을 암시하는 인자가 사용될 때 높은 심각도로 분류하여 즉각적인 알람을 트리거하고, 관련 프로세스 및 네트워크 활동에 대한 추가적인 조사를 시작하는 데 활용할 수 있습니다. 이는 피싱 캠페인 또는 사칭 공격의 초기 단계 탐지에 중요합니다.",
+    "false_positive": "정상적인 시스템 관리 스크립트, 자동화된 보고서 전송, 개발 환경에서의 테스트 이메일 전송, 또는 합법적인 애플리케이션이 이메일 기능을 사용하는 경우 오탐이 발생할 수 있습니다. 알려진 정상 프로세스, 특정 스크립트 경로, 또는 내부 도메인으로만 발송되는 이메일 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

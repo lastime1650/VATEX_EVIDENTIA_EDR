@@ -1,0 +1,156 @@
+{
+    "id": "T1590.004-NetworkTopologyDiscovery",
+    "name": "Network Topology Discovery",
+    "description": "Detects attempts by adversaries to gather information about the victim's network topology, including internal and external network environments, network devices (gateways, routers), and other infrastructure. This often involves executing command-line utilities or PowerShell cmdlets to enumerate network configurations, connections, and routes.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1590",
+        "subtechnique_id": "T1590.004",
+        "data_sources": [
+            "Enterprise:Reconnaissance:Gather Victim Network Information:Network Topology",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s_cmdline_ipconfig": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ipconfig"
+                    }
+                ]
+            },
+            "s_cmdline_netstat": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "netstat"
+                    }
+                ]
+            },
+            "s_cmdline_route_print": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "route print"
+                    }
+                ]
+            },
+            "s_cmdline_nbtstat": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "nbtstat"
+                    }
+                ]
+            },
+            "s_cmdline_arp_a": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "arp -a"
+                    }
+                ]
+            },
+            "s_cmdline_nslookup": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "nslookup"
+                    }
+                ]
+            },
+            "s_cmdline_tracert": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "tracert"
+                    }
+                ]
+            },
+            "s_cmdline_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s_cmdline_powershell_get_netadapter": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-NetAdapter"
+                    }
+                ]
+            },
+            "s_cmdline_powershell_get_netipconfiguration": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-NetIPConfiguration"
+                    }
+                ]
+            },
+            "s_cmdline_powershell_get_netroute": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-NetRoute"
+                    }
+                ]
+            },
+            "s_cmdline_powershell_get_netconnectionprofile": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-NetConnectionProfile"
+                    }
+                ]
+            }
+        },
+        "condition": "s_action_create and (s_cmdline_ipconfig or s_cmdline_netstat or s_cmdline_route_print or s_cmdline_nbtstat or s_cmdline_arp_a or s_cmdline_nslookup or s_cmdline_tracert or (s_cmdline_powershell_exe and (s_cmdline_powershell_get_netadapter or s_cmdline_powershell_get_netipconfiguration or s_cmdline_powershell_get_netroute or s_cmdline_powershell_get_netconnectionprofile)))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 네트워크 토폴로지 정보를 수집하려는 시도를 탐지할 수 있습니다. 'ipconfig', 'netstat', 'route print', 'arp -a', 'nslookup', 'tracert'와 같은 명령줄 유틸리티 실행 및 PowerShell의 'Get-NetAdapter', 'Get-NetIPConfiguration', 'Get-NetRoute', 'Get-NetConnectionProfile'과 같은 네트워크 관련 Cmdlet 실행을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련된 프로세스 및 사용자 활동에 대한 추가적인 조사를 시작하는 데 사용될 수 있습니다. 특히, 다른 Discovery 또는 Reconnaissance 활동과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 네트워크 진단 유틸리티, 스크립트, 또는 합법적인 애플리케이션이 네트워크 정보를 조회하는 과정에서 오탐이 발생할 수 있습니다. 예를 들어, IT 관리자가 네트워크 문제를 해결하거나 소프트웨어가 네트워크 상태를 확인하는 경우입니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

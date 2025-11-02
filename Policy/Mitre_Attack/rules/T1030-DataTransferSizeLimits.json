@@ -1,0 +1,45 @@
+{
+    "id": "T1030-DataTransferSizeLimits",
+    "name": "Data Transfer Size Limits",
+    "description": "Detects attempts by adversaries to exfiltrate data in fixed size chunks or by limiting packet sizes below certain thresholds to avoid triggering network data transfer alerts. This rule specifically looks for outbound network traffic with unusually small packet sizes, which can be an indicator of such activity.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0010",
+        "technique_id": "T1030",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Network Traffic:Network Connection Creation",
+            "Network Traffic:Network Traffic Flow"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_outbound_network_direction": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    }
+                ]
+            },
+            "s2_small_packet_size": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.packetsize",
+                        "operator": "lte",
+                        "value": 500
+                    }
+                ]
+            }
+        },
+        "condition": "s1_outbound_network_direction and s2_small_packet_size"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 네트워크를 통한 데이터 유출 시도를 탐지할 수 있습니다. 특히, 작은 크기의 패킷으로 지속적으로 외부 통신을 시도하는 패턴은 데이터 유출 방지 시스템을 우회하려는 공격자의 전술일 수 있습니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스의 활동 및 통신 대상을 추가적으로 분석하여 데이터 유출 여부를 확인하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 애플리케이션(예: DNS 쿼리, Keep-alive 메시지, 채팅 앱, IoT 장치 통신, C2 Heartbeat 등)은 작은 크기의 패킷을 사용하여 외부와 통신할 수 있으므로 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 네트워크 목적지에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다. 또한, 이 규칙은 단일 이벤트에 기반하므로, 지속적인 작은 패킷 전송 패턴을 정확히 탐지하기 위해서는 추가적인 시간 기반 분석이 필요할 수 있습니다."
+}

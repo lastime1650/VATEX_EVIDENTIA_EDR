@@ -1,0 +1,107 @@
+{
+    "id": "T1021.006-WindowsRemoteManagement",
+    "name": "Windows Remote Management",
+    "description": "Adversaries may use Valid Accounts to interact with remote systems using Windows Remote Management (WinRM). The adversary may then perform actions as the logged-on user. WinRM is the name of both a Windows service and a protocol that allows a user to interact with a remote system (e.g., run an executable, modify the Registry, modify services). It may be called with the `winrm` command or by any number of programs such as PowerShell. WinRM can be used as a method of remotely interacting with Windows Management Instrumentation.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0008",
+        "technique_id": "T1021",
+        "subtechnique_id": "T1021.006",
+        "data_sources": [
+            "Enterprise:Lateral Movement:Remote Services:Windows Remote Management",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Command and Control:Application Layer Protocol:Web Protocols"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_winrm_cli_commandline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "winrm "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "winrs "
+                    }
+                ]
+            },
+            "s3_powershell_exe_in_commandline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s4_powershell_winrm_cmdlet_in_commandline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-Command"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Enter-PSSession"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-PSSession"
+                    }
+                ]
+            },
+            "s5_network_winrm_destination_port": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 5985
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 5986
+                    }
+                ]
+            },
+            "s6_network_outbound_direction": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and (s2_winrm_cli_commandline or (s3_powershell_exe_in_commandline and s4_powershell_winrm_cmdlet_in_commandline))) or (s5_network_winrm_destination_port and s6_network_outbound_direction)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Windows Remote Management(WinRM)를 통한 원격 시스템 상호작용 및 측면 이동 시도를 탐지할 수 있습니다. `winrm.cmd` 또는 `winrs.exe` 명령 실행, PowerShell을 이용한 WinRM cmdlet 호출 등의 프로세스 생성 이벤트를 모니터링합니다. 또한, WinRM 표준 포트(5985/5986)를 대상으로 하는 아웃바운드 네트워크 연결 시도도 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 활동 및 네트워크 흐름에 대한 추가적인 조사를 시작하는 데 사용될 수 있습니다. 특히, 다른 유효 계정 사용 또는 실행 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 작업, IT 자동화 스크립트, 또는 합법적인 원격 관리 도구가 WinRM을 사용하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 WinRM 활동을 수행하는 프로세스나 사용자 계정에 대해 화이트리스트를 적용하거나, 특정 IP 주소 범위에 대한 예외 처리를 통해 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,156 @@
+{
+    "id": "T1542.003-BootkitPersistence",
+    "name": "Bootkit Persistence",
+    "description": "Detects attempts by adversaries to establish persistence using bootkits, which modify boot sectors (MBR/VBR) or EFI System Partition (ESP) files to execute malicious code before the operating system loads. This includes monitoring for modifications to critical boot-related registry keys and files.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1542",
+        "subtechnique_id": "T1542.003",
+        "data_sources": [
+            "File:FileCreation",
+            "Drive:DriveModification",
+            "File:FileModification"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_bootexecute_registry_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "equals",
+                        "value": "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Control\\Session Manager\\BootExecute"
+                    }
+                ]
+            },
+            "s1_bootexecute_registry_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPostSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetInformationKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPostSetInformationKey"
+                    }
+                ]
+            },
+            "s2_esp_bcd_filepath": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\EFI\\Microsoft\\Boot\\BCD"
+                    }
+                ]
+            },
+            "s2_esp_bcd_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "rename"
+                    }
+                ]
+            },
+            "s3_esp_bootx64_filepath": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\EFI\\Boot\\bootx64.efi"
+                    }
+                ]
+            },
+            "s3_esp_bootx64_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "rename"
+                    }
+                ]
+            },
+            "s4_raw_physical_drive_filepath": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "\\\\.\\PhysicalDrive"
+                    }
+                ]
+            },
+            "s4_raw_physical_drive_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_bootexecute_registry_path and s1_bootexecute_registry_action) or (s2_esp_bcd_filepath and s2_esp_bcd_action) or (s3_esp_bootx64_filepath and s3_esp_bootx64_action) or (s4_raw_physical_drive_filepath and s4_raw_physical_drive_action)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템의 부팅 메커니즘을 조작하려는 부트킷 시도를 탐지할 수 있습니다. 'BootExecute' 레지스트리 키에 대한 비정상적인 수정, EFI 시스템 파티션 내의 BCD 파일 또는 bootx64.efi 파일에 대한 생성/쓰기/덮어쓰기/이름 변경, 또는 물리적 드라이브에 대한 직접적인 쓰기 시도를 모니터링합니다. 탐지된 이벤트는 최고 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 시스템에 대한 긴급 격리 및 포렌식 조사를 시작하는 데 사용될 수 있습니다. 부트킷은 심각한 시스템 손상과 지속적인 위협을 초래하므로 최우선으로 대응해야 합니다.",
+    "false_positive": "정상적인 시스템 업데이트, 드라이버 설치, 디스크 관리 도구, 또는 특정 보안 소프트웨어가 부팅 관련 레지스트리 키나 EFI 파일을 합법적으로 수정하는 과정에서 오탐이 발생할 수 있습니다. 특히 물리적 드라이브에 대한 직접 쓰기 감지는 백업 소프트웨어 등에서 발생할 수 있으므로, 알려진 정상 프로세스나 특정 해시값을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

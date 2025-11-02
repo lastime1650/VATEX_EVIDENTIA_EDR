@@ -1,0 +1,65 @@
+{
+    "id": "T1564.001-HiddenFilesAndDirectories",
+    "name": "Hidden Files and Directories",
+    "description": "Detects attempts by adversaries to set files and directories to be hidden using Windows 'attrib.exe' utility with '+h' or '+s' flags to evade detection. This technique allows malicious files or directories to be less visible during typical user or system analysis.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1564",
+        "subtechnique_id": "T1564.001",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Defense Evasion:Hide Artifacts:Hidden Files and Directories"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_attrib_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "attrib.exe"
+                    }
+                ]
+            },
+            "s3_attrib_set_hidden_flag": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "+h"
+                    }
+                ]
+            },
+            "s4_attrib_set_system_flag": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "+s"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and s2_attrib_exe_path and (s3_attrib_set_hidden_flag or s4_attrib_set_system_flag)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 'attrib.exe'를 이용한 파일 및 디렉터리 숨김 시도를 탐지할 수 있습니다. 프로세스 생성 이벤트에서 'attrib.exe' 실행과 함께 '+h' (숨김) 또는 '+s' (시스템) 플래그가 사용되는 명령줄을 모니터링합니다. 탐지된 이벤트는 방어 회피 전술의 지표로 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 대상 파일에 대한 추가적인 조사를 시작하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 백업 소프트웨어, 또는 합법적인 애플리케이션이 파일 속성을 관리하기 위해 'attrib.exe'를 사용하는 경우 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

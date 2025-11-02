@@ -1,0 +1,155 @@
+{
+    "id": "T1574.006-DynamicLinkerHijacking",
+    "name": "Dynamic Linker Hijacking (Windows Adaptation)",
+    "description": "Detects attempts to hijack dynamic linker mechanisms on Windows, such as modifying the AppInit_DLLs registry key for global DLL injection or the Image File Execution Options (IFEO) Debugger key for targeted process injection. This technique allows adversaries to execute malicious payloads by causing legitimate applications to load an adversary-controlled DLL instead of the intended one, achieving persistence, privilege escalation, or defense evasion.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1574",
+        "subtechnique_id": "T1574.006",
+        "data_sources": [
+            "Enterprise:Persistence:Hijack Execution Flow:Dynamic Linker Hijacking",
+            "Enterprise:Privilege Escalation:Hijack Execution Flow:Dynamic Linker Hijacking",
+            "Enterprise:Defense Evasion:Hijack Execution Flow:Dynamic Linker Hijacking",
+            "WindowsRegistry:WindowsRegistryKeyModification",
+            "Enterprise:Persistence:Modify Registry",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Process:ProcessCreation"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_registry_action_set_value": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPostSetValueKey"
+                    }
+                ]
+            },
+            "s2_appinit_dlls_key_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "equals",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Windows\\Appinit_DLLs"
+                    }
+                ]
+            },
+            "s3_ifeo_debugger_key_base_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options\\"
+                    }
+                ]
+            },
+            "s4_ifeo_debugger_key_suffix": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "endswith",
+                        "value": "\\Debugger"
+                    }
+                ]
+            },
+            "s5_process_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s6_process_reg_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "reg.exe"
+                    }
+                ]
+            },
+            "s7_process_cmdline_add_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "add"
+                    }
+                ]
+            },
+            "s8_process_cmdline_appinit_dlls_keyword": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Appinit_DLLs"
+                    }
+                ]
+            },
+            "s9_process_cmdline_appinit_dlls_regpath": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Windows"
+                    }
+                ]
+            },
+            "s10_process_cmdline_ifeo_keyword": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "IFEO"
+                    }
+                ]
+            },
+            "s11_process_cmdline_debugger_keyword": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Debugger"
+                    }
+                ]
+            },
+            "s12_process_cmdline_ifeo_regpath": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_registry_action_set_value and s2_appinit_dlls_key_path) or (s1_registry_action_set_value and s3_ifeo_debugger_key_base_path and s4_ifeo_debugger_key_suffix) or (s5_process_action_create and s6_process_reg_exe and s7_process_cmdline_add_action and s8_process_cmdline_appinit_dlls_keyword and s9_process_cmdline_appinit_dlls_regpath) or (s5_process_action_create and s6_process_reg_exe and s7_process_cmdline_add_action and s10_process_cmdline_ifeo_keyword and s11_process_cmdline_debugger_keyword and s12_process_cmdline_ifeo_regpath)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Windows 시스템에서 동적 링커 하이재킹 시도를 탐지할 수 있습니다. AppInit_DLLs 또는 IFEO Debugger 레지스트리 키에 대한 직접적인 변경 사항(registry 이벤트)을 모니터링하고, 'reg.exe'를 사용하여 이러한 키를 수정하는 프로세스 생성 이벤트(process 이벤트)를 추적합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 레지스트리 변경에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 이는 시스템 전반의 DLL 인젝션 또는 특정 애플리케이션에 대한 악성 코드 실행을 나타낼 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 소프트웨어 설치 프로그램, 또는 개발/디버깅 유틸리티가 AppInit_DLLs 또는 IFEO Debugger 레지스트리 키를 합법적으로 수정하는 경우 오탐이 발생할 수 있습니다. 특히 개발 환경이나 특정 관리 소프트웨어가 사용되는 환경에서는 알려진 정상 프로세스나 특정 레지스트리 변경 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

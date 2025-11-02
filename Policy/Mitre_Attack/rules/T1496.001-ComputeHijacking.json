@@ -1,0 +1,187 @@
+{
+    "id": "T1496.001-ComputeHijacking",
+    "name": "Compute Hijacking",
+    "description": "Detects attempts by adversaries to leverage compromised system compute resources for tasks like cryptocurrency mining, which can significantly impact system performance and availability. This includes monitoring for known miner executables, suspicious command-line arguments, and network connections to mining pools.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0040",
+        "technique_id": "T1496",
+        "subtechnique_id": "T1496.001",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Native API",
+            "Enterprise:Command and Control:Application Layer Protocol:Web Protocols",
+            "Enterprise:Discovery:Process Discovery"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_miner_exe_path_indicators": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "xmrig.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "cpuminer.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "minerd.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "ethminer.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "claymore.exe"
+                    }
+                ]
+            },
+            "s3_miner_cmdline_indicators": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "stratum+tcp://"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--pool"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-o "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-u "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--cpu"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-a "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--donate-level"
+                    }
+                ]
+            },
+            "s4_process_kill_competing_miner_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "taskkill /f /im"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Stop-Process -Name"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "xmrig.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "cpuminer.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "minerd.exe"
+                    }
+                ]
+            },
+            "s5_net_protocol_tcp": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "TCP"
+                    }
+                ]
+            },
+            "s6_net_mining_pool_ports": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 3333
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 4444
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 5555
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 7777
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 8080
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 14444
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 20000
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and (s2_miner_exe_path_indicators or s3_miner_cmdline_indicators or s4_process_kill_competing_miner_cmdline)) or (s5_net_protocol_tcp and s6_net_mining_pool_ports)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템의 컴퓨팅 자원을 불법적으로 활용하려는 시도를 탐지할 수 있습니다. 특히, 암호화폐 채굴 활동과 관련된 알려진 실행 파일의 생성, 채굴 풀 연결을 시사하는 명령줄 인자 사용, 또는 특정 채굴 포트로의 네트워크 연결을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스의 종료, 네트워크 연결 차단, 그리고 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 시스템 성능 저하 및 자원 고갈을 방지하는 데 중요한 역할을 합니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 개발 환경에서 테스트 목적으로 실행되는 합법적인 프로그램, 또는 특정 유형의 과학 컴퓨팅 애플리케이션이 유사한 명령줄 인자나 네트워크 패턴을 보일 수 있어 오탐이 발생할 수 있습니다. 또한, 합법적인 암호화폐 채굴 활동이 있는 환경에서는 해당 프로세스 및 네트워크 트래픽을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

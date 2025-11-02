@@ -1,0 +1,213 @@
+{
+    "id": "T1600.001-ReduceKeySpace",
+    "name": "Reduce Key Space",
+    "description": "Detects attempts to reduce the cipher strength of encrypted communications by modifying encryption key sizes or parameters. This is achieved through direct interaction with network device CLIs, modification of system image configurations, or changes to cryptographic settings via registry or API calls on a compromised Windows host.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1600",
+        "subtechnique_id": "T1600.001",
+        "data_sources": [
+            "Enterprise:Defense Evasion:Weaken Encryption:Reduce Key Space",
+            "Enterprise:Execution:Command and Scripting Interpreter:Network Device CLI",
+            "Enterprise:Defense Evasion:Modify System Image",
+            "Enterprise:Defense Evasion:Modify Registry",
+            "Enterprise:Execution:Native API"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmdline_network_cli_tools": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ssh.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "telnet.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "az.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "aws.exe"
+                    }
+                ]
+            },
+            "s3_cmdline_crypto_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "config"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "crypto"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "key-size"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "encryption"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "cipher"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "keylength"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "weak"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-NetIPsec"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-ItemProperty"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-Command"
+                    }
+                ]
+            },
+            "s4_registry_modification_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetInformationKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreSetInformationKey"
+                    }
+                ]
+            },
+            "s5_registry_crypto_paths": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\HTTP\\Parameters\\SslBinding"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "CipherSuites"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "Protocols"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "Enabled"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "FipsAlgorithmPolicy"
+                    }
+                ]
+            },
+            "s6_apicall_crypto_functions": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "CryptSetKeyParam"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "NCryptSetProperty"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "CertSetCertificateContextProperty"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "CertSetKeyContextProperty"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and s2_cmdline_network_cli_tools and s3_cmdline_crypto_keywords or (s4_registry_modification_action and s5_registry_crypto_paths) or s6_apicall_crypto_functions"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 암호화 키 공간 축소 시도를 탐지할 수 있습니다. 이는 주로 네트워크 장치 CLI 도구(SSH, Telnet, PowerShell 등)를 사용한 암호화 관련 설정 변경 명령 실행, Windows 레지스트리 내 암호화 정책 또는 SSL/TLS 설정 키에 대한 수정, 또는 암호화 관련 Windows API 호출을 모니터링하여 이루어집니다. 탐지된 이벤트는 중간 심각도로 분류되며, 추가적인 조사 및 다른 전술과의 상관관계 분석을 통해 실제 위협 여부를 판단하고 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 네트워크 장치 설정 변경, 소프트웨어 업데이트, 또는 보안 강화 도구가 암호화 관련 설정을 수정하거나 조회하는 과정에서 오탐이 발생할 수 있습니다. 특히, 관리자가 의도적으로 암호화 프로토콜 또는 키 길이를 변경하는 경우 탐지될 수 있습니다. 알려진 정상 프로세스, 명령줄 패턴, 또는 레지스트리/API 호출에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

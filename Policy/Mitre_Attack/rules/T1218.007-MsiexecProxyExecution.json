@@ -1,0 +1,117 @@
+{
+    "id": "T1218.007-MsiexecProxyExecution",
+    "name": "Msiexec Proxy Execution",
+    "description": "Adversaries may abuse msiexec.exe to proxy execution of malicious payloads. Msiexec.exe is the command-line utility for the Windows Installer and is thus commonly associated with executing installation packages (.msi). The Msiexec.exe binary may also be digitally signed by Microsoft. Adversaries may abuse msiexec.exe to launch local or network accessible MSI files. Msiexec.exe can also execute DLLs. Since it may be signed and native on Windows systems, msiexec.exe can be used to bypass application control solutions that do not account for its potential abuse. Msiexec.exe execution may also be elevated to SYSTEM privileges if the `AlwaysInstallElevated` policy is enabled.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1218",
+        "subtechnique_id": "T1218.007",
+        "data_sources": [
+            "Process:Process Creation",
+            "Command:Command Execution",
+            "Module:Module Load",
+            "Network:Network Connection Creation"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_msiexec_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "msiexec.exe"
+                    }
+                ]
+            },
+            "s2_process_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s3_cmdline_msi_file": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".msi"
+                    }
+                ]
+            },
+            "s4_cmdline_dll_with_entry": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".dll,"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".dll#"
+                    }
+                ]
+            },
+            "s5_cmdline_network_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "\\\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "http://"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "https://"
+                    }
+                ]
+            },
+            "s6_cmdline_quiet_install_flag": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/qn"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/quiet"
+                    }
+                ]
+            },
+            "s7_cmdline_install_flag": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/i"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_msiexec_exe_path and s2_process_action_create and ( (s3_cmdline_msi_file and s7_cmdline_install_flag) or s4_cmdline_dll_with_entry or s5_cmdline_network_path or s6_cmdline_quiet_install_flag )"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 msiexec.exe를 통한 악성 페이로드 실행 시도를 탐지할 수 있습니다. msiexec.exe의 프로세스 생성 이벤트와 함께 비정상적인 명령줄 인자(악성 MSI 파일, DLL 호출, 네트워크 경로를 통한 실행, 자동 설치 플래그 등)를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 네트워크 활동에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 다른 방어 회피 또는 실행 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 소프트웨어 설치 프로그램, 시스템 업데이트, 또는 합법적인 애플리케이션이 msiexec.exe를 사용하여 MSI 패키지를 설치하거나 DLL을 로드하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 msiexec.exe 호출 패턴이나 특정 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,167 @@
+{
+    "id": "T1505.002-TransportAgent",
+    "name": "Persistence via Transport Agent",
+    "description": "Detects the installation or modification of Microsoft Exchange transport agents which adversaries can abuse to establish persistent access and intercept/manipulate email messages. This technique involves registering malicious .NET assemblies with the Exchange server, allowing them to execute developer-defined tasks during email processing.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1505",
+        "subtechnique_id": "T1505.002",
+        "data_sources": [
+            "File:FileCreation",
+            "ApplicationLog:ApplicationLogContent",
+            "Process:ProcessCreation",
+            "WindowsRegistry:WindowsRegistryKeyModification"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s3_powershell_install_transportagent_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Install-TransportAgent"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Uninstall-TransportAgent"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Enable-TransportAgent"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Disable-TransportAgent"
+                    }
+                ]
+            },
+            "s4_filesystem_create_or_write_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    }
+                ]
+            },
+            "s5_filepath_exchange_agent_directory": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\\\Program Files\\\\Microsoft\\\\Exchange Server\\\\V15\\\\TransportRoles\\\\Shared\\\\Agents"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\\\Program Files\\\\Microsoft\\\\Exchange Server\\\\V14\\\\TransportRoles\\\\Shared\\\\Agents"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\\\Program Files\\\\Microsoft\\\\Exchange Server\\\\V16\\\\TransportRoles\\\\Shared\\\\Agents"
+                    }
+                ]
+            },
+            "s6_filepath_is_dll_assembly": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    }
+                ]
+            },
+            "s7_registry_modify_key_class": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "SetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "CreateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "SetInformationKey"
+                    }
+                ]
+            },
+            "s8_registry_exchange_agent_factory_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\\\SOFTWARE\\\\Microsoft\\\\ExchangeServer\\\\v15\\\\Transport\\\\AgentFactory"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\\\SOFTWARE\\\\Microsoft\\\\ExchangeServer\\\\v14\\\\Transport\\\\AgentFactory"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\\\SOFTWARE\\\\Microsoft\\\\ExchangeServer\\\\v16\\\\Transport\\\\AgentFactory"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_powershell_exe_path and s3_powershell_install_transportagent_cmd) or (s4_filesystem_create_or_write_action and s5_filepath_exchange_agent_directory and s6_filepath_is_dll_assembly) or (s7_registry_modify_key_class and s8_registry_exchange_agent_factory_path)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Microsoft Exchange 서버에 대한 Transport Agent 기반의 지속성 메커니즘 설치 시도를 탐지할 수 있습니다. PowerShell을 통한 Transport Agent 관련 cmdlet 실행, Exchange 에이전트 디렉터리 내의 DLL 파일 생성/수정, 또는 Transport Agent 등록과 관련된 레지스트리 키 변경 활동을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, Exchange 환경에 대한 추가적인 포렌식 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히, 이메일 가로채기나 데이터 유출과 같은 다른 공격 활동과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 Exchange 서버 관리 작업, 업데이트 설치, 또는 합법적인 Exchange Transport Agent의 설치 및 구성 변경 과정에서 오탐이 발생할 수 있습니다. Microsoft Exchange 관련 패치나 업데이트 프로세스, 또는 기업에서 공식적으로 사용하는 Transport Agent의 설치 경로 및 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,152 @@
+{
+    "id": "T1053.007-ContainerOrchestrationJob",
+    "name": "Container Orchestration Job",
+    "description": "Adversaries may abuse task scheduling functionality provided by container orchestration tools such as Kubernetes to schedule deployment of containers configured to execute malicious code. Container orchestration jobs run these automated tasks at a specific date and time, similar to cron jobs on a Linux system. Deployments of this type can also be configured to maintain a quantity of containers over time, automating the process of maintaining persistence within a cluster.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "Execution",
+        "technique_id": "T1053",
+        "subtechnique_id": "T1053.007",
+        "data_sources": [
+            "Enterprise:Execution:Scheduled Task/Job:Container Orchestration Job",
+            "Enterprise:Execution:Container Administration Command:Deploy Container",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Collection:Data from Local System"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s_exe_kubectl": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "kubectl.exe"
+                    }
+                ]
+            },
+            "s_exe_helm": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "helm.exe"
+                    }
+                ]
+            },
+            "s_cmdline_create_cronjob": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "create cronjob"
+                    }
+                ]
+            },
+            "s_cmdline_apply_f": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "apply -f"
+                    }
+                ]
+            },
+            "s_cmdline_cronjob_yaml": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "cronjob.yaml"
+                    }
+                ]
+            },
+            "s_cmdline_helm_install": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "helm install"
+                    }
+                ]
+            },
+            "s_cmdline_helm_upgrade": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "helm upgrade"
+                    }
+                ]
+            },
+            "s_cmdline_contains_cronjob": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "cronjob"
+                    }
+                ]
+            },
+            "s_fs_action_create_or_write": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    }
+                ]
+            },
+            "s_fs_filepath_yaml": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".yaml"
+                    }
+                ]
+            },
+            "s_fs_filepath_contains_cronjob": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "cronjob"
+                    }
+                ]
+            }
+        },
+        "condition": "s_process_create and ((s_exe_kubectl and (s_cmdline_create_cronjob or (s_cmdline_apply_f and s_cmdline_cronjob_yaml))) or (s_exe_helm and ((s_cmdline_helm_install and s_cmdline_contains_cronjob) or (s_cmdline_helm_upgrade and s_cmdline_contains_cronjob)))) or (s_fs_action_create_or_write and s_fs_filepath_yaml and s_fs_filepath_contains_cronjob)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Windows 시스템에서 컨테이너 오케스트레이션 작업을 악용하여 악성 코드를 실행하려는 시도를 탐지할 수 있습니다. 'kubectl.exe' 또는 'helm.exe' 프로세스 생성 이벤트와 함께 'create cronjob', 'apply -f cronjob.yaml', 'helm install cronjob', 'helm upgrade cronjob'과 같은 명령줄 인자를 모니터링합니다. 또한, 'cronjob' 키워드를 포함하는 '.yaml' 파일의 생성 또는 쓰기 활동을 파일 시스템 이벤트에서 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 파일 활동에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 이는 컨테이너 환경 내에서 지속성 또는 실행을 확보하려는 공격자의 전술을 파악하는 데 중요합니다.",
+    "false_positive": "정상적인 CI/CD (지속적 통합/지속적 배포) 파이프라인, 자동화된 배포 스크립트, 또는 합법적인 시스템 관리자가 컨테이너 오케스트레이션 작업을 수행하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상적인 'kubectl' 또는 'helm' 명령 패턴이나 특정 스크립트에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

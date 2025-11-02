@@ -1,0 +1,235 @@
+{
+    "id": "T1480.001-EnvironmentalKeying",
+    "name": "Environmental Keying",
+    "description": "Detects attempts by adversaries to gather specific environmental conditions (e.g., system information, network configuration, hardware, software versions, registry keys) to key payloads or constrain execution to a target environment, often to evade defenses and complicate analysis. This technique involves querying system properties via command-line utilities, API calls, or direct registry access.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1480",
+        "subtechnique_id": "T1480.001",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Native API",
+            "Enterprise:Discovery:System Information Discovery",
+            "Enterprise:Discovery:System Network Configuration Discovery",
+            "Enterprise:Discovery:Software Discovery",
+            "Enterprise:Discovery:Query Registry",
+            "Enterprise:Discovery:Device Driver Discovery"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmdline_sysinfo_tools": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "systeminfo"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wmic csproduct get name"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "hostname"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-ComputerInfo"
+                    }
+                ]
+            },
+            "s3_cmdline_netinfo_tools": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ipconfig"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "netstat"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "arp -a"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-NetAdapter"
+                    }
+                ]
+            },
+            "s4_cmdline_reg_query_base": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "reg query"
+                    }
+                ]
+            },
+            "s5_cmdline_reg_query_paths": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "HKEY_LOCAL_MACHINE\\HARDWARE"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\ComputerName"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services"
+                    }
+                ]
+            },
+            "s6_apicall_sysinfo_functions": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetComputerNameW"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetComputerNameA"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetVersionExW"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetVersionExA"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetSystemInfo"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GlobalMemoryStatusEx"
+                    }
+                ]
+            },
+            "s7_apicall_netinfo_functions": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetAdaptersInfo"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetIpAddrTable"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "DnsQuery_A"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "DnsQuery_W"
+                    }
+                ]
+            },
+            "s8_registry_access_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "Query"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "OpenKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "Enumerate"
+                    }
+                ]
+            },
+            "s9_registry_access_paths_env": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\HARDWARE"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\ComputerName"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action AND (s2_cmdline_sysinfo_tools OR s3_cmdline_netinfo_tools OR (s4_cmdline_reg_query_base AND s5_cmdline_reg_query_paths))) OR (s6_apicall_sysinfo_functions OR s7_apicall_netinfo_functions) OR (s8_registry_access_action AND s9_registry_access_paths_env)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 환경 키잉 시도를 탐지할 수 있습니다. 이는 공격자가 특정 환경 조건을 확인하여 악성 코드 실행을 제어하려는 방어 회피 전술입니다. 'systeminfo', 'ipconfig', 'reg query'와 같은 시스템/네트워크 정보 수집 명령 실행, 관련 API 호출, 또는 특정 레지스트리 키에 대한 접근을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 추가적인 포렌식 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히, 다른 Discovery 또는 Defense Evasion 활동과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 진단 유틸리티, 백신 소프트웨어, 또는 합법적인 애플리케이션이 시스템 정보, 네트워크 설정, 하드웨어/소프트웨어 정보 또는 레지스트리 키를 조회하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

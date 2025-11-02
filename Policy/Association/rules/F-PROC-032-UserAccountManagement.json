@@ -1,0 +1,38 @@
+{
+    "id": "F-PROC-032-UserAccountManagement",
+    "name": "Feature: User Account Management via net.exe",
+    "description": "Identifies user or group management activities using 'net.exe'. This captures events like user creation, deletion, or modification.",
+    "severity": "info",
+    "mitre_attack": [
+        {
+            "tactic": "TA0003",
+            "technique_id": "T1098"
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "net_user_management",
+                "selections": {
+                    "selection_net_user": {
+                        "event_type": "process",
+                        "condition_method": "and",
+                        "conditions": [
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "net.exe"},
+                            {
+                                "field": "body.process.commandline",
+                                "operator": "regex",
+                                "value": "\\s(user|group|localgroup)\\s"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "Feature Captured: User or group account management activity (net.exe)."
+                }
+            }
+        ]
+    }
+}

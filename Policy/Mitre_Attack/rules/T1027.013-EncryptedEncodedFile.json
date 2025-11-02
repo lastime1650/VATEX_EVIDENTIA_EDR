@@ -1,0 +1,207 @@
+{
+    "id": "T1027.013-EncryptedEncodedFile",
+    "name": "Encrypted/Encoded File",
+    "description": "Detects attempts by adversaries to encrypt or encode files to obfuscate strings, bytes, and other specific patterns, thereby impeding detection. This includes the use of standard encoding schemes (e.g., Base64), password-protected documents, self-extracting (SFX) archives, or other custom obfuscation methods to conceal malicious artifacts until execution.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1027",
+        "subtechnique_id": "T1027.013",
+        "data_sources": [
+            "Enterprise:Defense Evasion:Obfuscated Files or Information:Encrypted/Encoded File",
+            "Process:ProcessCreation",
+            "Filesystem:FileCreation",
+            "Command:CommandExecution"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_certutil_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "certutil.exe"
+                    }
+                ]
+            },
+            "s3_certutil_encode_decode_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-encode"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-decode"
+                    }
+                ]
+            },
+            "s4_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s5_powershell_encoded_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-EncodedCommand"
+                    }
+                ]
+            },
+            "s6_archive_tool_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "7z.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "winrar.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "zip.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "tar.exe"
+                    }
+                ]
+            },
+            "s7_archive_tool_password_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-p"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-mhe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--password"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--encrypt"
+                    }
+                ]
+            },
+            "s8_makecab_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "makecab.exe"
+                    }
+                ]
+            },
+            "s9_filesystem_create_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s10_suspicious_file_extension": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".enc"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".b64"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".sfx"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".aes"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".gpg"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".zip.enc"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".rar.enc"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".7z.enc"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".bin.enc"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".dat.enc"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_certutil_exe_path and s3_certutil_encode_decode_cmd) or (s1_process_create_action and s4_powershell_exe_path and s5_powershell_encoded_command) or (s1_process_create_action and s6_archive_tool_exe_path and s7_archive_tool_password_cmd) or (s1_process_create_action and s8_makecab_exe_path) or (s9_filesystem_create_action and s10_suspicious_file_extension)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 파일 암호화 또는 인코딩을 통한 방어 회피 시도를 탐지할 수 있습니다. `certutil.exe` 또는 `powershell.exe`의 `-EncodedCommand`와 같은 명령줄 인자를 사용한 프로세스 생성 이벤트, 비밀번호 보호 옵션과 함께 실행되는 압축 도구(`7z.exe`, `winrar.exe` 등), 또는 `makecab.exe` 사용을 모니터링합니다. 또한, `.enc`, `.b64`, `.sfx` 등 암호화/인코딩된 파일 유형과 연관된 파일 생성 이벤트를 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 파일에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 이는 다른 실행 또는 방어 회피 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 백업 소프트웨어, 개발자 도구, 파일 동기화 애플리케이션, 또는 합법적인 소프트웨어 설치/업데이트 프로세스가 파일을 압축, 암호화, 또는 인코딩하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상적인 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

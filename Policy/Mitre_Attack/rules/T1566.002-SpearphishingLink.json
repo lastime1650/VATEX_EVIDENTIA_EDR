@@ -1,0 +1,221 @@
+{
+    "id": "T1566.002-SpearphishingLink",
+    "name": "Spearphishing Link",
+    "description": "Detects attempts to compromise systems through spearphishing emails containing malicious links. This rule focuses on post-click activities such as suspicious process creation originating from a browser, execution of common scripting/payload delivery tools, or creation of suspicious executable files in user download directories, which are common outcomes of clicking malicious links.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0001",
+        "technique_id": "T1566",
+        "subtechnique_id": "T1566.002",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "File:FileCreation",
+            "Network:NetworkConnection"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_parent_is_browser": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "contains",
+                        "value": "chrome.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "contains",
+                        "value": "msedge.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "contains",
+                        "value": "firefox.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "contains",
+                        "value": "iexplore.exe"
+                    }
+                ]
+            },
+            "s3_suspicious_child_commandline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell -enc"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "mshta.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "rundll32.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "certutil -urlcache"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "bitsadmin /transfer"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wscript.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "cscript.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".hta"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".js"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".vbs"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".bat"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".cmd"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "invoke-expression"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iex"
+                    }
+                ]
+            },
+            "s4_filesystem_create_or_overwritten_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    }
+                ]
+            },
+            "s5_filesystem_in_downloads_or_temp": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\Users\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\Downloads\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\Temp\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\AppData\\Local\\Microsoft\\Windows\\INetCache\\"
+                    }
+                ]
+            },
+            "s6_filesystem_suspicious_extension": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".ps1"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".bat"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".cmd"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".vbs"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".js"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".hta"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_parent_is_browser and s3_suspicious_child_commandline) or (s4_filesystem_create_or_overwritten_action and s5_filesystem_in_downloads_or_temp and s6_filesystem_suspicious_extension)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 스피어 피싱 링크 클릭 후 발생하는 시스템 침해 시도를 탐지할 수 있습니다. 웹 브라우저가 직접적으로 악성 명령줄을 가진 프로세스를 생성하거나, 사용자 다운로드/임시 폴더에 실행 가능한 의심스러운 파일을 생성하는 이벤트를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 파일에 대한 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 다른 초기 접근 또는 실행 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 소프트웨어 다운로드 및 설치, 시스템 업데이트, 또는 합법적인 애플리케이션이 스크립트를 실행하거나 임시 파일을 생성하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스, 특정 명령줄 패턴, 또는 특정 파일 경로에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

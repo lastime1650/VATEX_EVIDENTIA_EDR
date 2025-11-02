@@ -1,0 +1,91 @@
+{
+    "id": "T1564.013-BindMounts",
+    "name": "Bind Mounts for Defense Evasion",
+    "description": "Detects attempts by adversaries to abuse bind mounts on Linux file structures to hide their activity and artifacts from native utilities. This typically involves using the 'mount' command with '-o bind' or '-B' options, often targeting '/proc' directories to mask malicious processes. This technique allows attackers to overlay a malicious process's '/proc' directory with benign content, making it appear as a legitimate process to system utilities.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1564",
+        "subtechnique_id": "T1564.013",
+        "data_sources": [
+            "Enterprise:Defense Evasion:Hide Artifacts:Bind Mounts",
+            "Enterprise:Execution:Command and Scripting Interpreter:Unix Shell",
+            "Enterprise:Execution:Native API"
+        ]
+    },
+    "platform": [
+        "linux"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_executable_is_mount": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "mount"
+                    }
+                ]
+            },
+            "s3_executable_is_sudo": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "sudo"
+                    }
+                ]
+            },
+            "s4_commandline_contains_mount": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "mount"
+                    }
+                ]
+            },
+            "s5_commandline_contains_bind_option": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-o bind"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-B"
+                    }
+                ]
+            },
+            "s6_commandline_targets_proc_dir": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/proc/"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create and ((s2_executable_is_mount and s5_commandline_contains_bind_option and s6_commandline_targets_proc_dir) or (s3_executable_is_sudo and s4_commandline_contains_mount and s5_commandline_contains_bind_option and s6_commandline_targets_proc_dir))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 리눅스 시스템에서 bind mount를 이용해 악성 활동을 숨기려는 시도를 탐지할 수 있습니다. 'mount' 명령어가 '-o bind' 또는 '-B' 옵션과 함께 '/proc' 디렉토리를 대상으로 실행되거나, 'sudo'를 통해 'mount' 명령어가 동일한 옵션과 '/proc' 디렉토리를 대상으로 실행되는 프로세스 생성 이벤트를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스 및 관련 파일 시스템 활동에 대한 심층적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 다른 방어 회피 또는 지속성 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "컨테이너 환경, chroot 환경 설정, 특정 애플리케이션의 격리, 또는 시스템 관리자가 합법적인 목적으로 bind mount를 사용하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 bind mount 사용 패턴이나 특정 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

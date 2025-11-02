@@ -1,0 +1,181 @@
+{
+    "id": "T1588.007-ArtificialIntelligenceUsage",
+    "name": "Artificial Intelligence Capability Usage",
+    "description": "Detects attempts to use Artificial Intelligence tools or services on the endpoint, which adversaries may leverage for reconnaissance, payload generation, or social engineering. This rule focuses on process execution of common scripting environments and tools interacting with known AI service APIs or local AI models.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0042",
+        "technique_id": "T1588",
+        "subtechnique_id": "T1588.007",
+        "data_sources": [
+            "Process:Process Creation",
+            "Command:Command Execution",
+            "Network Traffic:Network Connection"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_python_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "python.exe"
+                    }
+                ]
+            },
+            "s3_python_ai_libs_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "openai"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "anthropic"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "google.generativeai"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "huggingface"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "tensorflow"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "torch"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "llama"
+                    }
+                ]
+            },
+            "s4_curl_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "curl.exe"
+                    }
+                ]
+            },
+            "s5_curl_ai_apis_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "api.openai.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "api.anthropic.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "generativelanguage.googleapis.com"
+                    }
+                ]
+            },
+            "s6_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s7_powershell_web_request_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-WebRequest"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-RestMethod"
+                    }
+                ]
+            },
+            "s8_powershell_ai_apis_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "api.openai.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "api.anthropic.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "generativelanguage.googleapis.com"
+                    }
+                ]
+            },
+            "s9_local_llm_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "ollama.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "llama.cpp"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "text-generation-webui.py"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and ((s2_python_exe_path and s3_python_ai_libs_cmdline) or (s4_curl_exe_path and s5_curl_ai_apis_cmdline) or (s6_powershell_exe_path and s7_powershell_web_request_cmdline and s8_powershell_ai_apis_cmdline) or s9_local_llm_exe_path)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 엔드포인트에서 AI 도구 또는 서비스 사용 시도를 탐지할 수 있습니다. 이는 공격자가 정찰, 페이로드 생성, 또는 사회 공학적 공격을 지원하기 위해 AI 기능을 활용하는 경우를 식별하는 데 도움이 됩니다. 특히, 파이썬이나 파워쉘을 통해 AI 라이브러리나 API 엔드포인트를 호출하는 명령줄 패턴, 또는 로컬 LLM 실행 파일이 실행되는 이벤트를 모니터링합니다. 탐지된 이벤트는 잠재적인 악성 활동의 초기 지표로 간주되어, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "합법적인 개발자, 연구원, 시스템 관리자 또는 AI 기능을 사용하는 정상적인 애플리케이션에 의해 오탐이 발생할 수 있습니다. 예를 들어, 머신러닝 모델 개발, 데이터 분석, 자동화 스크립트 실행 과정에서 유사한 명령줄 패턴이 나타날 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 인자를 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

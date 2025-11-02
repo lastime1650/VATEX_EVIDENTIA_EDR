@@ -1,0 +1,46 @@
+{
+    "id": "FEATURE-REG-EventLog-Service-Tampering",
+    "name": "Windows Event Log Service Configuration Tampered",
+    "description": "Detects modification of the Windows Event Log service configuration or its log file paths. This is a strong indicator of an attempt to disable logging to cover tracks.",
+    "severity": "medium",
+    "mitre_attack": [
+        {
+            "tactic": "TA0005",
+            "technique_id": "T1070",
+            "subtechnique_id": "T1070.001",
+            "data_sources": ["Windows Registry"]
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "tamper_evtlog",
+                "selections": {
+                    "selection_modify_eventlog_settings": {
+                        "event_type": "registry",
+                        "condition_method": "and",
+                        "conditions": [
+                            {
+                                "field": "body.registry.keyclass", 
+                                "operator": "regex", 
+                                "value": "^RegNtPre(SetValueKey|DeleteKey)$"
+                            },
+                            {
+                                "field": "body.registry.name", 
+                                "operator": "regex", 
+                                "value": ".*\\\\SYSTEM\\\\CurrentControlSet\\\\Services\\\\(EventLog|Wecsvc)"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "The configuration of the Windows Event Log or Event Collector service was modified or deleted, suggesting an attempt to impair logging."
+                }
+            }
+        ]
+    },
+    "operational_usage": "This feature signals a direct attack on the system's audit capabilities. Any change to the 'Start' value or deletion of keys under this path by non-system processes is highly suspicious and indicative of anti-forensic activity.",
+    "false_positive": "Rare. Major system updates or specific administrative tools might reconfigure these settings. Any other modification is a red flag."
+}

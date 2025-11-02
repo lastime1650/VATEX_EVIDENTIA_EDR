@@ -1,0 +1,108 @@
+{
+    "id": "T1546.002-ScreensaverPersistence",
+    "name": "Persistence via Screensaver",
+    "description": "Adversaries may establish persistence by executing malicious content triggered by user inactivity. Screensavers are programs that execute after a configurable time of user inactivity and consist of Portable Executable (PE) files with a .scr file extension. The Windows screensaver application scrnsave.scr is located in C:\\Windows\\System32\\, and C:\\Windows\\sysWOW64\\ on 64-bit Windows systems, along with screensavers included with base Windows installations. The following screensaver settings are stored in the Registry (HKCU\\Control Panel\\Desktop\\) and could be manipulated to achieve persistence: SCRNSAVE.exe - set to malicious PE path, ScreenSaveActive - set to '1' to enable the screensaver, ScreenSaverIsSecure - set to '0' to not require a password to unlock, ScreenSaveTimeout - sets user inactivity timeout before screensaver is executed. Adversaries can use screensaver settings to maintain persistence by setting the screensaver to run malware after a certain timeframe of user inactivity.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1546",
+        "subtechnique_id": "T1546.002",
+        "data_sources": [
+            "WindowsRegistry:WindowsRegistryKeyModification",
+            "File:FileModification",
+            "File:FileCreation",
+            "Process:ProcessCreation",
+            "Command:CommandExecution"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_registry_set_value_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.FunctionName",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.FunctionName",
+                        "operator": "equals",
+                        "value": "RegNtPostSetValueKey"
+                    }
+                ]
+            },
+            "s2_registry_screensaver_key_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "equals",
+                        "value": "HKEY_CURRENT_USER\\Control Panel\\Desktop\\SCRNSAVE.exe"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "equals",
+                        "value": "HKEY_CURRENT_USER\\Control Panel\\Desktop\\ScreenSaveActive"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "equals",
+                        "value": "HKEY_CURRENT_USER\\Control Panel\\Desktop\\ScreenSaverIsSecure"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "equals",
+                        "value": "HKEY_CURRENT_USER\\Control Panel\\Desktop\\ScreenSaveTimeout"
+                    }
+                ]
+            },
+            "s3_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s4_process_scr_extension": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": ".scr"
+                    }
+                ]
+            },
+            "s5_filesystem_create_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s6_filesystem_scr_extension": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".scr"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_registry_set_value_action and s2_registry_screensaver_key_path) or (s3_process_create_action and s4_process_scr_extension) or (s5_filesystem_create_action and s6_filesystem_scr_extension)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 스크린세이버를 이용한 지속성 메커니즘을 탐지할 수 있습니다. 특히, 사용자 비활성 시간 이후 실행되는 .scr 확장자 파일의 생성 또는 실행, 그리고 스크린세이버 관련 레지스트리 키(HKCU\\Control Panel\\Desktop\\SCRNSAVE.exe, ScreenSaveActive, ScreenSaverIsSecure, ScreenSaveTimeout)의 비정상적인 변경을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 파일 및 레지스트리 변경에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 이는 시스템 부팅 또는 사용자 로그인 시 악성 코드 자동 실행을 방지하는 데 중요합니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 사용자 정의 스크린세이버 설치, 또는 합법적인 애플리케이션이 스크린세이버 설정을 변경하거나 .scr 파일을 사용하는 경우 오탐이 발생할 수 있습니다. 특히, 백신 소프트웨어 설치 시 자체 스크린세이버 모듈을 등록하는 경우 등이 해당됩니다. 알려진 정상 프로세스나 특정 .scr 파일 경로를 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

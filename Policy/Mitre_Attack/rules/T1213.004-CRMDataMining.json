@@ -1,0 +1,188 @@
+{
+    "id": "T1213.004-CRMDataMining",
+    "name": "Customer Relationship Management Software Data Mining",
+    "description": "Detects attempts by adversaries to mine valuable customer information from Customer Relationship Management (CRM) software, either through direct interaction with local CRM client applications, web browsers, or via scripts/tools. This rule focuses on endpoint activities that indicate data extraction, such as suspicious process command lines related to data export or the creation of large data files with CRM-related naming conventions.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0009",
+        "technique_id": "T1213",
+        "subtechnique_id": "T1213.004",
+        "data_sources": [
+            "Enterprise:Collection:Data from Information Repositories:Customer Relationship Management Software",
+            "Process:ProcessCreation",
+            "Command:CommandExecution",
+            "File:FileCreation",
+            "File:FileModification"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_process_crm_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "export"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "download"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "customer"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "client_data"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "crm_data"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Salesforce"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Zoho"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "HubSpot"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Dynamics365"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Zendesk"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".csv"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".xlsx"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".json"
+                    }
+                ]
+            },
+            "s3_filesystem_write_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    }
+                ]
+            },
+            "s4_filesystem_filepath_keywords": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "customer_data"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "client_info"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "crm_export"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "sales_report"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".csv"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".xlsx"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".json"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\Users\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\Downloads\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\Temp\\"
+                    }
+                ]
+            },
+            "s5_filesystem_large_file_size": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filesize",
+                        "operator": "gte",
+                        "value": 1048576
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_process_crm_keywords) or (s3_filesystem_write_action and s4_filesystem_filepath_keywords and s5_filesystem_large_file_size)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 엔드포인트에서 CRM 소프트웨어로부터 고객 정보를 수집하려는 시도를 탐지할 수 있습니다. 특히, 'export', 'download', 'customer_data'와 같은 키워드를 포함하는 프로세스 명령줄 실행이나, 유사한 키워드를 포함하고 1MB 이상의 큰 파일로 저장되는 파일 시스템 쓰기/생성 이벤트를 모니터링합니다. 탐지된 이벤트는 데이터 수집 전술의 일환으로 간주되어 자동 알람을 트리거하고, 관련 프로세스 및 파일에 대한 추가적인 조사를 시작하는 데 사용될 수 있습니다. 이는 잠재적인 데이터 유출 또는 추가 공격의 전조가 될 수 있으므로 높은 우선순위를 가집니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 백업 솔루션, 합법적인 CRM 클라이언트 애플리케이션의 보고서 생성 또는 데이터 내보내기 기능, 혹은 사용자가 의도적으로 대량의 데이터를 다운로드하는 경우 오탐이 발생할 수 있습니다. 알려진 정상 프로세스, 특정 파일 경로, 또는 특정 사용자 활동에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

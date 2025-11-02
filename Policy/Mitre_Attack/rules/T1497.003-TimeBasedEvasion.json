@@ -1,0 +1,156 @@
+{
+    "id": "T1497.003-TimeBasedEvasion",
+    "name": "Time Based Evasion",
+    "description": "Detects attempts by adversaries to employ various time-based methods to detect and avoid virtualization and analysis environments, such as using programmatic sleep commands, native system scheduling functionality, or making numerous API calls to delay execution and potentially exceed time thresholds of automated analysis environments.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1497",
+        "subtechnique_id": "T1497.003",
+        "data_sources": [
+            "Enterprise:Execution:Native API",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmdline_ping_delay": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ping -n"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ping -c"
+                    }
+                ]
+            },
+            "s3_cmdline_timeout_delay": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "timeout /t"
+                    }
+                ]
+            },
+            "s4_cmdline_powershell_sleep_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s5_cmdline_powershell_sleep_param": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Start-Sleep"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "sleep"
+                    }
+                ]
+            },
+            "s6_cmdline_sleep_exe_or_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "sleep.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "cmd.exe /c sleep"
+                    }
+                ]
+            },
+            "s7_apicall_sleep_function": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "Sleep"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "SleepEx"
+                    }
+                ]
+            },
+            "s8_apicall_gettickcount_function": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetTickCount"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetTickCount64"
+                    }
+                ]
+            },
+            "s9_apicall_queryperformance_function": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "QueryPerformanceCounter"
+                    }
+                ]
+            },
+            "s10_apicall_gettime_function": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetLocalTime"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetSystemTime"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and (s2_cmdline_ping_delay or s3_cmdline_timeout_delay or (s4_cmdline_powershell_sleep_exe and s5_cmdline_powershell_sleep_param) or s6_cmdline_sleep_exe_or_cmd) or (s7_apicall_sleep_function or s8_apicall_gettickcount_function or s9_apicall_queryperformance_function or s10_apicall_gettime_function)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 악성 행위자가 가상 환경 및 분석 환경을 회피하기 위해 시간 기반 지연 기법을 사용하는 것을 탐지할 수 있습니다. 프로세스 생성 이벤트에서 'ping -n', 'timeout /t', 'Start-Sleep'과 같은 명령줄 인자를 모니터링하고, 시스템 시간 또는 성능 카운터 조회와 관련된 API 호출을 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스의 활동 및 다른 방어 회피 시도와의 연관성을 조사하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 스크립트, 애플리케이션의 로딩 지연 메커니즘, 또는 네트워크 진단 도구(ping) 사용 시 오탐이 발생할 수 있습니다. 특히 개발 및 테스트 환경에서 이러한 명령이나 API가 자주 사용될 수 있습니다. 알려진 정상 프로세스, 스크립트, 또는 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

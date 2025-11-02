@@ -1,0 +1,60 @@
+{
+    "id": "T1499.001-OSExhaustionFlood",
+    "name": "OS Exhaustion Flood",
+    "description": "Detects attempts to launch a denial of service (DoS) attack targeting an endpoint's operating system (OS) by overwhelming its network capacity or resource limits. This includes observing inbound TCP packets that exhibit characteristics often associated with SYN floods (small packet sizes) or data floods (large packet sizes) that could lead to OS exhaustion.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0040",
+        "technique_id": "T1499",
+        "subtechnique_id": "T1499.001",
+        "data_sources": [
+            "Impact:Endpoint Denial of Service:OS Exhaustion Flood",
+            "Impact:Network Denial of Service:Direct Network Flood"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_inbound_tcp_traffic": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "in"
+                    },
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "TCP"
+                    }
+                ]
+            },
+            "s2_small_tcp_packet": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.packetsize",
+                        "operator": "lte",
+                        "value": 60
+                    }
+                ]
+            },
+            "s3_large_tcp_packet": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.packetsize",
+                        "operator": "gte",
+                        "value": 1460
+                    }
+                ]
+            }
+        },
+        "condition": "s1_inbound_tcp_traffic and (s2_small_tcp_packet or s3_large_tcp_packet)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 OS 자원 고갈 공격 시도를 탐지할 수 있습니다. 특히, 인바운드 TCP 트래픽 중 비정상적으로 작거나 큰 패킷을 모니터링하여 SYN/ACK 플러드 또는 데이터 플러드와 같은 DoS 공격의 초기 징후를 식별합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 추가적인 네트워크 트래픽 분석 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "이 규칙은 단일 네트워크 이벤트의 특성을 기반으로 하므로, 실제 DoS '플러드'를 직접적으로 탐지하기 어렵습니다. 정상적인 네트워크 트래픽 (예: TCP 핸드셰이크의 SYN/ACK 패킷, 대용량 파일 전송)에서도 비정상적인 패킷 크기가 발생할 수 있어 오탐이 발생할 수 있습니다. 알려진 정상적인 네트워크 패턴이나 특정 애플리케이션의 트래픽을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

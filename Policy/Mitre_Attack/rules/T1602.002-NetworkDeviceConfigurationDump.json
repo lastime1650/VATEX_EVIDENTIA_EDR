@@ -1,0 +1,151 @@
+{
+    "id": "T1602.002-NetworkDeviceConfigurationDump",
+    "name": "Network Device Configuration Dump",
+    "description": "Detects attempts by an adversary to collect sensitive data about network devices and their configurations by leveraging management tools and protocols like SNMP, TFTP, SSH, or Telnet. This includes monitoring for the execution of tools such as snmpwalk.exe, tftp.exe, and ssh.exe, as well as observing network traffic on common network device management ports.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0009",
+        "technique_id": "T1602",
+        "subtechnique_id": "T1602.002",
+        "data_sources": [
+            "Enterprise:Collection:Data from Configuration Repository:Network Device Configuration Dump",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Discovery:Network Service Discovery"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_snmp_tool_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "snmpwalk.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "snmpget.exe"
+                    }
+                ]
+            },
+            "s3_tftp_tool_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "tftp.exe"
+                    }
+                ]
+            },
+            "s4_ssh_client_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ssh.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "plink.exe"
+                    }
+                ]
+            },
+            "s5_protocol_udp": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "UDP"
+                    }
+                ]
+            },
+            "s6_protocol_tcp": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "TCP"
+                    }
+                ]
+            },
+            "s7_snmp_ports": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 161
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 162
+                    },
+                    {
+                        "field": "body.network.sourceport",
+                        "operator": "equals",
+                        "value": 161
+                    },
+                    {
+                        "field": "body.network.sourceport",
+                        "operator": "equals",
+                        "value": 162
+                    }
+                ]
+            },
+            "s8_tftp_port": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 69
+                    },
+                    {
+                        "field": "body.network.sourceport",
+                        "operator": "equals",
+                        "value": 69
+                    }
+                ]
+            },
+            "s9_telnet_port": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 23
+                    },
+                    {
+                        "field": "body.network.sourceport",
+                        "operator": "equals",
+                        "value": 23
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and (s2_snmp_tool_cmdline or s3_tftp_tool_cmdline or s4_ssh_client_cmdline)) or (s5_protocol_udp and s7_snmp_ports) or (s5_protocol_udp and s8_tftp_port) or (s6_protocol_tcp and s9_telnet_port)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 통해 네트워크 장비 설정 덤프 시도를 탐지할 수 있습니다. 에이전트가 설치된 Windows 호스트에서 snmpwalk.exe, tftp.exe, ssh.exe, plink.exe와 같은 관리 도구의 비정상적인 실행을 모니터링하고, 동시에 SNMP(UDP 161, 162), TFTP(UDP 69), Telnet(TCP 23)과 같은 네트워크 장비 관리 포트로의 의심스러운 네트워크 연결 시도를 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련된 프로세스 및 네트워크 연결에 대한 추가적인 조사를 시작하여 침해사고 대응의 우선순위를 지정하는 데 활용될 수 있습니다. 특히, 내부망 스캔이나 데이터 수집 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 네트워크 관리 활동, 시스템 점검 도구, 백업 솔루션, 또는 합법적인 애플리케이션이 SNMP, TFTP, SSH, Telnet 프로토콜을 사용하여 네트워크 장비와 통신하거나 설정을 백업하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스, 특정 IP 주소 범위, 또는 특정 사용자 계정에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

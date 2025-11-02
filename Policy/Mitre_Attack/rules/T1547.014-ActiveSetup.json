@@ -1,0 +1,51 @@
+{
+    "id": "T1547.014-ActiveSetup",
+    "name": "Persistence via Active Setup",
+    "description": "Adversaries may achieve persistence by adding a Registry key to the Active Setup of the local machine. Active Setup is a Windows mechanism that is used to execute programs when a user logs in. The value stored in the Registry key will be executed after a user logs into the computer. These programs will be executed under the context of the user and will have the account's associated permissions level.\n\nAdversaries may abuse Active Setup by creating a key under HKLM\\SOFTWARE\\Microsoft\\Active Setup\\Installed Components\\ and setting a malicious value for StubPath. This value will serve as the program that will be executed when a user logs into the computer.\n\nAdversaries can abuse these components to execute malware, such as remote access tools, to maintain persistence through system reboots. Adversaries may also use Masquerading to make the Registry entries look as if they are associated with legitimate programs.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1547",
+        "subtechnique_id": "T1547.014",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter",
+            "Enterprise:Persistence:Modify Registry",
+            "Enterprise:Execution:Process Creation"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_active_setup_registry_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Active Setup\\Installed Components\\"
+                    }
+                ]
+            },
+            "s2_registry_key_modification_or_creation": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "SetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "CreateKey"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_active_setup_registry_path and s2_registry_key_modification_or_creation"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Active Setup을 통한 지속성(Persistence) 확보 시도를 탐지할 수 있습니다. 특히 HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Active Setup\\Installed Components\\ 경로에 대한 레지스트리 키 생성 또는 값 설정 이벤트를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 레지스트리 변경 사항에 대한 추가적인 조사를 시작하는 데 사용될 수 있습니다. 이는 시스템 재부팅 후에도 악성 코드가 자동으로 실행되도록 하는 중요한 공격 전술이므로, 다른 침해사고 대응 활동과 연계하여 우선적으로 처리해야 합니다.",
+    "false_positive": "정상적인 소프트웨어 설치 프로그램, 시스템 업데이트, 또는 합법적인 관리 도구가 Active Setup을 사용하여 구성 요소를 설치하거나 업데이트하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상적인 프로세스나 특정 레지스트리 값 패턴에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

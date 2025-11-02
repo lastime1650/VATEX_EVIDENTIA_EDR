@@ -1,0 +1,81 @@
+{
+    "id": "T1597-SearchClosedSources-Indirect",
+    "name": "Search Closed Sources (Indirect EDR Detection)",
+    "description": "Adversaries search for information about victims from private or paid external sources. Direct detection of this pre-compromise reconnaissance activity on an endpoint is not feasible as it typically occurs outside the target organization's visibility. This rule attempts to detect *indirect indicators* if an already compromised endpoint is used by an adversary to perform external information gathering, such as using command-line tools to fetch web content.",
+    "severity": "low",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1597",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Reconnaissance:Search Closed Sources:Threat Intel Vendors",
+            "Enterprise:Reconnaissance:Search Closed Sources:Purchase Technical Data",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmdline_curl": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "curl.exe"
+                    }
+                ]
+            },
+            "s3_cmdline_wget": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wget.exe"
+                    }
+                ]
+            },
+            "s4_cmdline_powershell": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s5_cmdline_iwr_or_webrequest": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-WebRequest"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iwr"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and (s2_cmdline_curl or s3_cmdline_wget or (s4_cmdline_powershell and s5_cmdline_iwr_or_webrequest))"
+    },
+    "operational_usage": "This rule provides an *indirect* and high-false-positive detection for T1597, as the core activity of 'searching closed sources' typically occurs external to the monitored endpoint. SOC teams can use this rule to identify instances where a compromised system might be leveraged for outbound web content retrieval using common command-line tools (curl, wget, PowerShell's Invoke-WebRequest). While not a direct indicator of T1597, such activity could suggest an adversary attempting to gather further external intelligence or interact with external resources from within the network. Detected events should trigger low-to-medium severity alerts, requiring manual investigation to determine context and intent, especially when correlated with other suspicious activities.",
+    "false_positive": "High. Legitimate system scripts, administrative tools, software updates, or user activities frequently use `curl`, `wget`, or PowerShell's `Invoke-WebRequest` for various purposes (e.g., downloading files, API interactions, health checks). This rule is prone to high false positives and requires extensive tuning or whitelisting based on the specific environment. It is primarily an *indirect* indicator for T1597, which is difficult to detect directly via endpoint EDR."
+}

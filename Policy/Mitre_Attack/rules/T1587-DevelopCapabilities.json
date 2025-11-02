@@ -1,0 +1,277 @@
+{
+    "id": "T1587-DevelopCapabilities",
+    "name": "Develop Capabilities",
+    "description": "Detects attempts by adversaries to develop their own capabilities, such as malware, exploits, or self-signed certificates, rather than using existing ones. This involves monitoring for the execution of development tools like compilers, linkers, debuggers, and certificate generation utilities, as well as the creation or modification of associated development-related files on the system.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1587",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Resource Development:Develop Capabilities:Malware",
+            "Enterprise:Resource Development:Develop Capabilities:Code Signing Certificates",
+            "Enterprise:Resource Development:Develop Capabilities:Digital Certificates",
+            "Enterprise:Resource Development:Develop Capabilities:Exploits"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_compiler_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "cl.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "gcc.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "g++.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "nasm.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "link.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "msbuild.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "go.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "rustc.exe"
+                    }
+                ]
+            },
+            "s3_debugger_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "windbg.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "x64dbg.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "ollydbg.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "gdb.exe"
+                    }
+                ]
+            },
+            "s4_certificate_tool_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "makecert.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "certutil.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "openssl.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "signtool.exe"
+                    }
+                ]
+            },
+            "s5_filesystem_create_write_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    }
+                ]
+            },
+            "s6_filesystem_dev_file_extension": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".c"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".cpp"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".h"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".asm"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".s"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".obj"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".o"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".lib"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".ps1"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".py"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".go"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".rs"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".sln"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".vcproj"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".mak"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".ninja"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".cmake"
+                    }
+                ]
+            },
+            "s7_filesystem_cert_file_extension": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".cer"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".crt"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".pem"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".pfx"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".key"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and (s2_compiler_execution or s3_debugger_execution or s4_certificate_tool_execution) or (s5_filesystem_create_write_action and (s6_filesystem_dev_file_extension or s7_filesystem_cert_file_extension))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 공격자가 맞춤형 악성코드, 익스플로잇 또는 자체 서명된 인증서와 같은 공격 역량을 개발하는 초기 단계를 탐지할 수 있습니다. 컴파일러, 링커, 디버거, 인증서 생성 도구 등 개발 관련 프로그램의 실행 이벤트를 모니터링하고, 동시에 이러한 개발 활동과 관련된 파일 유형(소스코드, 실행 파일, 인증서 파일 등)의 생성 또는 쓰기 이벤트를 추적합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스 및 생성된 파일에 대한 추가적인 포렌식 조사를 시작하여 초기 침투 및 공격 준비 단계를 식별하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 소프트웨어 개발 활동, 시스템 관리 스크립트의 컴파일, 개발 도구를 사용하는 IT 부서의 합법적인 작업으로 인해 오탐이 발생할 수 있습니다. 자동화된 빌드 시스템, CI/CD 파이프라인, 또는 일부 합법적인 소프트웨어 설치 과정에서도 탐지될 수 있습니다. 알려진 개발 환경, 특정 개발 도구의 사용 패턴, 또는 신뢰할 수 있는 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

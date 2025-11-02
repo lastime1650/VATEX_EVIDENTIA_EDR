@@ -1,0 +1,80 @@
+{
+    "id": "T1216.001-PubPrnProxyExecution",
+    "name": "PubPrn Proxy Execution",
+    "description": "Detects attempts to abuse PubPrn.vbs for proxy execution of malicious remote scriptlet files (.sct). Adversaries may use this technique to bypass signature validation and application control solutions by leveraging a legitimate, signed system script (cscript.exe pubprn.vbs). This rule specifically targets the use of the 'script:' moniker with remote URLs to load arbitrary code, distinguishing it from legitimate LDAP-based printer publishing.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1216",
+        "subtechnique_id": "T1216.001",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Defense Evasion:System Script Proxy Execution:PubPrn"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cscript_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "cscript.exe"
+                    }
+                ]
+            },
+            "s3_pubprn_vbs_commandline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "pubprn.vbs"
+                    }
+                ]
+            },
+            "s4_script_moniker_remote_url": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "script:http://"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "script:https://"
+                    }
+                ]
+            },
+            "s5_sct_extension_commandline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".sct"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and s2_cscript_exe_path and s3_pubprn_vbs_commandline and (s4_script_moniker_remote_url or s5_sct_extension_commandline)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 PubPrn.vbs를 악용하여 원격 악성 스크립트 파일을 실행하려는 시도를 탐지할 수 있습니다. 특히 cscript.exe를 통해 pubprn.vbs가 실행될 때, 명령줄에 'script:http://', 'script:https://'와 같은 원격 URL이나 '.sct' 확장자가 포함된 경우를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련된 프로세스 및 명령줄 인자에 대한 심층적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 이는 애플리케이션 제어 및 서명 유효성 검사를 우회하려는 방어 회피 전술에 대한 중요한 탐지 지점입니다.",
+    "false_positive": "pubprn.vbs는 합법적으로 Active Directory에 프린터를 게시하는 데 사용될 수 있습니다 (예: 'LDAP://' 프로토콜). 이 규칙은 원격 스크립트 실행과 관련된 'script:' 모니커 및 '.sct' 파일 사용에 초점을 맞추므로, 정상적인 LDAP 기반 사용에 대해서는 오탐을 줄일 수 있습니다. 그러나 특정 관리 도구나 스크립트가 유사한 패턴으로 원격 리소스를 호출하는 경우 오탐이 발생할 수 있으며, 이 경우 화이트리스팅을 고려해야 합니다."
+}

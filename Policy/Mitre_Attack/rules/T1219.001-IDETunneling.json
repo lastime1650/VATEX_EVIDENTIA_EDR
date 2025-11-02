@@ -1,0 +1,149 @@
+{
+    "id": "T1219.001-IDETunneling",
+    "name": "IDE Tunneling",
+    "description": "Detects attempts by adversaries to establish command and control channels or achieve persistence by abusing Integrated Development Environment (IDE) software with remote development features, such as VS Code's `code tunnel` or JetBrains Gateway. This includes monitoring process creation with specific command-line arguments and suspicious registry modifications for persistence.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0011",
+        "technique_id": "T1219",
+        "subtechnique_id": "T1219.001",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "NetworkTraffic:NetworkConnectionCreation",
+            "File:FileCreation",
+            "WindowsRegistry:WindowsRegistryKeyModification"
+        ]
+    },
+    "platform": [
+        "linux",
+        "windows",
+        "macos"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_vscode_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "code.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "code-insiders.exe"
+                    }
+                ]
+            },
+            "s3_vscode_tunnel_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "tunnel"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--accept-server-license-terms"
+                    }
+                ]
+            },
+            "s4_jetbrains_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "jetbrains-gateway.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "remote-cli.exe"
+                    }
+                ]
+            },
+            "s5_jetbrains_remote_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--remote-url"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--ssh-link"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "connect"
+                    }
+                ]
+            },
+            "s6_registry_autostart_key_modification": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "Set"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "Create"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"
+                    }
+                ]
+            },
+            "s7_registry_ide_client_in_run_key": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "code.exe"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "jetbrains-gateway.exe"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "remote-cli.exe"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_vscode_exe_path and s3_vscode_tunnel_cmd) or (s1_process_create_action and s4_jetbrains_exe_path and s5_jetbrains_remote_cmd) or (s6_registry_autostart_key_modification and s7_registry_ide_client_in_run_key)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 IDE 터널링을 통한 C2 채널 구축 또는 지속성 확보 시도를 탐지할 수 있습니다. VS Code의 'code tunnel' 명령 또는 JetBrains Gateway와 같은 원격 개발 클라이언트의 실행, 그리고 이들이 자동 시작 레지스트리 키에 등록되는 이벤트를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 네트워크 활동에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 개발 환경 내에서 발생할 경우 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 개발자가 원격 개발 환경을 설정하거나, IDE 업데이트 프로세스가 원격 기능을 활성화하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 IDE 실행 패턴이나 개발자 계정에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,167 @@
+{
+    "id": "T1561.001-DiskContentWipe",
+    "name": "Disk Content Wipe",
+    "description": "Detects attempts by adversaries to erase the contents of storage devices on specific systems to interrupt availability. This includes execution of tools like cipher.exe for wiping free space, direct access to physical drives (e.g., \\\\.\\PhysicalDriveX), or unusual kernel driver installation activity for low-level disk manipulation. This behavior is distinct from Data Destruction because sections of the disk are erased instead of individual files.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0040",
+        "technique_id": "T1561",
+        "subtechnique_id": "T1561.001",
+        "data_sources": [
+            "Enterprise:Impact:Disk Wipe",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Native API",
+            "Enterprise:Persistence:Create or Modify System Process:Windows Service"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmd_cipher_w": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "cipher.exe /w:"
+                    }
+                ]
+            },
+            "s3_cmd_rawdisk_access_pattern": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "\\\\.\\PhysicalDrive"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "\\\\.\\GLOBALROOT\\Device\\Harddisk"
+                    }
+                ]
+            },
+            "s4_file_write_or_overwrite_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    }
+                ]
+            },
+            "s5_file_rawdisk_filepath": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\\\.\\PhysicalDrive"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\\\.\\GLOBALROOT\\Device\\Harddisk"
+                    }
+                ]
+            },
+            "s6_api_direct_disk_io_functions": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "DeviceIoControl"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "NtWriteFile"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "WriteFile"
+                    }
+                ]
+            },
+            "s7_reg_set_value_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    }
+                ]
+            },
+            "s8_reg_bootexecute_name": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "equals",
+                        "value": "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Control\\Session Manager\\BootExecute"
+                    }
+                ]
+            },
+            "s9_reg_driver_install_key_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\"
+                    }
+                ]
+            },
+            "s10_reg_driver_suspicious_keywords": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "rawdisk"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "wiper"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "diskio"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "lowlevel"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_cmd_cipher_w) or (s1_process_create_action and s3_cmd_rawdisk_access_pattern) or (s4_file_write_or_overwrite_action and s5_file_rawdisk_filepath) or s6_api_direct_disk_io_functions or (s7_reg_set_value_action and s8_reg_bootexecute_name) or (s7_reg_set_value_action and s9_reg_driver_install_key_path and s10_reg_driver_suspicious_keywords)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템의 디스크 콘텐츠 삭제 시도를 탐지할 수 있습니다. 'cipher.exe /w:'와 같은 명령 실행, \\\\.\\PhysicalDriveX와 같은 원시 디스크 장치에 대한 직접적인 파일 시스템 쓰기/덮어쓰기 작업, 또는 DeviceIoControl, NtWriteFile과 같은 저수준 디스크 I/O API 호출을 모니터링합니다. 또한, 시스템 복구를 방해하기 위한 BootExecute 레지스트리 키 변경이나, 디스크 조작을 위해 설치되는 의심스러운 커널 드라이버 관련 레지스트리 활동도 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스 및 시스템 상태에 대한 심층 조사를 시작하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 디스크 관리 도구(예: 디스크 이미지 생성, 백업 소프트웨어, 디스크 정리 유틸리티), 디스크 진단 도구, 또는 특정 보안 소프트웨어가 저수준 디스크 접근 또는 드라이버 설치를 수행하는 경우 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

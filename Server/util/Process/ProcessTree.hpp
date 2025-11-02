@@ -32,8 +32,10 @@ namespace EDR
                         json get_event(){ return jsonEvent; }
                         json get_header(){ return jsonEvent["header"]; }
                         json get_body(){ return jsonEvent["body"]; }
-
-
+                        
+                        /*
+                            Intelligence
+                        */
                         virtual void send_to_intelligence() = 0;
 
                         bool append_intelligence(json& input_result)
@@ -65,7 +67,9 @@ namespace EDR
                             if(!intelligence_response.size())
                                 return false;
                             
-                            output["post"] = json::array();
+                            if(!output.contains("post"))
+                                output["post"] = json::array();
+
                             for( auto& result : intelligence_response )
                                 output["post"].push_back(
                                     {
@@ -122,9 +126,19 @@ namespace EDR
                             parent_exe_sha256 = event["body"]["process"]["parent_exe_sha256"].get<std::string>();
 
                             // User info
-                            SID = event["body"]["user"]["sid"].get<std::string>();
+                            if ( event["body"]["user"].contains("sid") )
+                            {
+                                // Windows 기준
+                                SID = event["body"]["user"]["sid"].get<std::string>();
+                            }
+                            
                             Username = event["body"]["user"]["username"].get<std::string>();
                             
+                            if( exe_path.find("08a25e1e926752f15b0e2fc79ce07ec41656b6fb55a3da4c0b579a8dc3face0e") != std::string::npos )
+                            {
+                                std::cout << "[08a25e1e926752f15b0e2fc79ce07ec41656b6fb55a3da4c0b579a8dc3face0e] 찾음" << std::endl;
+                                std::cout << event.dump() << std::endl;
+                            }
                         }
 
                         std::string exe_path;
@@ -137,7 +151,7 @@ namespace EDR
                         unsigned long long parent_exe_size;
                         std::string parent_exe_sha256;
 
-                        std::string SID;
+                        std::optional< std::string > SID;
                         std::string Username;
                         
 
@@ -401,7 +415,6 @@ namespace EDR
                             {
                                 KeyClass = event["body"]["registry"]["keyclass"].get<std::string>();
                                 Object_Complete_Name = event["body"]["registry"]["name"].get<std::string>();
-
                                 if( event["body"]["registry"].contains("newold") )
                                 {
                                     newold.is_valid = true;
@@ -443,7 +456,7 @@ namespace EDR
                 // node struct
                 struct ProcessTreeNode
                 {
-                    
+                    std::shared_ptr<Solution::Policy::Resource::Association::ASSOCIATION_RULE_MANAGER> AssociationRuleCTX = nullptr; // 최상위 부모에서만 유효함
                     unsigned long long nodeDepthIndex = 0;
 
                     std::string AGENT_ID;
@@ -695,7 +708,7 @@ namespace EDR
             class ProcessTreeManager
             {
                 public:
-                    ProcessTreeManager() = default;
+                    ProcessTreeManager(Solution::Policy::EDRPolicy& EDRPolicyManager):EDRPolicyManager(EDRPolicyManager){}
                     ~ProcessTreeManager() = default;
 
                     bool add_process_node( std::shared_ptr<ProcessEvent::Event> eventNode, node::ProcessTreeNode*& node_output )
@@ -718,6 +731,18 @@ namespace EDR
                             new_node.seen.first_seen = eventNode->timestamp;
                             new_node.seen.last_seen = eventNode->timestamp;
                             new_node.events.push_back(eventNode);
+
+                            if(eventNode->session.Parent_SessionID == eventNode->session.Root_SessionID)
+                                new_node.AssociationRuleCTX = EDRPolicyManager.Get_Cloned_AssociationRuleCTX();
+                            else
+                            {
+                                // 최상위 노드의 자식들은 항상 최상위 노드에 저장된 "복사된 AssociationRuleCTX" 와 같은 shared_ptr를 갖는다
+
+                                auto* root_node = new_node.get_root_node(agent_tree);
+                                if(root_node)
+                                    new_node.AssociationRuleCTX = root_node->AssociationRuleCTX;
+                            }
+                            
 
                             // 이벤트 타입에 따라 is_alive 와 is_placeholder 상태를 결정합니다.
                             if (dynamic_cast<ProcessEvent::ProcessCreateEvent*>(eventNode.get()))
@@ -794,6 +819,8 @@ namespace EDR
                     }
 
                 private:
+
+                    Solution::Policy::EDRPolicy& EDRPolicyManager;
 
                     /**
                      * @brief 새로 생성된 노드를 트리의 올바른 위치에 배치합니다.

@@ -1,0 +1,285 @@
+{
+    "id": "T1137-OfficeApplicationStartup",
+    "name": "Persistence via Office Application Startup",
+    "description": "Detects attempts to establish persistence by modifying Microsoft Office application settings (e.g., Outlook rules, forms, add-ins) or by creating/modifying Office template/add-in files to execute malicious code upon application startup. It also covers suspicious child process creation by Office applications.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1137",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Persistence:Office Application Startup:Office Template Macros",
+            "Enterprise:Persistence:Office Application Startup:Outlook Forms",
+            "Enterprise:Persistence:Office Application Startup:Outlook Rules",
+            "Enterprise:Persistence:Office Application Startup:Add-ins",
+            "Enterprise:Persistence:Modify Registry",
+            "Enterprise:Execution:Process Creation",
+            "Enterprise:Execution:Command and Scripting Interpreter"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_registry_action_mod_create_delete": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreCreateKeyEx"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPostCreateKeyEx"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreRenameKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPostRenameKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreDeleteKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPostDeleteKey"
+                    }
+                ]
+            },
+            "s2_registry_office_base_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "Software\\Microsoft\\Office\\"
+                    }
+                ]
+            },
+            "s3_registry_office_persistence_sub_paths": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "\\Outlook\\Rules"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "\\Outlook\\Forms"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "\\Outlook\\Security\\OutlookHomePage"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "\\Addins\\"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "\\Security\\Trusted Locations"
+                    }
+                ]
+            },
+            "s4_filesystem_file_action_create_or_write": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "rename"
+                    }
+                ]
+            },
+            "s5_filesystem_office_startup_paths": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\AppData\\Roaming\\Microsoft\\Word\\STARTUP\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\AppData\\Roaming\\Microsoft\\Excel\\XLSTART\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\AppData\\Roaming\\Microsoft\\PowerPoint\\ADDINS\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\ProgramData\\Microsoft\\Word\\STARTUP\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\ProgramData\\Microsoft\\Excel\\XLSTART\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\ProgramData\\Microsoft\\PowerPoint\\ADDINS\\"
+                    }
+                ]
+            },
+            "s6_filesystem_suspicious_office_extensions": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".dotm"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".xltm"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".pptm"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".vba"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".xla"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".ppa"
+                    }
+                ]
+            },
+            "s7_process_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s8_process_office_parent_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "contains",
+                        "value": "\\outlook.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "contains",
+                        "value": "\\winword.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "contains",
+                        "value": "\\excel.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "contains",
+                        "value": "\\powerpnt.exe"
+                    }
+                ]
+            },
+            "s9_process_suspicious_child_commandline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "cmd.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wscript.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "cscript.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "mshta.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "regsvr32.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "rundll32.exe"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_registry_action_mod_create_delete and s2_registry_office_base_path and s3_registry_office_persistence_sub_paths) or (s4_filesystem_file_action_create_or_write and s5_filesystem_office_startup_paths and s6_filesystem_suspicious_office_extensions) or (s7_process_action_create and s8_process_office_parent_exe and s9_process_suspicious_child_commandline)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Microsoft Office 애플리케이션을 통한 지속성 유지 시도를 탐지할 수 있습니다. Outlook 규칙, 양식, 추가 기능 또는 신뢰할 수 있는 위치와 관련된 레지스트리 키의 생성, 수정, 삭제, 이름 변경 이벤트를 모니터링합니다. 또한, Office 애플리케이션의 시작 폴더 또는 추가 기능 폴더 내에서 의심스러운 Office 문서, 스크립트 또는 DLL 파일의 생성, 쓰기, 덮어쓰기, 이름 변경 이벤트를 추적합니다. 더 나아가, Outlook, Word, Excel, PowerPoint와 같은 Office 애플리케이션이 cmd.exe, powershell.exe, wscript.exe, cscript.exe, mshta.exe, regsvr32.exe, rundll32.exe와 같은 명령줄 인터프리터 또는 프록시 실행 도구를 자식 프로세스로 실행하는 경우를 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스, 파일, 레지스트리 변경에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 다른 방어 회피 또는 초기 접근 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 Office 추가 기능 설치, 매크로 활성화, 사용자 정의 템플릿 저장, 또는 시스템 관리 도구 및 보안 소프트웨어가 Office 설정을 변경하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상적인 프로세스, 파일 경로, 또는 레지스트리 키에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

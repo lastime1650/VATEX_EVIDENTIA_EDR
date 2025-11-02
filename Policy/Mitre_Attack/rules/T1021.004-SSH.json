@@ -1,0 +1,96 @@
+{
+    "id": "T1021.004-SSH",
+    "name": "SSH",
+    "description": "Adversaries may use Valid Accounts to log into remote machines using Secure Shell (SSH). The adversary may then perform actions as the logged-on user. SSH is a protocol that allows authorized users to open remote shells on other computers. Many Linux and macOS versions come with SSH installed by default, although typically disabled until the user enables it. On ESXi, SSH can be enabled either directly on the host (e.g., via `vim-cmd hostsvc/enable_ssh`) or via vCenter. The SSH server can be configured to use standard password authentication or public-private keypairs in lieu of or in addition to a password. In this authentication scenario, the user’s public key must be in a special file on the computer running the server that lists which keypairs are allowed to login as that user (i.e., SSH Authorized Keys).",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0008",
+        "technique_id": "T1021",
+        "subtechnique_id": "T1021.004",
+        "data_sources": [
+            "Initial Access:Valid Accounts",
+            "Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Command and Control:Application Layer Protocol"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_ssh_exe_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "ssh.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "C:\\Windows\\System32\\OpenSSH\\ssh.exe"
+                    }
+                ]
+            },
+            "s3_network_tcp_protocol": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "TCP"
+                    }
+                ]
+            },
+            "s4_direction_out": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    }
+                ]
+            },
+            "s5_direction_in": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "in"
+                    }
+                ]
+            },
+            "s6_port_is_22": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 22
+                    },
+                    {
+                        "field": "body.network.sourceport",
+                        "operator": "equals",
+                        "value": 22
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_ssh_exe_execution) or (s3_network_tcp_protocol and s4_direction_out and s6_port_is_22) or (s3_network_tcp_protocol and s5_direction_in and s6_port_is_22)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 발생하는 SSH 활동을 탐지할 수 있습니다. 특히, 비정상적인 프로세스(예: 비표준 경로에서 실행되는 ssh.exe)의 생성이나, 예상치 못한 내부/외부 시스템으로의 SSH 네트워크 연결 시도를 모니터링합니다. 탐지된 이벤트는 잠재적인 측면 이동(Lateral Movement) 또는 원격 접근 시도로 분류되어 높은 우선순위로 알람을 트리거하고, 추가적인 사용자 및 시스템 활동 조사를 시작하는 데 사용됩니다. 다른 인증 실패 로그나 비정상적인 로그인 활동과 연관 지어 분석하면 더욱 효과적입니다.",
+    "false_positive": "정상적인 시스템 관리자, 개발자, 또는 자동화된 배포/관리 스크립트가 SSH 클라이언트(ssh.exe)를 사용하거나 SSH 서버(OpenSSH Server)를 운영하는 경우 오탐이 발생할 수 있습니다. 특히, WSL(Windows Subsystem for Linux) 환경에서 SSH 클라이언트를 사용하는 경우에도 탐지될 수 있습니다. 알려진 정상적인 SSH 사용 패턴, 특정 사용자 계정, 또는 특정 소스/목적지 IP 주소에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

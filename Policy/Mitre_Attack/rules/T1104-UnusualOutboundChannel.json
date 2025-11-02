@@ -1,0 +1,215 @@
+{
+    "id": "T1104-UnusualOutboundChannel",
+    "name": "Unusual Outbound Command and Control Channel",
+    "description": "Detects outbound network connections that use non-standard destination ports or less common protocols, which could indicate the establishment of a multi-stage command and control channel. Adversaries often use such channels to obfuscate communication and evade detection by leveraging ports not typically monitored for C2 activity.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0011",
+        "technique_id": "T1104",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Command and Control:Application Layer Protocol",
+            "Enterprise:Command and Control:Non-Application Layer Protocol"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_outbound_direction": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    }
+                ]
+            },
+            "s2_protocol_tcp": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "TCP"
+                    }
+                ]
+            },
+            "s3_protocol_udp": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "UDP"
+                    }
+                ]
+            },
+            "s4_dest_port_80": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 80
+                    }
+                ]
+            },
+            "s5_dest_port_443": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 443
+                    }
+                ]
+            },
+            "s6_dest_port_53": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 53
+                    }
+                ]
+            },
+            "s7_dest_port_21": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 21
+                    }
+                ]
+            },
+            "s8_dest_port_22": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 22
+                    }
+                ]
+            },
+            "s9_dest_port_23": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 23
+                    }
+                ]
+            },
+            "s10_dest_port_25": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 25
+                    }
+                ]
+            },
+            "s11_dest_port_110": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 110
+                    }
+                ]
+            },
+            "s12_dest_port_143": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 143
+                    }
+                ]
+            },
+            "s13_dest_port_3389": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 3389
+                    }
+                ]
+            },
+            "s14_dest_port_5900": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 5900
+                    }
+                ]
+            },
+            "s15_dest_port_8080": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 8080
+                    }
+                ]
+            },
+            "s16_dest_port_8443": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 8443
+                    }
+                ]
+            },
+            "s17_dest_port_135": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 135
+                    }
+                ]
+            },
+            "s18_dest_port_445": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 445
+                    }
+                ]
+            },
+            "s19_dest_port_139": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 139
+                    }
+                ]
+            }
+        },
+        "condition": "s1_outbound_direction and (s2_protocol_tcp or s3_protocol_udp) and not (s4_dest_port_80 or s5_dest_port_443 or s6_dest_port_53 or s7_dest_port_21 or s8_dest_port_22 or s9_dest_port_23 or s10_dest_port_25 or s11_dest_port_110 or s12_dest_port_143 or s13_dest_port_3389 or s14_dest_port_5900 or s15_dest_port_8080 or s16_dest_port_8443 or s17_dest_port_135 or s18_dest_port_445 or s19_dest_port_139)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 발생하는 비정상적인 아웃바운드 네트워크 통신 채널을 탐지할 수 있습니다. 특히, TCP 또는 UDP 프로토콜을 사용하면서 일반적으로 알려진 서비스 포트(HTTP, HTTPS, DNS, FTP, SSH, RDP 등)가 아닌 포트로 연결을 시도하는 이벤트를 모니터링합니다. 탐지된 이벤트는 잠재적인 C2 채널 설정 시도로 간주하여 'medium' 심각도로 분류하고, 즉각적인 알람을 트리거하여 추가적인 네트워크 및 호스트 기반 조사를 시작하는 데 사용될 수 있습니다. 이 규칙은 다른 Discovery 또는 Execution 활동과 결합될 때 악성 행위의 초기 단계 탐지에 기여할 수 있습니다.",
+    "false_positive": "이 규칙은 다수의 합법적인 애플리케이션(예: P2P 소프트웨어, 온라인 게임, 사용자 정의 비즈니스 애플리케이션, VPN 클라이언트, 일부 업데이트 메커니즘)이 비표준 포트를 사용하여 통신하는 경우 오탐을 발생시킬 수 있습니다. 또한, 개발 환경이나 특정 클라우드 서비스는 다양한 포트를 사용할 수 있습니다. 알려진 정상 프로세스나 특정 IP 주소/포트 조합에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

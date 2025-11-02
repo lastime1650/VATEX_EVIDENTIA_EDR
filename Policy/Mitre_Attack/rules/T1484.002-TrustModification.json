@@ -1,0 +1,76 @@
+{
+    "id": "T1484.002-TrustModification",
+    "name": "Trust Modification",
+    "description": "Detects attempts by adversaries to modify trust relationships between domains or tenants, such as adding new domain trusts, modifying existing trust properties, or changing federation settings. This manipulation can be used for defense evasion and privilege escalation, for instance, by altering claim issuance rules or adding malicious signing certificates to forge SAML tokens without compromising original certificates. It also covers establishing new federated identity providers to gain broad access to cloud-based services.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005,TA0004",
+        "technique_id": "T1484",
+        "subtechnique_id": "T1484.002",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Defense Evasion:Domain or Tenant Policy Modification",
+            "Enterprise:Privilege Escalation:Domain or Tenant Policy Modification"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s3_cmdline_update_msol_federated_domain": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Update-MSOLFederatedDomain"
+                    }
+                ]
+            },
+            "s4_cmdline_domain_name_argument": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-DomainName"
+                    }
+                ]
+            },
+            "s5_cmdline_support_multipledomain_argument": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-supportmultipledomain"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create and s2_powershell_exe_path and s3_cmdline_update_msol_federated_domain and s4_cmdline_domain_name_argument"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Active Directory 또는 클라우드 환경에서 도메인 및 테넌트 간의 신뢰 관계를 변경하려는 시도를 탐지할 수 있습니다. 특히 PowerShell을 사용하여 'Update-MSOLFederatedDomain'과 같은 명령을 실행하는 프로세스 생성 이벤트를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 명령줄 인자에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 이는 권한 에스컬레이션 및 방어 회피 전술과 밀접하게 관련되어 있으므로, 다른 보안 이벤트와 연관 분석하여 침해사고 대응의 우선순위를 높일 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 작업, IT 관리자가 도메인 페더레이션 설정을 업데이트하거나 마이그레이션하는 과정, 또는 합법적인 자동화 스크립트가 도메인 신뢰 관계를 관리하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 관리 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

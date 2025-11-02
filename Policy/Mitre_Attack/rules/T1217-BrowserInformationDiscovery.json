@@ -1,0 +1,230 @@
+{
+    "id": "T1217-BrowserInformationDiscovery",
+    "name": "Browser Information Discovery",
+    "description": "Detects attempts to enumerate or access sensitive information stored by web browsers, such as login credentials, browsing history, and bookmarks. Adversaries target these data sources to gather personal information about users or details about internal network resources.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1217",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Discovery:File and Directory Discovery",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s_fs_action_read_open": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "read"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "open"
+                    }
+                ]
+            },
+            "s_fs_chrome_profile_base_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "Google\\Chrome\\User Data\\Default"
+                    }
+                ]
+            },
+            "s_fs_chrome_data_files": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "Login Data"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "Web Data"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "History"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "Bookmarks"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "Cookies"
+                    }
+                ]
+            },
+            "s_fs_firefox_profile_base_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "Mozilla\\Firefox\\Profiles"
+                    }
+                ]
+            },
+            "s_fs_firefox_data_files": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "logins.json"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "places.sqlite"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "cookies.sqlite"
+                    }
+                ]
+            },
+            "s_fs_edge_profile_base_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "Microsoft\\Edge\\User Data\\Default"
+                    }
+                ]
+            },
+            "s_fs_edge_data_files": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "Login Data"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "Web Data"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "History"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "Bookmarks"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "Cookies"
+                    }
+                ]
+            },
+            "s_proc_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s_proc_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s_proc_cmdline_browser_paths": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Google\\Chrome"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Mozilla\\Firefox"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Microsoft\\Edge"
+                    }
+                ]
+            },
+            "s_proc_cmdline_data_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Login Data"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Web Data"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "History"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Bookmarks"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "logins.json"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "places.sqlite"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "cookies.sqlite"
+                    }
+                ]
+            }
+        },
+        "condition": "(s_fs_action_read_open and s_fs_chrome_profile_base_path and s_fs_chrome_data_files) or (s_fs_action_read_open and s_fs_firefox_profile_base_path and s_fs_firefox_data_files) or (s_fs_action_read_open and s_fs_edge_profile_base_path and s_fs_edge_data_files) or (s_proc_action_create and s_proc_powershell_exe and s_proc_cmdline_browser_paths and s_proc_cmdline_data_keywords)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 브라우저 정보 수집 시도를 탐지할 수 있습니다. Chrome, Firefox, Edge와 같은 주요 웹 브라우저의 프로필 디렉터리 및 데이터 파일(로그인 정보, 방문 기록, 북마크 등)에 대한 비정상적인 읽기/열기 파일 시스템 접근을 모니터링합니다. 또한, PowerShell을 사용하여 이러한 브라우저 관련 경로 및 데이터 파일 키워드를 포함하는 명령줄이 실행되는 프로세스 생성 이벤트를 탐지합니다. 탐지된 이벤트는 중간 심각도로 분류되어 자동 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 브라우저 자체의 동작, 백업 소프트웨어, 보안 스캐너, 또는 합법적인 사용자 스크립트가 브라우저 프로필 데이터를 읽는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 파일 경로에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

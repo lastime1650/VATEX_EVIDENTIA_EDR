@@ -1,0 +1,218 @@
+{
+    "id": "T1561-DiskWipe",
+    "name": "Disk Wipe",
+    "description": "Adversaries may wipe or corrupt raw disk data on specific systems or in large numbers in a network to interrupt availability to system and network resources. With direct write access to a disk, adversaries may attempt to overwrite portions of disk data. Adversaries may opt to wipe arbitrary portions of disk data and/or wipe disk structures like the master boot record (MBR). A complete wipe of all disk sectors may be attempted. To maximize impact on the target organization in operations where network-wide availability interruption is the goal, malware used for wiping disks may have worm-like features to propagate across a network by leveraging additional techniques like Valid Accounts, OS Credential Dumping, and SMB/Windows Admin Shares. On network devices, adversaries may wipe configuration files and other data from the device using Network Device CLI commands such as erase.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0040",
+        "technique_id": "T1561",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Driver:DriverLoad",
+            "Drive:DriveAccess",
+            "Command:CommandExecution",
+            "Drive:DriveModification",
+            "Process:ProcessCreation"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmdline_raw_disk_access": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "\\\\.\\\\PhysicalDrive"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "\\\\.\\\\C:"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "\\\\.\\\\BootPartition"
+                    }
+                ]
+            },
+            "s3_cmdline_sdelete_tool": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "sdelete.exe"
+                    }
+                ]
+            },
+            "s4_cmdline_cipher_w_tool": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "cipher.exe /w:"
+                    }
+                ]
+            },
+            "s5_cmdline_format_tool": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "format.com"
+                    }
+                ]
+            },
+            "s6_cmdline_diskpart_tool": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "diskpart"
+                    }
+                ]
+            },
+            "s7_cmdline_diskpart_clean_arg": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "clean"
+                    }
+                ]
+            },
+            "s8_cmdline_diskpart_overwrite_arg": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "overwrite"
+                    }
+                ]
+            },
+            "s9_filesystem_write_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    }
+                ]
+            },
+            "s10_filesystem_critical_boot_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "bootmgr"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "winload.efi"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "ntldr"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "boot.ini"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "BCD"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\\\.\\\\PhysicalDrive"
+                    }
+                ]
+            },
+            "s11_registry_write_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "SetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "CreateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "RenameKey"
+                    }
+                ]
+            },
+            "s12_registry_boot_config_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\\\SYSTEM\\\\CurrentControlSet\\\\Control\\\\Session Manager\\\\BootExecute"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\\\SYSTEM\\\\CurrentControlSet\\\\Control\\\\CrashControl"
+                    }
+                ]
+            },
+            "s13_registry_driver_service_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\\\SYSTEM\\\\CurrentControlSet\\\\Services\\\\"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "ImagePath"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and (s2_cmdline_raw_disk_access or s3_cmdline_sdelete_tool or s4_cmdline_cipher_w_tool or s5_cmdline_format_tool or (s6_cmdline_diskpart_tool and (s7_cmdline_diskpart_clean_arg or s8_cmdline_diskpart_overwrite_arg))) or (s9_filesystem_write_action and s10_filesystem_critical_boot_path) or (s11_registry_write_action and (s12_registry_boot_config_path or s13_registry_driver_service_path))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템 디스크 와이프 또는 손상 시도를 탐지할 수 있습니다. 'sdelete.exe', 'cipher.exe /w', 'format.com', 'diskpart clean/overwrite'와 같은 디스크 조작 명령 실행, MBR/부트 섹터 관련 파일에 대한 쓰기/덮어쓰기 시도, 또는 비정상적인 드라이버 서비스 레지스트리 변경 등을 모니터링합니다. 탐지된 이벤트는 매우 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 호스트를 격리하며, 신속한 침해사고 대응 프로세스를 시작하는 데 사용될 수 있습니다. 특히 시스템 가용성에 치명적인 영향을 미칠 수 있으므로 최우선 순위로 조치해야 합니다.",
+    "false_positive": "정상적인 시스템 관리 도구 (예: 디스크 정리, 포맷, 드라이버 업데이트), 백업/복구 소프트웨어, 또는 합법적인 디스크 유틸리티가 디스크에 접근하거나 부트 관련 설정을 변경하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다. 또한, 운영체제 업데이트나 드라이버 설치 과정에서도 유사한 레지스트리 및 파일 시스템 활동이 발생할 수 있습니다."
+}

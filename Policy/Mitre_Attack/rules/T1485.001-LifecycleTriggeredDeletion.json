@@ -1,0 +1,161 @@
+{
+    "id": "T1485.001-LifecycleTriggeredDeletion",
+    "name": "Lifecycle-Triggered Deletion",
+    "description": "Detects attempts by adversaries to modify cloud storage bucket lifecycle policies to destroy all objects stored within, leveraging cloud CLI tools such as AWS CLI, Azure CLI, or gcloud CLI on a Windows endpoint.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0011",
+        "technique_id": "T1485",
+        "subtechnique_id": "T1485.001",
+        "data_sources": [
+            "Enterprise:Impact:Data Destruction:Lifecycle-Triggered Deletion",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_aws_cli_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "aws.exe"
+                    }
+                ]
+            },
+            "s3_aws_put_lifecycle_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "put-bucket-lifecycle-configuration"
+                    }
+                ]
+            },
+            "s4_aws_delete_keyword": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Expiration"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Delete"
+                    }
+                ]
+            },
+            "s5_az_cli_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "az.exe"
+                    }
+                ]
+            },
+            "s6_az_lifecycle_update_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "storage container lifecycle policy update"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "storage account update"
+                    }
+                ]
+            },
+            "s7_az_delete_keyword": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "\"delete\""
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "delete-blob-after"
+                    }
+                ]
+            },
+            "s8_gcloud_cli_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "gcloud.exe"
+                    }
+                ]
+            },
+            "s9_gcloud_bucket_update_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "storage buckets update"
+                    }
+                ]
+            },
+            "s10_gcloud_lifecycle_flag": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--lifecycle-file"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--lifecycle-rules"
+                    }
+                ]
+            },
+            "s11_gcloud_delete_keyword": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "action: Delete"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "type: Delete"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create and ((s2_aws_cli_path and s3_aws_put_lifecycle_cmd and s4_aws_delete_keyword) or (s5_az_cli_path and s6_az_lifecycle_update_cmd and s7_az_delete_keyword) or (s8_gcloud_cli_path and s9_gcloud_bucket_update_cmd and s10_gcloud_lifecycle_flag and s11_gcloud_delete_keyword))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 클라우드 스토리지 버킷의 수명 주기 정책을 조작하여 데이터 파괴를 시도하는 행위를 탐지할 수 있습니다. AWS, Azure, GCP CLI 도구의 프로세스 생성 이벤트를 모니터링하고, 명령줄 인자에서 수명 주기 정책 업데이트 및 삭제 관련 키워드를 분석합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 클라우드 환경 및 사용자 계정에 대한 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히, 데이터 파괴 또는 지표 제거 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 클라우드 관리 도구, 자동화된 스크립트, 또는 개발/운영 팀이 정기적으로 스토리지 수명 주기 정책을 관리하거나 업데이트하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상적인 CLI 명령 패턴, 특정 사용자 또는 서비스 주체에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+
+}

@@ -1,0 +1,258 @@
+{
+    "id": "T1105-IngressToolTransfer",
+    "name": "Ingress Tool Transfer",
+    "description": "Adversaries may transfer tools or other files from an external system into a compromised environment. Tools or files may be copied from an external adversary-controlled system to the victim network through the command and control channel or through alternate protocols such as ftp. Once present, adversaries may also transfer/spread tools between victim devices within a compromised environment (i.e. Lateral Tool Transfer). On Windows, adversaries may use various utilities to download tools, such as copy, finger, certutil, and PowerShell commands such as IEX(New-Object Net.WebClient).downloadString() and Invoke-WebRequest. On Linux and macOS systems, a variety of utilities also exist, such as curl, scp, sftp, tftp, rsync, finger, and wget. A number of these tools, such as wget, curl, and scp, also exist on ESXi. After downloading a file, a threat actor may attempt to verify its integrity by checking its hash value (e.g., via certutil -hashfile). Adversaries may also abuse installers and package managers, such as yum or winget, to download tools to victim hosts. Adversaries have also abused file application features, such as the Windows search-ms protocol handler, to deliver malicious files to victims through remote file searches invoked by User Execution (typically after interacting with Phishing lures). Files can also be transferred using various Web Services as well as native or otherwise present tools on the victim system. In some cases, adversaries may be able to leverage services that sync between a web-based and an on-premises client, such as Dropbox or OneDrive, to transfer files onto victim systems. For example, by compromising a cloud account and logging into the service's web portal, an adversary may be able to trigger an automatic syncing process that transfers the file onto the victim's machine.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0011",
+        "technique_id": "T1105",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Command and Control:Application Layer Protocol:Web Protocols",
+            "Enterprise:Command and Control:Application Layer Protocol:File Transfer Protocols",
+            "Enterprise:Collection:Data from Local System"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s_certutil_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "certutil.exe"
+                    }
+                ]
+            },
+            "s_certutil_download_args": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "urlcache"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "retrieve"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-f"
+                    }
+                ]
+            },
+            "s_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s_powershell_iwr_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-WebRequest"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iwr"
+                    }
+                ]
+            },
+            "s_powershell_webclient_downloadstring_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Net.WebClient).DownloadString"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Net.WebClient).DownloadFile"
+                    }
+                ]
+            },
+            "s_powershell_bitstransfer_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Start-BitsTransfer"
+                    }
+                ]
+            },
+            "s_bitsadmin_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "bitsadmin.exe"
+                    }
+                ]
+            },
+            "s_bitsadmin_transfer_args": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/transfer"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/addfile"
+                    }
+                ]
+            },
+            "s_curl_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "curl.exe"
+                    }
+                ]
+            },
+            "s_curl_download_args": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-o"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-O"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--output"
+                    }
+                ]
+            },
+            "s_wget_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "wget.exe"
+                    }
+                ]
+            },
+            "s_wget_download_args": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-O"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-o"
+                    }
+                ]
+            },
+            "s_ftp_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "ftp.exe"
+                    }
+                ]
+            },
+            "s_ftp_download_args": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "get"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-s:"
+                    }
+                ]
+            },
+            "s_winget_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "winget.exe"
+                    }
+                ]
+            },
+            "s_winget_install_args": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "install"
+                    }
+                ]
+            },
+            "s_search_ms_protocol_handler": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "search-ms:"
+                    }
+                ]
+            }
+        },
+        "condition": "s_process_create and ((s_certutil_exe and s_certutil_download_args) or (s_powershell_exe and (s_powershell_iwr_cmd or s_powershell_webclient_downloadstring_cmd or s_powershell_bitstransfer_cmd)) or (s_bitsadmin_exe and s_bitsadmin_transfer_args) or (s_curl_exe and s_curl_download_args) or (s_wget_exe and s_wget_download_args) or (s_ftp_exe and s_ftp_download_args) or (s_winget_exe and s_winget_install_args) or s_search_ms_protocol_handler)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 외부 시스템으로부터 악성 도구 또는 파일이 내부 환경으로 전송되는 시도를 탐지할 수 있습니다. certutil, PowerShell (Invoke-WebRequest, Net.WebClient, Start-BitsTransfer), bitsadmin, curl, wget, ftp, winget, search-ms 프로토콜 핸들러 등 공격자들이 흔히 사용하는 파일 전송 유틸리티의 프로세스 생성 이벤트를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스의 전체 명령줄, 부모 프로세스, 관련 네트워크 연결 및 생성된 파일에 대한 추가적인 조사를 시작하여 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 소프트웨어 업데이트, 개발 도구 설치, 또는 합법적인 파일 전송 유틸리티 사용으로 인해 오탐이 발생할 수 있습니다. 예를 들어, IT 관리자가 certutil을 사용하여 인증서를 다운로드하거나, 개발자가 curl/wget을 사용하여 라이브러리를 다운로드하는 경우입니다. 알려진 정상 프로세스, 특정 명령줄 패턴, 또는 화이트리스트에 추가된 IP 주소/도메인에 대해 예외를 설정하여 오탐을 줄일 수 있습니다."
+}

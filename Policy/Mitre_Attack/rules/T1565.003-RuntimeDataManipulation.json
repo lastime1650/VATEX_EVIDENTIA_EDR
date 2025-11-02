@@ -1,0 +1,162 @@
+{
+    "id": "T1565.003-RuntimeDataManipulation",
+    "name": "Runtime Data Manipulation",
+    "description": "Detects attempts by adversaries to modify data as it is accessed and displayed to an end user, threatening data integrity. This can involve altering application binaries, modifying critical configuration registry keys, or using APIs to directly manipulate memory or user interface elements.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0008",
+        "technique_id": "T1565",
+        "subtechnique_id": "T1565.003",
+        "data_sources": [
+            "Enterprise:Impact:Data Manipulation:Runtime Data Manipulation",
+            "Enterprise:Execution:Native API",
+            "Enterprise:Defense Evasion:File and Directory Permissions Modification",
+            "Enterprise:Persistence:Modify Registry"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_filesystem_write_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_target_system_binary_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\Windows\\System32\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\Program Files\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\Program Files (x86)\\"
+                    }
+                ]
+            },
+            "s3_target_binary_extension": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".sys"
+                    }
+                ]
+            },
+            "s4_registry_modify_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "SetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "CreateKey"
+                    }
+                ]
+            },
+            "s5_target_app_config_registry": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\User Shell Folders"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Classes"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\Control Panel\\Desktop"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "\\App Paths\\"
+                    }
+                ]
+            },
+            "s6_api_memory_or_ui_manipulation": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "WriteProcessMemory"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "NtWriteVirtualMemory"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "SetWindowLongPtrW"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "SetWindowLongPtrA"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "SetWindowsHookExW"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "SetWindowsHookExA"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_filesystem_write_action and s2_target_system_binary_path and s3_target_binary_extension) or (s4_registry_modify_action and s5_target_app_config_registry) or s6_api_memory_or_ui_manipulation"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 런타임 데이터 조작 시도를 탐지할 수 있습니다. 시스템 바이너리 또는 핵심 애플리케이션 파일에 대한 비정상적인 쓰기/수정 활동, 애플리케이션 동작이나 UI 표시를 제어하는 레지스트리 키에 대한 변경, 그리고 메모리 쓰기 또는 UI 후킹 관련 API 호출을 모니터링합니다. 탐지된 이벤트는 데이터 무결성 위협으로 분류되어 높은 심각도로 알람을 트리거하고, 추가적인 포렌식 조사를 통해 공격자의 의도와 영향을 파악하는 데 사용될 수 있습니다. 특히, 다른 방어 회피 또는 지속성 전술과 결합될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 소프트웨어 업데이트, 패치 설치, 시스템 관리 도구, 또는 합법적인 애플리케이션이 시스템 파일이나 레지스트리 설정을 수정하거나 특정 API를 호출하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스, 특정 파일 경로, 또는 레지스트리 키에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

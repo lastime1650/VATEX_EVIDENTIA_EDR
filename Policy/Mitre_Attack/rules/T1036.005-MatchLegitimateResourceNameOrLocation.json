@@ -1,0 +1,509 @@
+{
+    "id": "T1036.005-MatchLegitimateResourceNameOrLocation",
+    "name": "Match Legitimate Resource Name or Location",
+    "description": "Detects attempts by adversaries to match or approximate the name or location of legitimate files, Registry keys, or other resources to evade defenses. This includes placing executables with trusted names (e.g., svchost.exe) in unusual directories, or creating/modifying files and registry keys that mimic legitimate system components but are located in non-standard paths or have slight naming variations.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1036",
+        "subtechnique_id": "T1036.005",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "File:FileCreation",
+            "File:FileModification",
+            "Image:ImageLoad",
+            "WindowsRegistry:RegistryKeyModification",
+            "WindowsRegistry:RegistryKeyCreation"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s_proc_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s_proc_name_legit_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "svchost.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "explorer.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "lsass.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "winlogon.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "services.exe"
+                    }
+                ]
+            },
+            "s_proc_path_legit_svchost": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "\\System32\\svchost.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "\\SysWOW64\\svchost.exe"
+                    }
+                ]
+            },
+            "s_proc_path_legit_explorer": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "\\Windows\\explorer.exe"
+                    }
+                ]
+            },
+            "s_proc_path_legit_lsass": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "\\System32\\lsass.exe"
+                    }
+                ]
+            },
+            "s_proc_path_legit_winlogon": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "\\System32\\winlogon.exe"
+                    }
+                ]
+            },
+            "s_proc_path_legit_services": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "\\System32\\services.exe"
+                    }
+                ]
+            },
+            "s_fs_modify_create": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    }
+                ]
+            },
+            "s_fs_name_legit_exe_dll": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "svchost.exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "explorer.exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "lsass.exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "winlogon.exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "services.exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "ntdll.dll"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "kernel32.dll"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "user32.dll"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "advapi32.dll"
+                    }
+                ]
+            },
+            "s_fs_path_legit_exe": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "\\System32\\svchost.exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "\\Windows\\explorer.exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "\\System32\\lsass.exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "\\System32\\winlogon.exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "\\System32\\services.exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "\\SysWOW64\\svchost.exe"
+                    }
+                ]
+            },
+            "s_fs_path_legit_dll": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "\\System32\\ntdll.dll"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "\\SysWOW64\\ntdll.dll"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "\\System32\\kernel32.dll"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "\\SysWOW64\\kernel32.dll"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "\\System32\\user32.dll"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "\\SysWOW64\\user32.dll"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "\\System32\\advapi32.dll"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "\\SysWOW64\\advapi32.dll"
+                    }
+                ]
+            },
+            "s_imgload_event": {
+                "event_type": "imageload",
+                "conditions": [
+                    {
+                        "field": "header.Version",
+                        "operator": "contains",
+                        "value": ""
+                    }
+                ]
+            },
+            "s_imgload_name_legit_dll": {
+                "event_type": "imageload",
+                "conditions": [
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "ntdll.dll"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "kernel32.dll"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "user32.dll"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "ws2_32.dll"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "advapi32.dll"
+                    }
+                ]
+            },
+            "s_imgload_path_legit_dll": {
+                "event_type": "imageload",
+                "conditions": [
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "endswith",
+                        "value": "\\System32\\ntdll.dll"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "endswith",
+                        "value": "\\SysWOW64\\ntdll.dll"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "endswith",
+                        "value": "\\System32\\kernel32.dll"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "endswith",
+                        "value": "\\SysWOW64\\kernel32.dll"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "endswith",
+                        "value": "\\System32\\user32.dll"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "endswith",
+                        "value": "\\SysWOW64\\user32.dll"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "endswith",
+                        "value": "\\System32\\ws2_32.dll"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "endswith",
+                        "value": "\\SysWOW64\\ws2_32.dll"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "endswith",
+                        "value": "\\System32\\advapi32.dll"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "endswith",
+                        "value": "\\SysWOW64\\advapi32.dll"
+                    }
+                ]
+            },
+            "s_reg_create_rename": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreCreateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPostCreateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreRenameKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPostRenameKey"
+                    }
+                ]
+            },
+            "s_reg_name_contains_run_like": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "Run"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "RunOnce"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "RunServices"
+                    }
+                ]
+            },
+            "s_reg_name_contains_service_like": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "Service"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "ImagePath"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "ServiceDll"
+                    }
+                ]
+            },
+            "s_reg_path_legit_run_key": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Run"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Run"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\RunOnce"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\RunOnce"
+                    }
+                ]
+            },
+            "s_reg_path_legit_services_prefix": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "\\SYSTEM\\CurrentControlSet\\Services\\"
+                    }
+                ]
+            },
+            "s_reg_path_legit_services_imagepath_suffix": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "endswith",
+                        "value": "\\ImagePath"
+                    }
+                ]
+            },
+            "s_reg_path_legit_services_servicedll_suffix": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "endswith",
+                        "value": "\\ServiceDll"
+                    }
+                ]
+            }
+        },
+        "condition": "(s_proc_create AND s_proc_name_legit_exe AND NOT (s_proc_path_legit_svchost OR s_proc_path_legit_explorer OR s_proc_path_legit_lsass OR s_proc_path_legit_winlogon OR s_proc_path_legit_services)) OR (s_fs_modify_create AND s_fs_name_legit_exe_dll AND NOT (s_fs_path_legit_exe OR s_fs_path_legit_dll)) OR (s_imgload_event AND s_imgload_name_legit_dll AND NOT s_imgload_path_legit_dll) OR (s_reg_create_rename AND ((s_reg_name_contains_run_like AND NOT s_reg_path_legit_run_key) OR (s_reg_name_contains_service_like AND s_reg_path_legit_services_prefix AND NOT (s_reg_path_legit_services_imagepath_suffix OR s_reg_path_legit_services_servicedll_suffix))))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 합법적인 리소스 이름이나 위치를 모방하는 방어 회피 시도를 탐지할 수 있습니다. 특히 svchost.exe, explorer.exe 등과 같은 시스템 프로세스 이름이나 DLL 파일 이름을 사용하여 비정상적인 경로에서 실행되거나 생성/수정되는 경우를 모니터링합니다. 또한, Run 키나 서비스 관련 레지스트리 경로와 유사하지만 정확히 일치하지 않는 이름으로 레지스트리 키가 생성되거나 이름이 변경되는 경우를 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스, 파일, 레지스트리 활동에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 이는 공격자가 시스템에 은밀하게 침투하고 지속성을 확보하려는 시도를 식별하는 데 중요합니다.",
+    "false_positive": "정상적인 소프트웨어 설치, 업데이트, 또는 시스템 관리 도구가 파일이나 레지스트리 키를 생성, 수정하거나, 합법적인 프로세스가 예상치 못한 경로에서 실행될 때 오탐이 발생할 수 있습니다. 특히, 가상화 환경, 샌드박스, 또는 특정 개발 도구는 시스템 파일을 복제하거나 수정할 수 있습니다. 알려진 정상적인 프로세스나 특정 파일/레지스트리 경로에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

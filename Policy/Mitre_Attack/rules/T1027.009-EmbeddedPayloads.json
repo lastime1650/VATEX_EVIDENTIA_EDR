@@ -1,0 +1,192 @@
+{
+    "id": "T1027.009-EmbeddedPayloads",
+    "name": "Embedded Payloads",
+    "description": "Detects attempts by adversaries to conceal malicious content by embedding payloads within other files, such as scripts or executables, which are then extracted or executed. This technique is used to bypass defenses and can involve tools like Invoke-PSImage or the creation of files with misleading double extensions.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1027",
+        "subtechnique_id": "T1027.009",
+        "data_sources": [
+            "Process:Process Creation",
+            "File:File Creation",
+            "File:File Modification",
+            "Command:Command Execution"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "powershell_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "powershell_invoke_psimage_commandline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-PSImage"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".png"
+                    }
+                ]
+            },
+            "filesystem_file_create_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "filepath_double_extension": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": ".doc.exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": ".pdf.exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": ".jpg.exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": ".png.exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": ".txt.exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": ".zip.exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": ".iso.exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": ".lnk.exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": ".url.exe"
+                    }
+                ]
+            },
+            "process_create_from_temp": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "process_exe_path_in_temp": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "C:\\Windows\\Temp\\"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "C:\\Users\\"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "\\AppData\\Local\\Temp\\"
+                    }
+                ]
+            },
+            "process_exe_path_suspicious_extension": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": ".ps1"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": ".bat"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": ".cmd"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": ".vbs"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": ".js"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": ".hta"
+                    }
+                ]
+            }
+        },
+        "condition": "(powershell_process_create and powershell_invoke_psimage_commandline) or (filesystem_file_create_action and filepath_double_extension) or (process_create_from_temp and process_exe_path_in_temp and process_exe_path_suspicious_extension)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 파일 내부에 숨겨진 악성 페이로드가 시스템에 드롭되거나 실행되는 시도를 탐지할 수 있습니다. 특히 Invoke-PSImage와 같은 특정 도구의 PowerShell 명령줄 사용, 이중 확장자(예: .pdf.exe)를 가진 파일 생성, 또는 임시 디렉터리에서 실행되는 의심스러운 실행 파일 등을 모니터링합니다. 탐지된 이벤트는 자동 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있으며, 제로데이 및 파일리스 공격 시나리오에 대한 조기 경보를 제공합니다.",
+    "false_positive": "정상적인 소프트웨어 설치 프로그램, 업데이트 프로세스, 합법적인 개발 도구, 또는 특정 애플리케이션이 임시 파일을 생성하거나 스크립트를 실행하는 과정에서 탐지될 수 있습니다. 특히 임시 디렉터리에서의 실행은 많은 정상적인 활동에서도 발생할 수 있으므로, 알려진 정상 프로세스, 특정 명령줄 패턴, 또는 서명된 파일 등을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다. 이중 확장자의 경우, 사용자 실수나 특정 압축 해제 소프트웨어에 의해 생성될 수 있습니다."
+}

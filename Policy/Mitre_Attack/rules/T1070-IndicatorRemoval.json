@@ -1,0 +1,180 @@
+{
+    "id": "T1070-IndicatorRemoval",
+    "name": "Indicator Removal",
+    "description": "Detects attempts by adversaries to delete or modify artifacts generated within systems to remove evidence of their presence or hinder defenses. This includes clearing event logs, command history, and deleting specific files or registry keys to interfere with forensic analysis and incident response.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1070",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Defense Evasion:Indicator Removal:Clear Windows Event Logs",
+            "Enterprise:Defense Evasion:Indicator Removal:Clear Command History",
+            "Enterprise:Defense Evasion:Indicator Removal:File Deletion",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Windows Registry:Windows Registry Key Modification",
+            "Enterprise:Windows Registry:Windows Registry Key Deletion"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_wevtutil_clear": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wevtutil.exe cl"
+                    }
+                ]
+            },
+            "s3_forfiles_delete_evtx": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "forfiles"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".evtx"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "del @file"
+                    }
+                ]
+            },
+            "s4_powershell_clear_history_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Clear-History"
+                    }
+                ]
+            },
+            "s5_cmd_delete_ps_history_file": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "del"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ConsoleHost_history.txt"
+                    }
+                ]
+            },
+            "s6_filesystem_action_remove": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "remove"
+                    }
+                ]
+            },
+            "s7_filesystem_log_extensions": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".log"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".evtx"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".tmp"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".bak"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "NTUSER.DAT.LOG"
+                    }
+                ]
+            },
+            "s8_registry_action_delete_key": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "DeleteKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "PreDeleteKey"
+                    }
+                ]
+            },
+            "s9_registry_action_set_value": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "SetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "PreSetValueKey"
+                    }
+                ]
+            },
+            "s10_registry_eventlog_service_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\EventLog"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and (s2_wevtutil_clear or s3_forfiles_delete_evtx or s4_powershell_clear_history_cmd or s5_cmd_delete_ps_history_file) or (s6_filesystem_action_remove and s7_filesystem_log_extensions) or ((s8_registry_action_delete_key or s9_registry_action_set_value) and s10_registry_eventlog_service_path)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 공격자가 시스템에서 흔적을 지우려는 시도를 탐지할 수 있습니다. Windows 이벤트 로그를 지우는 'wevtutil.exe cl' 또는 'forfiles' 명령 실행, PowerShell 'Clear-History' 명령, 또는 특정 로그 파일(.log, .evtx)의 삭제를 모니터링합니다. 또한, EventLog 서비스 관련 레지스트리 키에 대한 삭제 또는 값 변경 시도를 탐지하여 방어 회피 활동을 식별합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 백신 소프트웨어, 또는 합법적인 애플리케이션이 임시 파일이나 오래된 로그를 정리하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 파일 경로, 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,160 @@
+{
+    "id": "T1127-TrustedDeveloperUtilitiesProxyExecution",
+    "name": "Trusted Developer Utilities Proxy Execution",
+    "description": "Adversaries may take advantage of trusted developer utilities to proxy execution of malicious payloads. These utilities are often signed with legitimate certificates, allowing them to execute on a system and proxy malicious code through a trusted process, effectively bypassing application control solutions. This technique can also be used to bypass Smart App Control by leveraging 'reputation hijacking' of safe, signed applications that support arbitrary code execution.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1127",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Shared Modules"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_msbuild_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "msbuild.exe"
+                    }
+                ]
+            },
+            "s3_msbuild_susp_cmdline_target_exec": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/target:exec"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/p:Target=Exec"
+                    }
+                ]
+            },
+            "s4_msbuild_susp_cmdline_inline_code": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "using System.Diagnostics;"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Process.Start("
+                    }
+                ]
+            },
+            "s5_installutil_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "installutil.exe"
+                    }
+                ]
+            },
+            "s6_installutil_susp_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/u"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/i"
+                    }
+                ]
+            },
+            "s7_installutil_payload_extension": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".exe"
+                    }
+                ]
+            },
+            "s8_regsvcs_regasm_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "regsvcs.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "regasm.exe"
+                    }
+                ]
+            },
+            "s9_regsvcs_regasm_susp_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/u"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/codebase"
+                    }
+                ]
+            },
+            "s10_regsvcs_regasm_payload_extension": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".exe"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create and ( (s2_msbuild_exe and (s3_msbuild_susp_cmdline_target_exec or s4_msbuild_susp_cmdline_inline_code)) or (s5_installutil_exe and s6_installutil_susp_cmdline and s7_installutil_payload_extension) or (s8_regsvcs_regasm_exe and s9_regsvcs_regasm_susp_cmdline and s10_regsvcs_regasm_payload_extension) )"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 MSBuild, InstallUtil, Regsvcs/Regasm과 같은 신뢰할 수 있는 개발자 유틸리티를 통한 악성 코드 프록시 실행 시도를 탐지할 수 있습니다. 프로세스 생성 이벤트와 함께 각 유틸리티의 비정상적인 명령줄 인자(예: MSBuild의 `/target:exec`, InstallUtil의 `/u` 또는 `/i`와 DLL/EXE 경로, Regsvcs/Regasm의 `/u` 또는 `/codebase`와 DLL/EXE 경로)를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 로드된 모듈에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 다른 방어 회피 또는 실행 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 개발 환경에서 소프트웨어 빌드, 설치, 등록 또는 디버깅 목적으로 이러한 유틸리티가 사용될 때 오탐이 발생할 수 있습니다. 특정 개발 시스템, 알려진 정상 명령줄 패턴, 또는 특정 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,171 @@
+{
+    "id": "T1601.001-PatchSystemImage_Process",
+    "name": "Patch System Image (via Windows Host Process Activity)",
+    "description": "Detects attempts by a Windows host to initiate file transfers or command executions suggestive of modifying network device operating system images or firmware. This includes the use of command-line tools like tftp.exe, ftp.exe, scp.exe, WinSCP, or PowerShell cmdlets for downloading files, especially when associated with common firmware extensions or network device keywords, indicating potential preparation for or execution of network device image patching.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1601",
+        "subtechnique_id": "T1601.001",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Process:ProcessCreation"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_tftp_cli_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "tftp.exe"
+                    }
+                ]
+            },
+            "s3_ftp_cli_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ftp.exe"
+                    }
+                ]
+            },
+            "s4_scp_cli_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "scp.exe"
+                    }
+                ]
+            },
+            "s5_winscp_cli_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "winscp.exe"
+                    }
+                ]
+            },
+            "s6_ssh_cli_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ssh.exe"
+                    }
+                ]
+            },
+            "s7_ssh_put_get_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "put"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "get"
+                    }
+                ]
+            },
+            "s8_powershell_exe_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s9_powershell_download_cmdlet": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-WebRequest"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "System.Net.WebClient().DownloadFile"
+                    }
+                ]
+            },
+            "s10_powershell_firmware_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".bin"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".img"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".iso"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".pkg"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "firmware"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "os_image"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ios"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "junos"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and (s2_tftp_cli_execution or s3_ftp_cli_execution or s4_scp_cli_execution or s5_winscp_cli_execution or (s6_ssh_cli_execution and s7_ssh_put_get_keywords) or (s8_powershell_exe_execution and s9_powershell_download_cmdlet and s10_powershell_firmware_keywords))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Windows 호스트에서 네트워크 장치 운영 체제 이미지 또는 펌웨어 파일을 전송하거나 조작하려는 시도를 탐지할 수 있습니다. 이는 공격자가 네트워크 장치에 새로운 기능을 도입하거나 기존 방어 기능을 약화시키기 위해 이미지를 패치하려는 시도를 나타낼 수 있습니다. TFTP, FTP, SCP, WinSCP와 같은 명령줄 도구 실행, SSH를 통한 파일 전송 키워드, 또는 특정 펌웨어 확장자/네트워크 장치 관련 키워드를 포함하는 PowerShell 다운로드 작업이 모니터링됩니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 Windows 호스트 및 대상 네트워크 장치에 대한 추가적인 조사를 시작하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 네트워크 관리자가 펌웨어 업그레이드를 수행하거나, 자동화된 업데이트 스크립트, 또는 네트워크 관리 도구가 네트워크 장치 이미지와 상호작용하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

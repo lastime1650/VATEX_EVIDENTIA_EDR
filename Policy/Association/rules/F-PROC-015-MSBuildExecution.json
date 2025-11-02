@@ -1,0 +1,34 @@
+{
+    "id": "F-PROC-015-MSBuildExecution",
+    "name": "Feature: Microsoft Build Engine Execution",
+    "description": "Identifies the execution of MSBuild.exe. While a legitimate developer tool, it can be abused to compile and execute malicious code directly on a target system.",
+    "severity": "info",
+    "mitre_attack": [
+        {
+            "tactic": "TA0005",
+            "technique_id": "T1127",
+            "subtechnique_id": "T1127.001"
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "msbuild_process_started",
+                "selections": {
+                    "selection_msbuild_path": {
+                        "event_type": "process",
+                        "condition_method": "and",
+                        "conditions": [
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "MSBuild.exe"}
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "Feature Captured: MSBuild.exe execution"
+                }
+            }
+        ]
+    }
+}

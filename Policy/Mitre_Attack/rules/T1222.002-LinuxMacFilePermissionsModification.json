@@ -1,0 +1,107 @@
+{
+    "id": "T1222.002-LinuxMacFilePermissionsModification",
+    "name": "Linux and Mac File and Directory Permissions Modification",
+    "description": "Detects attempts to modify file or directory permissions/attributes on Linux or macOS using commands like 'chmod' or 'chown' with potentially malicious arguments, such as granting execute permissions or wide-open access, or performing recursive changes. Adversaries modify permissions to evade access control lists (ACLs), access protected files, or facilitate persistence and privilege escalation.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1222",
+        "subtechnique_id": "T1222.002",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "File:FileMetadata",
+            "Command:CommandExecution"
+        ]
+    },
+    "platform": [
+        "linux",
+        "macos"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_command_chmod": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "chmod"
+                    }
+                ]
+            },
+            "s3_chmod_arg_plus_x": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "+x"
+                    }
+                ]
+            },
+            "s4_chmod_arg_755": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "755"
+                    }
+                ]
+            },
+            "s5_chmod_arg_777": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "777"
+                    }
+                ]
+            },
+            "s6_chmod_arg_recursive": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-R"
+                    }
+                ]
+            },
+            "s7_command_chown": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "chown"
+                    }
+                ]
+            },
+            "s8_chown_arg_recursive": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-R"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and ((s2_command_chmod and (s3_chmod_arg_plus_x or s4_chmod_arg_755 or s5_chmod_arg_777 or s6_chmod_arg_recursive)) or (s7_command_chown and s8_chown_arg_recursive))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Linux 및 macOS 시스템에서 파일 및 디렉터리 권한 변경 시도를 탐지할 수 있습니다. 'chmod' 또는 'chown' 명령이 '+x', '755', '777'과 같은 의심스러운 권한 인자 또는 '-R'과 같은 재귀적 옵션과 함께 실행되는 프로세스 생성 이벤트를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 변경된 파일에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 이는 특히 다른 방어 회피, 지속성, 또는 권한 상승 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 소프트웨어 설치/업데이트 스크립트, 개발 환경 설정 스크립트 또는 합법적인 애플리케이션이 파일 권한을 변경하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상적인 'chmod' 및 'chown' 호출 패턴이나 특정 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,66 @@
+{
+    "id": "T1021.007-CloudServices",
+    "name": "Cloud Services",
+    "description": "Adversaries may log into accessible cloud services within a compromised environment using valid accounts that are synchronized with or federated to on-premises user identities. The adversary may then perform management actions or access cloud-hosted resources as the logged-on user. This includes using cloud command-line interfaces (CLIs) like Azure PowerShell, Microsoft Graph PowerShell, and Google Cloud CLI.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0008",
+        "technique_id": "T1021",
+        "subtechnique_id": "T1021.007",
+        "data_sources": [
+            "Logon Session:Logon Session Creation",
+            "Process:Process Creation",
+            "Command:Command Execution"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_azure_cli_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Connect-AZAccount"
+                    }
+                ]
+            },
+            "s3_msgraph_cli_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Connect-MgGraph"
+                    }
+                ]
+            },
+            "s4_google_cli_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "gcloud auth login"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and (s2_azure_cli_command or s3_msgraph_cli_command or s4_google_cli_command)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 침해된 환경 내에서 유효한 계정을 사용하여 클라우드 서비스에 로그인하려는 시도를 탐지할 수 있습니다. Azure PowerShell의 'Connect-AZAccount', Microsoft Graph PowerShell의 'Connect-MgGraph', Google Cloud CLI의 'gcloud auth login'과 같은 명령줄 실행을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 클라우드 환경 내에서의 추가적인 측면 이동 또는 자원 접근 시도에 대한 포렌식 조사를 시작하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 클라우드 관리 작업, 자동화 스크립트, 개발자 활동, 또는 합법적인 클라우드 통합 도구가 클라우드 서비스에 로그인하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스, 특정 사용자, 또는 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,181 @@
+{
+    "id": "T1562.011-SpoofSecurityAlerting",
+    "name": "Spoof Security Alerting",
+    "description": "Detects attempts by adversaries to spoof security alerts or system status messages, often after disabling legitimate security tools, to deceive users or impair defenders' awareness of malicious activity. This rule focuses on process execution of scripts or executables designed to display fake alerts, direct API calls for message boxes, or the creation of files mimicking security UI components.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1562",
+        "subtechnique_id": "T1562.011",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Native API",
+            "Enterprise:Defense Evasion:Masquerading"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_event": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_powershell_gui_alert": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "add-type -assemblyname system.windows.forms"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "new-object system.windows.forms.messagebox"
+                    }
+                ]
+            },
+            "s3_cscript_wscript_alert": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "cscript.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "wscript.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "msgbox"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "alert("
+                    }
+                ]
+            },
+            "s4_mshta_javascript_alert": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "mshta.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "javascript:"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "alert("
+                    }
+                ]
+            },
+            "s5_apicall_messagebox_family": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "contains",
+                        "value": "MessageBox"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "contains",
+                        "value": "Shell_NotifyIcon"
+                    }
+                ]
+            },
+            "s6_fs_action_create_write": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    }
+                ]
+            },
+            "s7_fs_filepath_suspicious_name_ext": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "security_alert"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "defender_warning"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "antivirus_notification"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".hta"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".html"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".js"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".vbs"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".ps1"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_event and (s2_powershell_gui_alert or s3_cscript_wscript_alert or s4_mshta_javascript_alert)) or s5_apicall_messagebox_family or (s6_fs_action_create_write and s7_fs_filepath_suspicious_name_ext)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 보안 경고를 위장하거나 조작하려는 시도를 탐지할 수 있습니다. PowerShell, VBScript, JScript 또는 MSHTA를 사용하여 가짜 GUI 경고를 생성하는 프로세스 실행, MessageBox 계열 API 또는 Shell_NotifyIcon API 호출, 그리고 'security_alert'와 같은 의심스러운 이름을 가진 실행 파일, 스크립트, HTML 파일 등이 생성되거나 수정되는 파일 시스템 활동을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스 및 파일에 대한 심층적인 조사를 통해 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히, 다른 방어 회피 전술과 결합될 때 악성 행위의 가능성이 높아집니다.",
+    "false_positive": "정상적인 애플리케이션, 시스템 관리 스크립트, 또는 개발 도구가 MessageBox API를 사용하거나, 특정 상황에서 알림을 표시하기 위한 스크립트 파일을 생성하는 경우 오탐이 발생할 수 있습니다. 특히 개발 환경이나 특정 자동화 스크립트에서 발생하는 경우, 해당 프로세스나 파일 경로를 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

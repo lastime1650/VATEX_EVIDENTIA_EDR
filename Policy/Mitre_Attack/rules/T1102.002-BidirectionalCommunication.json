@@ -1,0 +1,73 @@
+{
+    "id": "T1102.002-BidirectionalCommunication",
+    "name": "Bidirectional Communication",
+    "description": "Adversaries may use an existing, legitimate external Web service as a means for sending commands to and receiving output from a compromised system over the Web service channel. Compromised systems may leverage popular websites and social media to host command and control (C2) instructions. Those infected systems can then send the output from those commands back over that Web service channel. The return traffic may occur in a variety of ways, depending on the Web service being utilized. For example, the return traffic may take the form of the compromised system posting a comment on a forum, issuing a pull request to development project, updating a document hosted on a Web service, or by sending a Tweet. Popular websites and social media acting as a mechanism for C2 may give a significant amount of cover due to the likelihood that hosts within a network are already communicating with them prior to a compromise. Using common services, such as those offered by Google or Twitter, makes it easier for adversaries to hide in expected noise. Web service providers commonly use SSL/TLS encryption, giving adversaries an added level of protection.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0011",
+        "technique_id": "T1102",
+        "subtechnique_id": "T1102.002",
+        "data_sources": [
+            "NetworkTraffic:NetworkTrafficContent",
+            "NetworkTraffic:NetworkConnectionCreation",
+            "NetworkTraffic:NetworkTrafficFlow"
+        ]
+    },
+    "platform": [
+        "windows",
+        "linux",
+        "macos"
+    ],
+    "detection": {
+        "selections": {
+            "s_outbound_direction": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    }
+                ]
+            },
+            "s_web_ports": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 80
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 443
+                    }
+                ]
+            },
+            "s_tcp_protocol": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "TCP"
+                    }
+                ]
+            },
+            "s_nonzero_packet_size": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.packetsize",
+                        "operator": "gt",
+                        "value": 0
+                    }
+                ]
+            }
+        },
+        "condition": "s_outbound_direction and s_tcp_protocol and s_nonzero_packet_size and s_web_ports"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 외부 웹 서비스를 통한 양방향 C2 통신 시도를 탐지할 수 있습니다. 시스템에서 외부 웹 포트(80, 443)로 향하는 TCP 아웃바운드 트래픽 중 데이터 페이로드가 포함된 연결을 모니터링합니다. 탐지된 이벤트는 잠재적인 C2 활동으로 분류되어 높은 심각도로 알람을 트리거하며, 관련 프로세스 및 네트워크 세션에 대한 추가 조사를 시작하는 데 사용될 수 있습니다. 특히, 비정상적인 데이터 전송량이나 패턴과 결합될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 웹 브라우징, 소프트웨어 업데이트, 클라우드 동기화 서비스, 또는 합법적인 애플리케이션이 웹 API를 사용하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 프로세스나 특정 도메인/IP 주소에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

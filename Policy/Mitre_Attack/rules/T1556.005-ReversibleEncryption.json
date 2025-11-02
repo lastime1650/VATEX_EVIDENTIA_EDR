@@ -1,0 +1,118 @@
+{
+    "id": "T1556.005-ReversibleEncryption",
+    "name": "Reversible Encryption",
+    "description": "Detects attempts to enable or modify the 'Store passwords using reversible encryption' policy or directly execute PowerShell commands to set the 'AllowReversiblePasswordEncryption' property to true. This technique allows adversaries to obtain plaintext passwords from Active Directory, facilitating credential access and persistence.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0006",
+        "technique_id": "T1556",
+        "subtechnique_id": "T1556.005",
+        "data_sources": [
+            "Enterprise:Credential Access:Modify Authentication Process:Reversible Encryption",
+            "Enterprise:Persistence:Modify Authentication Process:Reversible Encryption",
+            "Enterprise:Defense Evasion:Modify Authentication Process:Reversible Encryption",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s3_cmdline_set_aduser_reversible_encryption": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-ADUser"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-AllowReversiblePasswordEncryption $true"
+                    }
+                ]
+            },
+            "s4_registry_modify_actions": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPostSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtCreateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreCreateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPostCreateKey"
+                    }
+                ]
+            },
+            "s5_registry_reversible_encryption_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System\\AllowReversibleEncryption"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\System\\AllowReversibleEncryption"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_powershell_exe_path and s3_cmdline_set_aduser_reversible_encryption) or (s4_registry_modify_actions and s5_registry_reversible_encryption_path)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Active Directory 계정에 대한 가역 암호화 설정 변경 시도를 탐지할 수 있습니다. 특히 PowerShell을 통해 'Set-ADUser -AllowReversiblePasswordEncryption $true'와 같은 명령이 실행되거나, 관련 레지스트리 키(HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System\\AllowReversibleEncryption 또는 HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\System\\AllowReversibleEncryption)에 대한 생성 또는 값 설정 행위가 발생하는지 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 계정 정책의 무단 변경 및 잠재적인 자격 증명 탈취 시도에 대한 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "매우 드물게 레거시 시스템과의 호환성을 위해 관리자가 의도적으로 가역 암호화를 활성화하는 경우가 있을 수 있습니다. 그러나 이는 보안 관점에서 강력히 권장되지 않는 설정입니다. 정상적인 관리 활동으로 인한 오탐을 줄이기 위해, 정책 변경을 수행하는 특정 관리 도구 또는 스크립트에 대한 화이트리스트를 신중하게 적용할 수 있습니다. 또한, PowerShell 명령줄에서 'Set-ADUser'가 사용되지만 'AllowReversiblePasswordEncryption' 관련 인자가 없는 경우는 오탐으로 간주하지 않습니다."
+}

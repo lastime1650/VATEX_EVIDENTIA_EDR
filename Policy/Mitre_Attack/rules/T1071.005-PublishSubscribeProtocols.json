@@ -1,0 +1,115 @@
+{
+    "id": "T1071.005-PublishSubscribeProtocols",
+    "name": "Command and Control via Publish/Subscribe Protocols",
+    "description": "Detects network communication leveraging common publish/subscribe (pub/sub) application layer protocols such as MQTT, XMPP, AMQP, and STOMP. Adversaries may use these protocols for Command and Control (C2) to blend in with legitimate network traffic and evade detection, often communicating through a centralized message broker.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0011",
+        "technique_id": "T1071",
+        "subtechnique_id": "T1071.005",
+        "data_sources": [
+            "Enterprise:Command and Control:Application Layer Protocol:Publish/Subscribe Protocols",
+            "NetworkTraffic:NetworkTrafficFlow"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s_network_protocol_tcp": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "TCP"
+                    }
+                ]
+            },
+            "s_port_mqtt_unencrypted": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 1883
+                    }
+                ]
+            },
+            "s_port_mqtt_encrypted": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 8883
+                    }
+                ]
+            },
+            "s_port_xmpp_client": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 5222
+                    }
+                ]
+            },
+            "s_port_xmpp_server": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 5269
+                    }
+                ]
+            },
+            "s_port_amqp_unencrypted": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 5672
+                    }
+                ]
+            },
+            "s_port_amqp_encrypted": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 5671
+                    }
+                ]
+            },
+            "s_port_stomp_unencrypted": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 61613
+                    }
+                ]
+            },
+            "s_port_stomp_encrypted": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 61614
+                    }
+                ]
+            }
+        },
+        "condition": "s_network_protocol_tcp and (s_port_mqtt_unencrypted or s_port_mqtt_encrypted or s_port_xmpp_client or s_port_xmpp_server or s_port_amqp_unencrypted or s_port_amqp_encrypted or s_port_stomp_unencrypted or s_port_stomp_encrypted)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 MQTT, XMPP, AMQP, STOMP와 같은 Publish/Subscribe 프로토콜을 사용하는 비정상적인 네트워크 통신을 탐지할 수 있습니다. 특히 알려지지 않은 프로세스나 호스트에서 이러한 프로토콜을 통한 외부 통신이 발생할 경우, 이는 C2 활동의 지표가 될 수 있습니다. 탐지된 이벤트는 자동 알람을 트리거하고, 해당 프로세스 및 네트워크 연결에 대한 심층 조사를 시작하여 침해사고 대응 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "MQTT, XMPP, AMQP, STOMP와 같은 Publish/Subscribe 프로토콜은 IoT 장치, 실시간 메시징 시스템, 클라우드 기반 애플리케이션 등 다양한 합법적인 용도로 사용됩니다. 따라서 정상적인 시스템 활동이나 애플리케이션으로 인해 오탐이 발생할 수 있습니다. 알려진 정상적인 통신 패턴, 신뢰할 수 있는 프로세스, 또는 특정 네트워크 구간에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

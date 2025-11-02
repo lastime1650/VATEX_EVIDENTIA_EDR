@@ -1,0 +1,65 @@
+{
+    "id": "T1071.001-WebProtocols",
+    "name": "Command and Control via Web Protocols",
+    "description": "Detects network communication utilizing common web protocols (HTTP/HTTPS) for command and control purposes. Adversaries often use these protocols to blend in with legitimate network traffic and evade detection.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0011",
+        "technique_id": "T1071",
+        "subtechnique_id": "T1071.001",
+        "data_sources": [
+            "Network:NetworkTrafficContent",
+            "Network:NetworkTrafficFlow"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_is_tcp_protocol": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "TCP"
+                    }
+                ]
+            },
+            "s2_dest_port_http_https": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 80
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 443
+                    }
+                ]
+            },
+            "s3_src_port_http_https": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.sourceport",
+                        "operator": "equals",
+                        "value": 80
+                    },
+                    {
+                        "field": "body.network.sourceport",
+                        "operator": "equals",
+                        "value": 443
+                    }
+                ]
+            }
+        },
+        "condition": "s1_is_tcp_protocol and (s2_dest_port_http_https or s3_src_port_http_https)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 발생하는 웹 프로토콜(HTTP/HTTPS) 기반의 네트워크 통신을 모니터링할 수 있습니다. 특히, 비정상적인 프로세스가 웹 포트(80, 443)를 통해 통신하거나, 알려지지 않은 외부 IP 주소와의 통신을 탐지하는 데 사용될 수 있습니다. 탐지된 이벤트는 잠재적인 명령 및 제어(C2) 활동의 초기 지표로 간주되어, 추가적인 네트워크 트래픽 분석 및 프로세스 조사로 이어질 수 있습니다.",
+    "false_positive": "정상적인 웹 브라우저 활동, 소프트웨어 업데이트, 클라우드 서비스와의 통신, 또는 기타 합법적인 애플리케이션이 HTTP/HTTPS 프로토콜을 사용하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 웹 트래픽 패턴이나 화이트리스트에 추가된 도메인 및 IP 주소를 기반으로 오탐을 줄일 수 있습니다."
+}

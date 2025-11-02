@@ -1,0 +1,55 @@
+{
+    "id": "T1564.010-ProcessArgumentSpoofing",
+    "name": "Process Argument Spoofing",
+    "description": "Detects attempts by a process to obtain write access to another process's memory, which can be used to modify command-line arguments (PEB) to evade detection. This technique is often associated with process hollowing or other memory injection methods.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1564",
+        "subtechnique_id": "T1564.010",
+        "data_sources": [
+            "Defense Evasion:Masquerading:Overwrite Process Arguments",
+            "Execution:Native API"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_processaccess_create_handle": {
+                "event_type": "processaccess",
+                "conditions": [
+                    {
+                        "field": "body.processaccess.handletype",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_processaccess_memory_write_desired": {
+                "event_type": "processaccess",
+                "conditions": [
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_VM_WRITE"
+                    },
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_VM_OPERATION"
+                    },
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_ALL_ACCESS"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_processaccess_create_handle and s2_processaccess_memory_write_desired"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 프로세스 인자 스푸핑 시도를 탐지할 수 있습니다. 특정 프로세스가 다른 프로세스의 메모리에 쓰기 권한을 가진 핸들을 생성하는 이벤트를 모니터링합니다. 이는 PEB(Process Environment Block)를 조작하여 악성 인자를 숨기거나 변경하는 공격의 핵심 지표가 될 수 있습니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 대상 프로세스에 대한 심층적인 포렌식 분석을 시작하는 데 사용될 수 있습니다. 특히, 프로세스 할로잉(Process Hollowing)과 같은 다른 방어 회피 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 디버거, 시스템 모니터링 도구, 또는 일부 합법적인 보안 소프트웨어(예: 안티바이러스 후킹)가 다른 프로세스의 메모리에 접근하거나 수정할 때 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 부모-자식 관계에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

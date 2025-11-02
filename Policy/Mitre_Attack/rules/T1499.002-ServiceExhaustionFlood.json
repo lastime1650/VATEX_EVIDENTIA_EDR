@@ -1,0 +1,229 @@
+{
+    "id": "T1499.002-ServiceExhaustionFlood",
+    "name": "Service Exhaustion Flood",
+    "description": "Detects attempts to perform a Denial of Service (DoS) attack by overwhelming network services through flood-based techniques. This includes the execution of known DoS tools or command-line scripts designed to generate high volumes of network traffic, such as HTTP floods or TCP SYN floods, aiming to exhaust target system resources.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0040",
+        "technique_id": "T1499",
+        "subtechnique_id": "T1499.002",
+        "data_sources": [
+            "Application Log:Application Log Content",
+            "Sensor Health:Host Status",
+            "Network Traffic:Network Traffic Flow",
+            "Network Traffic:Network Traffic Content"
+        ]
+    },
+    "platform": [
+        "windows",
+        "linux",
+        "macos"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_hping3_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "hping3"
+                    }
+                ]
+            },
+            "s2_hping3_flood_option": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--flood"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-S"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-U"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-A"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-F"
+                    }
+                ]
+            },
+            "s3_loic_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "loic.exe"
+                    }
+                ]
+            },
+            "s4_python_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "python"
+                    }
+                ]
+            },
+            "s4_slowloris_script": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "slowloris.py"
+                    }
+                ]
+            },
+            "s5_curl_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "curl"
+                    }
+                ]
+            },
+            "s5_curl_flood_params": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-X POST"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-X GET"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--data"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--header"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--limit-rate"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-m 1"
+                    }
+                ]
+            },
+            "s6_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s6_ps_invoke_webrequest": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-WebRequest"
+                    }
+                ]
+            },
+            "s6_ps_web_flood_params": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-Uri"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-Method"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-MaximumRedirection 0"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-TimeoutSec 1"
+                    }
+                ]
+            },
+            "s7_ps_tcpclient_obj": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-Object System.Net.Sockets.TcpClient"
+                    }
+                ]
+            },
+            "s7_ps_tcp_flood_params": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ConnectAsync"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "SendAsync"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "BeginConnect"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and ( (s2_hping3_exe and s2_hping3_flood_option) or s3_loic_exe or (s4_python_exe and s4_slowloris_script) or (s5_curl_exe and s5_curl_flood_params) or (s6_powershell_exe and s6_ps_invoke_webrequest and s6_ps_web_flood_params) or (s6_powershell_exe and s7_ps_tcpclient_obj and s7_ps_tcp_flood_params) )"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 서비스 고갈 플러드(Service Exhaustion Flood) 공격 시도를 탐지할 수 있습니다. 'hping3', 'loic.exe', 'slowloris.py'와 같은 알려진 DoS 도구의 실행이나, 'curl', 'powershell.exe'를 이용한 비정상적인 대량 네트워크 요청 명령줄 패턴을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스의 네트워크 활동을 집중적으로 분석하여 공격의 실제 영향과 범위를 파악하는 데 사용될 수 있습니다. 이는 서비스 가용성 위협에 대한 신속한 대응을 가능하게 합니다.",
+    "false_positive": "합법적인 네트워크 테스트 도구('hping3' 등)의 사용, 개발 및 테스트 환경에서의 성능 부하 테스트, 또는 특정 애플리케이션의 정상적인 대량 웹 요청으로 인해 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

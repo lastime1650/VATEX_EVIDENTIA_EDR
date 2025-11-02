@@ -1,0 +1,46 @@
+{
+    "id": "FEATURE-REG-Execution-Hijack-Location-Interaction",
+    "name": "Interaction with Execution-Related Registry Keys",
+    "description": "An interaction was detected with a registry key that can control or hijack process execution (e.g., IFEO, AppInit_DLLs, COM CLSID). This feature flags potent locations for further analysis.",
+    "severity": "low",
+    "mitre_attack": [
+        {
+            "tactic": "TA0002",
+            "technique_id": "T1546",
+            "subtechnique_id": "",
+            "data_sources": ["Windows Registry"]
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "execution_hijack_keys",
+                "selections": {
+                    "selection_interact_exec_key": {
+                        "event_type": "registry",
+                        "condition_method": "and",
+                        "conditions": [
+                            {
+                                "field": "body.registry.keyclass", 
+                                "operator": "regex", 
+                                "value": "^RegNtPre(SetValueKey|CreateKeyEx|DeleteKey)$"
+                            },
+                            {
+                                "field": "body.registry.name", 
+                                "operator": "regex", 
+                                "value": "(\\\\Image File Execution Options|\\\\WOW6432Node\\\\Microsoft\\\\Windows NT\\\\CurrentVersion\\\\Windows\\\\AppInit_DLLs|\\\\CLSID\\\\.*\\\\InprocServer32)"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "Interaction detected with a powerful execution-related registry key. Potential for process hijacking or DLL injection."
+                }
+            }
+        ]
+    },
+    "operational_usage": "These keys are extremely powerful. While legitimate installers (especially for shell extensions or debuggers) might touch them, any modification by scripts or user-land processes requires immediate investigation.",
+    "false_positive": "Can occur during installation of development tools, drivers with shell extensions, or some security software. SIEM needs to filter based on process reputation and context."
+}

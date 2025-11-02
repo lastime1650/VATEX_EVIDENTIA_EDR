@@ -1,0 +1,158 @@
+{
+    "id": "T1671-CloudApplicationIntegration",
+    "name": "Cloud Application Integration",
+    "description": "Detects attempts by adversaries to achieve persistence by leveraging OAuth application integrations in cloud environments (e.g., Microsoft 365, Google Workspace, Azure). This includes creating custom applications, adding legitimate applications, or co-opting existing integrations, often involving high-privileged accounts to maintain access or bypass multi-factor authentication.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1671",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Persistence:Cloud Application Integration",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Persistence:Account Manipulation:Additional Cloud Roles",
+            "Enterprise:Persistence:Create Account:Cloud Account"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_az_cli_tool_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "az.exe"
+                    }
+                ]
+            },
+            "s3_az_cli_app_creation_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ad app create"
+                    }
+                ]
+            },
+            "s4_az_cli_permission_modify_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ad app permission add"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ad app permission grant"
+                    }
+                ]
+            },
+            "s5_az_cli_role_assignment_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "role assignment create"
+                    }
+                ]
+            },
+            "s6_powershell_tool_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s7_powershell_az_ad_app_creation_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-AzADApplication"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-AzureADApplication"
+                    }
+                ]
+            },
+            "s8_powershell_az_ad_sp_creation_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-AzADServicePrincipal"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-AzureADServicePrincipal"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-MsolServicePrincipal"
+                    }
+                ]
+            },
+            "s9_powershell_az_ad_consent_grant_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Grant-AzADApplicationConsent"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Grant-AzureADApplicationConsent"
+                    }
+                ]
+            },
+            "s10_powershell_az_role_assignment_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-AzRoleAssignment"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and ((s2_az_cli_tool_path and (s3_az_cli_app_creation_cmd or s4_az_cli_permission_modify_cmd or s5_az_cli_role_assignment_cmd)) or (s6_powershell_tool_path and (s7_powershell_az_ad_app_creation_cmd or s8_powershell_az_ad_sp_creation_cmd or s9_powershell_az_ad_consent_grant_cmd or s10_powershell_az_role_assignment_cmd)))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Windows 엔드포인트에서 클라우드 애플리케이션 통합을 악용하려는 시도를 탐지할 수 있습니다. Azure CLI (az.exe) 또는 PowerShell을 사용하여 Azure AD 애플리케이션 생성, 권한 수정, 또는 역할 할당과 같은 명령줄 활동을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 클라우드 환경 로그에 대한 추가적인 조사를 시작하는 데 사용될 수 있습니다. 특히, 계정 탈취 또는 다른 방어 회피 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 클라우드 관리 작업, 자동화 스크립트, 또는 개발/운영 환경에서 합법적인 애플리케이션 등록 및 권한 설정 과정에서 오탐이 발생할 수 있습니다. 알려진 정상적인 관리 프로세스, 스크립트, 또는 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,65 @@
+{
+    "id": "T1037.001-LogonScriptWindows",
+    "name": "Logon Script (Windows)",
+    "description": "Detects attempts by adversaries to establish persistence by modifying or creating the HKCU\\Environment\\UserInitMprLogonScript Registry key, which allows a script to be automatically executed when a user logs into a Windows system. This technique is often used to ensure malicious code runs automatically upon user logon.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1037",
+        "subtechnique_id": "T1037.001",
+        "data_sources": [
+            "Enterprise:Persistence:Boot or Logon Autostart Execution:Registry Run Keys / Startup Folder",
+            "Enterprise:Persistence:Modify Registry"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_target_registry_key": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "equals",
+                        "value": "HKEY_CURRENT_USER\\Environment\\UserInitMprLogonScript"
+                    }
+                ]
+            },
+            "s2_registry_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPostSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreCreateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPostCreateKey"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_target_registry_key and s2_registry_action"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Windows 시스템에 대한 사용자 로그온 스크립트를 통한 지속성 메커니즘 설정 시도를 탐지할 수 있습니다. 특히 'HKCU\\Environment\\UserInitMprLogonScript' 레지스트리 키의 생성 또는 값 변경 이벤트를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 사용자 계정 및 변경된 스크립트 내용에 대한 추가적인 조사를 시작하는 데 사용될 수 있습니다. 이는 초기 침투 후 지속성을 확보하려는 공격자의 활동을 조기에 발견하는 데 중요합니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 사용자 환경 설정 스크립트, 또는 합법적인 애플리케이션이 사용자 로그온 스크립트 경로를 변경하는 경우 오탐이 발생할 수 있습니다. 특정 관리 스크립트나 소프트웨어 설치 프로세스에 의해 이 키가 합법적으로 수정될 수 있으므로, 이러한 경우에 대한 화이트리스트 정책을 고려해야 합니다."
+}

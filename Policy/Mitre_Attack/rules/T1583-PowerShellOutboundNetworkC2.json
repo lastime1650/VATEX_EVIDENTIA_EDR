@@ -1,0 +1,115 @@
+{
+    "id": "T1583-PowerShellOutboundNetworkC2",
+    "name": "PowerShell Outbound Network Connection (Indirect T1583)",
+    "description": "Detects PowerShell processes initiating outbound network connections, especially when command-line arguments suggest interaction with remote resources. While T1583 'Acquire Infrastructure' is a pre-attack technique focused on adversaries obtaining infrastructure, its subsequent usage on an endpoint often manifests as network communication from scripting environments for Command and Control (C2) or payload delivery.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1583",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Execution:Command and Scripting Interpreter:PowerShell",
+            "Command and Control:Application Layer Protocol"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "process_create_powershell": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "cmdline_invoke_webrequest": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-WebRequest"
+                    }
+                ]
+            },
+            "cmdline_system_net_webclient": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "System.Net.WebClient"
+                    }
+                ]
+            },
+            "cmdline_iwr_alias": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iwr"
+                    }
+                ]
+            },
+            "cmdline_download_file": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "DownloadFile"
+                    }
+                ]
+            },
+            "cmdline_download_string": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "DownloadString"
+                    }
+                ]
+            },
+            "cmdline_tcp_client": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Net.Sockets.TcpClient"
+                    }
+                ]
+            },
+            "outbound_tcp_connection": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    },
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "TCP"
+                    }
+                ]
+            }
+        },
+        "condition": "process_create_powershell and outbound_tcp_connection and (cmdline_invoke_webrequest or cmdline_system_net_webclient or cmdline_iwr_alias or cmdline_download_file or cmdline_download_string or cmdline_tcp_client)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 PowerShell이 외부 네트워크 통신을 시도하는 경우를 탐지할 수 있습니다. 특히 Invoke-WebRequest, System.Net.WebClient와 같은 네트워크 상호작용 명령어를 포함하는 경우, 이는 공격자가 획득한 인프라를 Command and Control 채널로 사용하거나 악성 페이로드를 다운로드하는 시도로 해석될 수 있습니다. 탐지된 이벤트는 즉시 알람을 발생시키고, 관련 프로세스 및 네트워크 연결에 대한 심층 조사를 시작하여 침해사고 대응의 우선순위를 지정하는 데 사용됩니다.",
+    "false_positive": "정상적인 시스템 관리 스크립트, 업데이트 프로세스, 또는 합법적인 애플리케이션이 PowerShell을 통해 외부 리소스와 통신하는 과정에서 오탐이 발생할 수 있습니다. 특히 개발 환경이나 특정 관리 도구 사용 시 발생할 가능성이 높습니다. 알려진 정상 PowerShell 스크립트나 특정 대상 IP/도메인을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

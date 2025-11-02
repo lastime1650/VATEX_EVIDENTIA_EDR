@@ -1,0 +1,164 @@
+{
+    "id": "T1480-ExecutionGuardrails",
+    "name": "Execution Guardrails",
+    "description": "Detects attempts by adversaries to use 'execution guardrails' by checking for specific environmental conditions (e.g., system information, network configuration, specific files, or registry keys) before executing a payload. This technique ensures the payload only runs on an intended target and minimizes collateral damage.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1480",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Command:CommandExecution",
+            "Enterprise:Discovery:System Information Discovery",
+            "Enterprise:Discovery:Network Share Discovery",
+            "Enterprise:Discovery:File and Directory Discovery",
+            "Enterprise:Discovery:Query Registry"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmdline_system_info_check": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "systeminfo"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wmic csproduct get name"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "hostname"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ipconfig"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "net view"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "nltest"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "whoami /all"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-WmiObject -Class Win32_ComputerSystem"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-ADDomain"
+                    }
+                ]
+            },
+            "s3_filesystem_access_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "read"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "open"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "exists"
+                    }
+                ]
+            },
+            "s4_filesystem_specific_path_check": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\Program Files\\SpecificEnterpriseApp\\config.ini"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "D:\\SharedData\\TargetMarker.txt"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\\\TargetServer\\ShareName\\Identifier.bin"
+                    }
+                ]
+            },
+            "s5_registry_access_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "QueryKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "OpenKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "EnumerateKey"
+                    }
+                ]
+            },
+            "s6_registry_specific_key_check": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\TargetCorp\\ProductKey"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\Software\\Policies\\TargetSetting"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_cmdline_system_info_check) or (s3_filesystem_access_action and s4_filesystem_specific_path_check) or (s5_registry_access_action and s6_registry_specific_key_check)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 공격자가 특정 환경 조건을 확인하는 '실행 가드레일' 시도를 탐지할 수 있습니다. 시스템 정보, 네트워크 구성, 특정 파일 또는 레지스트리 키 접근을 위한 명령 실행 및 API 호출을 모니터링합니다. 탐지된 이벤트는 공격자가 특정 대상을 식별하고 있는지 또는 페이로드 실행을 준비하고 있는지 나타낼 수 있으며, 이는 침해사고 대응 및 조사 우선순위 지정에 중요한 정보를 제공합니다. 특히, 다른 Discovery 활동과 결합될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 소프트웨어 설치 프로그램, 업데이트 프로세스, 또는 합법적인 애플리케이션이 시스템 정보를 조회하거나 특정 파일/레지스트리 키에 접근하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄/경로/레지스트리 키 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다. s4_filesystem_specific_path_check 및 s6_registry_specific_key_check의 'value' 필드는 실제 환경에 맞게 구체적인 값으로 커스터마이징되어야 합니다."
+}

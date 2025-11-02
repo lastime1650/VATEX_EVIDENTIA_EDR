@@ -1,0 +1,166 @@
+{
+    "id": "T1546.011-ApplicationShimming",
+    "name": "Application Shimming",
+    "description": "Detects attempts to establish persistence and/or elevate privileges by executing malicious content triggered by application shims. This includes monitoring the execution of sdbinst.exe with install/uninstall flags, modifications to registry keys related to installed or custom shim databases, and the creation or modification of .sdb files in AppPatch custom directories. Adversaries use shims to apply fixes to applications, but they can be abused to bypass UAC, inject DLLs, disable DEP/SEH, and intercept memory addresses.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0004",
+        "technique_id": "T1546",
+        "subtechnique_id": "T1546.011",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Persistence:Modify Registry",
+            "Enterprise:Defense Evasion:File and Directory Permissions Modification:Windows File and Directory Permissions Modification"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_sdbinst_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "sdbinst.exe"
+                    }
+                ]
+            },
+            "s2_process_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s3_cmdline_install_flag": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/p"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/g"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/z"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/u"
+                    }
+                ]
+            },
+            "s4_reg_modify_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreCreateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPostCreateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreRenameKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPostRenameKey"
+                    }
+                ]
+            },
+            "s5_reg_installedsdb_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\AppCompatFlags\\InstalledSDB"
+                    }
+                ]
+            },
+            "s6_reg_customsdb_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\AppCompatFlags\\Custom"
+                    }
+                ]
+            },
+            "s7_file_sdb_action_create_write": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    }
+                ]
+            },
+            "s8_file_custom_sdb_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\AppPatch\\custom\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\AppPatch\\AppPatch64\\Custom\\"
+                    }
+                ]
+            },
+            "s9_file_sdb_extension": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".sdb"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_sdbinst_exe_path and s2_process_action_create and s3_cmdline_install_flag) or (s4_reg_modify_action and (s5_reg_installedsdb_path or s6_reg_customsdb_path)) or (s7_file_sdb_action_create_write and s8_file_custom_sdb_path and s9_file_sdb_extension)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 애플리케이션 시밍을 통한 권한 상승 및 지속성 유지 시도를 탐지할 수 있습니다. sdbinst.exe의 실행 이벤트와 함께 비정상적인 명령줄 인자, InstalledSDB 또는 Custom Shim Database 관련 레지스트리 키의 생성/수정/이름 변경, 그리고 AppPatch 커스텀 디렉터리 내 .sdb 파일의 생성/쓰기/덮어쓰기 활동을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 파일/레지스트리 변경에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 이는 특히 방어 회피 및 지속성 유지 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 업데이트, 소프트웨어 설치 프로그램, 또는 합법적인 애플리케이션 호환성 도구가 sdbinst.exe를 사용하거나 shim 관련 레지스트리/파일을 수정하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 sdbinst.exe 호출 패턴, 특정 시스템 프로세스, 또는 화이트리스트에 추가된 애플리케이션 호환성 픽스에 대해 예외 처리를 적용하여 오탐을 줄일 수 있습니다."
+}

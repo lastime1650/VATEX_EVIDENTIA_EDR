@@ -1,0 +1,46 @@
+{
+    "id": "FEATURE-REG-User-Shell-Folders-Redirection",
+    "name": "User Shell Folders Path Modification",
+    "description": "Detects modification of the 'User Shell Folders' registry key, which defines paths to critical user directories like Startup, Desktop, etc. This can be used for persistence by redirecting shortcuts or file creation.",
+    "severity": "low",
+    "mitre_attack": [
+        {
+            "tactic": "TA0003",
+            "technique_id": "T1547",
+            "subtechnique_id": "T1547.001",
+            "data_sources": ["Windows Registry"]
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "shell_folder_redirect",
+                "selections": {
+                    "selection_set_shell_folder": {
+                        "event_type": "registry",
+                        "condition_method": "and",
+                        "conditions": [
+                            {
+                                "field": "body.registry.keyclass", 
+                                "operator": "equals", 
+                                "value": "RegNtPreSetValueKey"
+                            },
+                            {
+                                "field": "body.registry.name", 
+                                "operator": "regex", 
+                                "value": ".*\\\\Software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Explorer\\\\User Shell Folders"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "A value within 'User Shell Folders' was modified. SIEM should inspect the new path for suspicious locations."
+                }
+            }
+        ]
+    },
+    "operational_usage": "This is a feature that flags a subtle but effective persistence method. A change to the 'Startup' or 'Programs' value in this key is particularly noteworthy. Compare the new path against known-good locations.",
+    "false_positive": "Some user profile migration tools or corporate login scripts might modify these values. Focus on modifications made by unexpected processes."
+}

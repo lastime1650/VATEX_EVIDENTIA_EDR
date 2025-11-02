@@ -1,0 +1,127 @@
+{
+    "id": "T1591.003-IdentifyBusinessTempo",
+    "name": "Identify Business Tempo",
+    "description": "Detects attempts by an adversary on a compromised host to gather information about the victim's business tempo, such as operational hours, shift schedules, or purchasing/shipping patterns. This can involve executing system commands, accessing relevant internal documents, or querying system APIs related to user activity and system uptime.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0043",
+        "technique_id": "T1591",
+        "subtechnique_id": "T1591.003",
+        "data_sources": [
+            "Enterprise:Reconnaissance:Gather Victim Org Information:Identify Business Tempo",
+            "Enterprise:Discovery:File and Directory Discovery",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Native API"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_cmdline_systeminfo_uptime": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "systeminfo"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Boot Time"
+                    }
+                ]
+            },
+            "s2_cmdline_net_statistics_workstation": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "net statistics workstation"
+                    }
+                ]
+            },
+            "s3_filesystem_read_open_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "read"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "open"
+                    }
+                ]
+            },
+            "s4_filesystem_filepath_keywords": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "schedule"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "shift"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "holiday"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "purchase_order"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "shipping_manifest"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "calendar"
+                    }
+                ]
+            },
+            "s5_apicall_wtsquerysessioninfo": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "WTSQuerySessionInformationW"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "WTSQuerySessionInformationA"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_cmdline_systeminfo_uptime or s2_cmdline_net_statistics_workstation or (s3_filesystem_read_open_action and s4_filesystem_filepath_keywords) or s5_apicall_wtsquerysessioninfo"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 공격자가 시스템 내에서 기업의 운영 시간, 근무 일정, 구매/배송 주기 등 비즈니스 템포 정보를 수집하려는 시도를 탐지할 수 있습니다. 'systeminfo' 명령을 통한 부팅 시간 조회, 'net statistics workstation'을 통한 네트워크 활동 통계 확인, 'schedule', 'shift', 'holiday' 등 비즈니스 템포 관련 키워드를 포함하는 파일에 대한 읽기/열기 접근, 또는 사용자 세션 정보를 조회하는 API 호출 등을 모니터링합니다. 탐지된 이벤트는 초기 정찰 단계의 활동으로 분류되며, 추가적인 조사 및 다른 위협 활동과의 연관성 분석에 활용될 수 있습니다. 특히, 다른 Discovery 또는 Collection 활동과 결합될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 백신 소프트웨어, 특정 애플리케이션의 내부 로직, 또는 합법적인 사용자 활동(예: 개인 일정 파일 열람)으로 인해 오탐이 발생할 수 있습니다. 알려진 정상 프로세스, 명령줄 패턴, 또는 파일 경로를 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

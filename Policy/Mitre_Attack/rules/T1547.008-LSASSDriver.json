@@ -1,0 +1,137 @@
+{
+    "id": "T1547.008-LSASSDriver",
+    "name": "Persistence via LSASS Driver",
+    "description": "Adversaries may modify or add LSASS drivers to obtain persistence on compromised systems. The Windows security subsystem is a set of components that manage and enforce the security policy for a computer or domain. The Local Security Authority (LSA) is the main component responsible for local security policy and user authentication. The LSA includes multiple dynamic link libraries (DLLs) associated with various other security functions, all of which run in the context of the LSA Subsystem Service (LSASS) lsass.exe process. Adversaries may target LSASS drivers to obtain persistence. By either replacing or adding illegitimate drivers (e.g., Hijack Execution Flow), an adversary can use LSA operations to continuously execute malicious payloads.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1547",
+        "subtechnique_id": "T1547.008",
+        "data_sources": [
+            "Module:ModuleLoad",
+            "File:FileCreation",
+            "Driver:DriverLoad",
+            "File:FileModification"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_reg_lsa_packages_set_value_keyclass": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "SetValueKey"
+                    }
+                ]
+            },
+            "s2_reg_lsa_auth_package_name": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Lsa\\Authentication Packages"
+                    }
+                ]
+            },
+            "s3_reg_lsa_notification_package_name": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Lsa\\Notification Packages"
+                    }
+                ]
+            },
+            "s4_reg_lsa_security_package_name": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Lsa\\Security Packages"
+                    }
+                ]
+            },
+            "s5_fs_action_create_or_write": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "superseded"
+                    }
+                ]
+            },
+            "s6a_fs_filepath_system32": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "C:\\Windows\\System32\\"
+                    }
+                ]
+            },
+            "s6b_fs_filepath_ends_dll_or_sys": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".sys"
+                    }
+                ]
+            },
+            "s7_api_lsa_functions": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.apiname",
+                        "operator": "equals",
+                        "value": "LsaRegisterLogonProcess"
+                    },
+                    {
+                        "field": "body.apicall.apiname",
+                        "operator": "equals",
+                        "value": "LsaApInitializePackage"
+                    },
+                    {
+                        "field": "body.apicall.apiname",
+                        "operator": "equals",
+                        "value": "LsaAddSecurityPackage"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_reg_lsa_packages_set_value_keyclass and (s2_reg_lsa_auth_package_name or s3_reg_lsa_notification_package_name or s4_reg_lsa_security_package_name)) or (s5_fs_action_create_or_write and s6a_fs_filepath_system32 and s6b_fs_filepath_ends_dll_or_sys) or s7_api_lsa_functions"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 LSASS 드라이버 조작을 통한 영구적인 위협 시도를 탐지할 수 있습니다. LSA 인증/알림/보안 패키지 관련 레지스트리 키에 대한 값 설정 시도, 시스템32 디렉터리 내의 DLL 또는 SYS 파일 생성/수정, 또는 LSA 관련 API 호출을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, LSASS와 같은 민감한 시스템 구성 요소에 대한 악의적인 변경 시도를 신속하게 조사하고 대응하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 업데이트, 드라이버 설치, 보안 소프트웨어 또는 합법적인 시스템 관리 도구가 LSA 관련 레지스트리 키를 수정하거나 시스템 파일을 생성/수정하는 경우 오탐이 발생할 수 있습니다. 특정 프로세스나 파일 경로에 대한 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,156 @@
+{
+    "id": "T1049-SystemNetworkConnectionsDiscovery",
+    "name": "System Network Connections Discovery",
+    "description": "Detects attempts to get a listing of network connections to or from the compromised system or from remote systems by querying for information. This includes execution of commands like 'netstat', 'net use', 'net session', or PowerShell cmdlets, and API calls to retrieve network connection details.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1049",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Discovery:System Network Connections Discovery",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Native API"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_netstat_cmdline_pattern": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "netstat"
+                    }
+                ]
+            },
+            "s2_netstat_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "netstat.exe"
+                    }
+                ]
+            },
+            "s3_net_use_cmdline_pattern": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "net use"
+                    }
+                ]
+            },
+            "s3_net_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "net.exe"
+                    }
+                ]
+            },
+            "s4_net_session_cmdline_pattern": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "net session"
+                    }
+                ]
+            },
+            "s5_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s5_powershell_net_cmdlet_pattern": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-NetTCPConnection"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-NetUDPEndpoint"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-NetAdapter"
+                    }
+                ]
+            },
+            "s6_api_gettcptable": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetTcpTable"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetExtendedTcpTable"
+                    }
+                ]
+            },
+            "s7_api_getudptable": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetUdpTable"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetExtendedUdpTable"
+                    }
+                ]
+            },
+            "s8_api_getipnettable": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetIpNetTable"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action AND s2_netstat_cmdline_pattern AND s2_netstat_exe_path) OR (s1_process_create_action AND s3_net_use_cmdline_pattern AND s3_net_exe_path) OR (s1_process_create_action AND s4_net_session_cmdline_pattern AND s3_net_exe_path) OR (s1_process_create_action AND s5_powershell_exe_path AND s5_powershell_net_cmdlet_pattern) OR (s6_api_gettcptable OR s7_api_getudptable OR s8_api_getipnettable)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템의 네트워크 연결 정보 수집 시도를 탐지할 수 있습니다. 'netstat', 'net use', 'net session'과 같은 명령 실행, PowerShell을 통한 네트워크 연결 열거 시도, 또는 네트워크 연결 정보 조회 API 호출 등을 모니터링합니다. 탐지된 이벤트는 자동 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히 다른 Discovery 또는 Lateral Movement 활동과 결합될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 네트워크 모니터링 소프트웨어, 또는 합법적인 애플리케이션이 네트워크 연결 정보를 조회하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

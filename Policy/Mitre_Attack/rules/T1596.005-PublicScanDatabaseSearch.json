@@ -1,0 +1,166 @@
+{
+    "id": "T1596.005-PublicScanDatabaseSearch",
+    "name": "Public Scan Database Search",
+    "description": "Detects attempts by a process on the system to access known public scan databases (e.g., Shodan, Censys) via web browsers or command-line tools. This activity, if originating from a compromised host, could indicate an adversary performing reconnaissance from within the network.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1596",
+        "subtechnique_id": "T1596.005",
+        "data_sources": [
+            "Enterprise:Reconnaissance:Search Open Technical Databases:Scan Databases",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Command and Control:Application Layer Protocol:Web Protocols"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_creation_event": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_browser_or_cmdtool_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "chrome.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "msedge.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "firefox.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "curl.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "wget.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "python.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s3_shodan_domain_in_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "shodan.io"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "shodan.com"
+                    }
+                ]
+            },
+            "s4_censys_domain_in_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "censys.io"
+                    }
+                ]
+            },
+            "s5_network_to_shodan_domain": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationip",
+                        "operator": "equals",
+                        "value": "198.20.69.100"
+                    },
+                    {
+                        "field": "body.network.destinationip",
+                        "operator": "equals",
+                        "value": "198.20.70.0"
+                    },
+                    {
+                        "field": "body.network.destinationip",
+                        "operator": "equals",
+                        "value": "45.33.32.156"
+                    },
+                    {
+                        "field": "body.network.destinationip",
+                        "operator": "equals",
+                        "value": "66.228.40.0"
+                    }
+                ]
+            },
+            "s6_network_to_censys_domain": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationip",
+                        "operator": "equals",
+                        "value": "162.142.125.100"
+                    },
+                    {
+                        "field": "body.network.destinationip",
+                        "operator": "equals",
+                        "value": "162.142.125.101"
+                    },
+                    {
+                        "field": "body.network.destinationip",
+                        "operator": "equals",
+                        "value": "162.142.125.102"
+                    }
+                ]
+            },
+            "s7_network_web_protocol": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "TCP"
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 80
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 443
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_creation_event and s2_browser_or_cmdtool_exe and (s3_shodan_domain_in_cmdline or s4_censys_domain_in_cmdline)) or (s7_network_web_protocol and (s5_network_to_shodan_domain or s6_network_to_censys_domain))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템 내부에서 Shodan 또는 Censys와 같은 공개 스캔 데이터베이스에 접근하는 시도를 탐지할 수 있습니다. 이는 공격자가 침투 후 추가적인 정찰을 수행하거나, 탈취한 시스템의 외부 노출 정보를 확인하려는 행동일 수 있습니다. 웹 브라우저 또는 커맨드라인 도구를 통한 접근, 그리고 해당 서비스로의 네트워크 연결을 모니터링하여 탐지된 이벤트에 대해 높은 우선순위를 부여하고, 관련 프로세스 및 사용자 활동에 대한 심층 조사를 시작하는 데 활용됩니다.",
+    "false_positive": "정상적인 시스템 관리자, 보안 연구원 또는 IT 직원이 합법적인 목적으로 Shodan이나 Censys와 같은 서비스를 사용하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 사용 패턴을 화이트리스트에 추가하거나, 특정 사용자 계정 및 프로세스에 대한 예외 처리를 통해 오탐을 줄일 수 있습니다."
+}

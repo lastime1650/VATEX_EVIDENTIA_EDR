@@ -1,0 +1,49 @@
+{
+    "id": "T1595.001-ScanningIPBlocks",
+    "name": "Scanning IP Blocks",
+    "description": "Adversaries may scan victim IP blocks to gather information that can be used during targeting. Public IP addresses may be allocated to organizations by block, or a range of sequential addresses. Adversaries may scan IP blocks in order to Gather Victim Network Information, such as which IP addresses are actively in use as well as more detailed information about hosts assigned these addresses. Scans may range from simple pings (ICMP requests and responses) to more nuanced scans that may reveal host software/versions via server banners or other network artifacts.(Citation: Botnet Scan) Information from these scans may reveal opportunities for other forms of reconnaissance (ex: Search Open Websites/Domains or Search Open Technical Databases), establishing operational resources (ex: Develop Capabilities or Obtain Capabilities), and/or initial access (ex: External Remote Services).",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1595",
+        "subtechnique_id": "T1595.001",
+        "data_sources": [
+            "Enterprise:Reconnaissance:Active Scanning:Scanning IP Blocks"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_outbound_direction": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    }
+                ]
+            },
+            "s2_icmp_protocol": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "ICMP"
+                    },
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "ICMPv6"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_outbound_direction and s2_icmp_protocol"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 발생하는 IP 블록 스캔 활동의 초기 징후를 탐지할 수 있습니다. 특히 ICMP 프로토콜을 이용한 아웃바운드 통신을 모니터링하여 잠재적인 정찰 시도를 식별합니다. 탐지된 이벤트는 초기 정찰 단계의 활동으로 분류되어, 추가적인 네트워크 트래픽 분석 및 관련 프로세스 조사를 위한 트리거로 사용될 수 있습니다. 이 규칙은 대량의 ICMP 트래픽을 집계하는 상위 시스템과 연동될 때 더욱 효과적입니다.",
+    "false_positive": "정상적인 네트워크 진단 도구(예: 'ping' 유틸리티), 시스템 모니터링 에이전트, 또는 합법적인 애플리케이션이 네트워크 연결성 확인을 위해 ICMP를 사용하는 경우 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 IP 대역에 대한 ICMP 통신을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

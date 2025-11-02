@@ -1,0 +1,207 @@
+{
+    "id": "T1070.009-ClearPersistence",
+    "name": "Clear Persistence",
+    "description": "Detects attempts by adversaries to clear artifacts associated with previously established persistence on a host system. This may involve deleting files from startup folders, removing registry run keys, deleting services, or unregistering scheduled tasks to remove evidence of their activity.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1070",
+        "subtechnique_id": "T1070.009",
+        "data_sources": [
+            "Enterprise:Defense Evasion:Indicator Removal:File Deletion",
+            "Enterprise:Defense Evasion:Modify Registry",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Defense Evasion:Indicator Removal:Clear Persistence"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_file_delete_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "remove"
+                    }
+                ]
+            },
+            "s2_file_persistence_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\StartUp\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\Windows\\System32\\Tasks\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\Windows\\SysWOW64\\Tasks\\"
+                    }
+                ]
+            },
+            "s3_registry_delete_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtDeleteKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtDeleteValueKey"
+                    }
+                ]
+            },
+            "s4_registry_persistence_key": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options\\"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "equals",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\BootExecute"
+                    }
+                ]
+            },
+            "s5_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s6_cmdline_file_delete_utility": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "del "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "erase "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "rmdir "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "rd "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Remove-Item "
+                    }
+                ]
+            },
+            "s7_cmdline_registry_delete_utility": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "reg delete "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Remove-ItemProperty "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Remove-Item -Path 'HK"
+                    }
+                ]
+            },
+            "s8_cmdline_service_delete_utility": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "sc delete "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Remove-Service "
+                    }
+                ]
+            },
+            "s9_cmdline_scheduled_task_delete_utility": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "schtasks /delete"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Unregister-ScheduledTask "
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_file_delete_action and s2_file_persistence_path) or (s3_registry_delete_action and s4_registry_persistence_key) or (s5_process_create_action and (s6_cmdline_file_delete_utility or s7_cmdline_registry_delete_utility or s8_cmdline_service_delete_utility or s9_cmdline_scheduled_task_delete_utility))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 공격자가 시스템에서 이전에 설정한 지속성 메커니즘을 제거하려는 시도를 탐지할 수 있습니다. 시작 폴더의 파일 삭제, 레지스트리 Run 키 또는 서비스 키 삭제, 그리고 파일, 레지스트리, 서비스, 예약 작업을 삭제하는 명령줄 유틸리티 실행을 모니터링합니다. 탐지된 이벤트는 공격자가 활동 흔적을 지우려는 방어 회피 전술의 일환일 수 있으므로, 높은 심각도로 분류되어 즉각적인 조사 및 침해사고 대응 프로세스에 착수하는 데 활용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 소프트웨어 제거 또는 업데이트 프로세스, 합법적인 스크립트가 임시 파일, 레지스트리 항목, 서비스 또는 예약 작업을 정리하는 과정에서 오탐이 발생할 수 있습니다. 특히 관리자 계정에서 실행되는 일반적인 정리 작업은 오탐을 유발할 가능성이 높습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

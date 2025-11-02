@@ -1,0 +1,70 @@
+{
+    "id": "T1087.003-EmailAccountDiscovery",
+    "name": "Email Account Discovery via PowerShell",
+    "description": "Detects attempts to enumerate email addresses and accounts using PowerShell cmdlets like Get-GlobalAddressList, often seen in Exchange environments. Adversaries use this technique to gather information about target organizations' communication infrastructure.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1087",
+        "subtechnique_id": "T1087.003",
+        "data_sources": [
+            "Enterprise:Discovery:Account Discovery:Email Account",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_powershell_executable": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s3_get_globaladdresslist_cmdlet": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-GlobalAddressList"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-AddressList"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-Recipient"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create and s2_powershell_executable and s3_get_globaladdresslist_cmdlet"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 PowerShell을 통한 이메일 계정 및 주소 목록 수집 시도를 탐지할 수 있습니다. 특히 Exchange 환경에서 Get-GlobalAddressList와 같은 cmdlet의 사용을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 명령줄 인자에 대한 추가적인 조사를 시작하는 데 사용될 수 있습니다. 이는 초기 정찰 또는 내부 네트워크 탐색 단계에서 공격자가 사용하는 중요한 전술이므로, 다른 Discovery 또는 Collection 활동과 결합될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 스크립트, Exchange 관리 도구, 또는 합법적인 애플리케이션이 이메일 주소록을 조회하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상적인 PowerShell 스크립트나 특정 관리 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

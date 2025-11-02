@@ -1,0 +1,46 @@
+{
+    "id": "FEATURE-REG-New-Service-Creation",
+    "name": "New Windows Service Registered via Registry",
+    "description": "Detects the creation of a new service key under 'CurrentControlSet\\Services'. This is a fundamental feature for identifying persistence attempts via new service installation.",
+    "severity": "medium",
+    "mitre_attack": [
+        {
+            "tactic": "TA0003",
+            "technique_id": "T1543",
+            "subtechnique_id": "T1543.003",
+            "data_sources": ["Windows Registry"]
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "new_service_key",
+                "selections": {
+                    "selection_create_service_key": {
+                        "event_type": "registry",
+                        "condition_method": "and",
+                        "conditions": [
+                            {
+                                "field": "body.registry.keyclass", 
+                                "operator": "equals", 
+                                "value": "RegNtPreCreateKeyEx"
+                            },
+                            {
+                                "field": "body.registry.name", 
+                                "operator": "regex", 
+                                "value": ".*\\\\SYSTEM\\\\CurrentControlSet\\\\Services\\\\[^\\\\]+$"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "A new Windows service was created in the registry. SIEM should analyze the service name and its properties (ImagePath, Start type)."
+                }
+            }
+        ]
+    },
+    "operational_usage": "While legitimate software installers create services, this alert provides the critical 'moment of birth' for a service. SIEM should immediately correlate this with the creating process and subsequent file events related to the service's 'ImagePath'. Creation by cmd.exe, powershell.exe, or sc.exe is common for malicious activity.",
+    "false_positive": "Expected during legitimate software installation. The value is in flagging the event for correlation, not as a standalone threat."
+}

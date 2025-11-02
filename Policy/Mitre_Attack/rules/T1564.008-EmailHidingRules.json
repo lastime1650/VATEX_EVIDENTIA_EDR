@@ -1,0 +1,120 @@
+{
+    "id": "T1564.008-EmailHidingRules",
+    "name": "Email Hiding Rules",
+    "description": "Adversaries may use email rules to hide inbound emails in a compromised user's mailbox. This technique involves creating or modifying inbox rules through email clients or PowerShell cmdlets like New-InboxRule and Set-InboxRule to move, mark as read, or delete emails, often to hide security alerts, C2 communications, or phishing responses.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1564",
+        "subtechnique_id": "T1564.008",
+        "data_sources": [
+            "Command:Command Execution",
+            "File:File Modification"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s3_new_inboxrule_cmdlet": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-InboxRule"
+                    }
+                ]
+            },
+            "s4_set_inboxrule_cmdlet": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-InboxRule"
+                    }
+                ]
+            },
+            "s5_inboxrule_suspicious_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-MoveToFolder"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-MarkAsRead"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-Delete"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "malware"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "suspicious"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "phish"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "hack"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "security alert"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "C2"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create and s2_powershell_exe_path and (s3_new_inboxrule_cmdlet or s4_set_inboxrule_cmdlet) and s5_inboxrule_suspicious_keywords"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 사용자 사서함에서 이메일 숨기기 규칙 생성 또는 수정 시도를 탐지할 수 있습니다. 특히 PowerShell의 New-InboxRule 및 Set-InboxRule cmdlet을 사용하는 프로세스 생성 이벤트를 모니터링하며, 이메일 이동, 읽음 표시, 삭제와 같은 악성 규칙의 특징적인 키워드 및 'malware', 'suspicious', 'phish', 'hack', 'security alert', 'C2'와 같은 악성 이메일 필터링 키워드를 포함하는 명령줄 인자를 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 계정의 침해 여부 및 추가적인 방어 회피 활동에 대한 조사를 시작하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 합법적인 이메일 관리 스크립트, 또는 사용자가 직접 이메일 필터링 규칙을 설정하는 과정에서 오탐이 발생할 수 있습니다. 특히 '-MoveToFolder'와 같은 일반적인 규칙 설정 옵션이 포함된 경우 발생 가능성이 높습니다. 알려진 정상적인 PowerShell 스크립트나 특정 사용자 계정에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

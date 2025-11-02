@@ -1,0 +1,184 @@
+{
+    "id": "T1036.007-DoubleFileExtension",
+    "name": "Double File Extension",
+    "description": "Detects attempts by adversaries to masquerade the true file type by abusing a double extension in the filename, where a benign-looking first extension is followed by a dangerous second extension (e.g., 'document.pdf.exe'). This technique is commonly used to trick users into executing malicious code, often delivered via phishing.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1036",
+        "subtechnique_id": "T1036.007",
+        "data_sources": [
+            "Enterprise:Defense Evasion:Masquerading:Double File Extension"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_file_creation_or_modification": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    }
+                ]
+            },
+            "s2_filepath_ends_with_dangerous_extension": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".scr"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".com"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".bat"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".cmd"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".ps1"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".vbs"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".js"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".hta"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".lnk"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    }
+                ]
+            },
+            "s3_filepath_contains_benign_extension_prefix": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": ".txt."
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": ".doc."
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": ".docx."
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": ".xls."
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": ".xlsx."
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": ".ppt."
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": ".pptx."
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": ".pdf."
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": ".jpg."
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": ".jpeg."
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": ".png."
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": ".gif."
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": ".zip."
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": ".rar."
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": ".7z."
+                    }
+                ]
+            }
+        },
+        "condition": "s1_file_creation_or_modification and s2_filepath_ends_with_dangerous_extension and s3_filepath_contains_benign_extension_prefix"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 이중 확장자를 사용하여 합법적인 파일로 위장한 악성 파일 생성 또는 수정 시도를 탐지할 수 있습니다. 파일 시스템 이벤트에서 파일 생성/쓰기/덮어쓰기 작업과 함께, 파일 경로가 일반적인 문서/이미지/압축 파일 확장자로 시작하고 실행 가능한 위험한 확장자로 끝나는 패턴을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 파일 및 관련된 프로세스에 대한 심층적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히 피싱 캠페인이나 초기 침투 단계에서 유용합니다.",
+    "false_positive": "매우 드물지만, 특정 개발 도구나 레거시 애플리케이션이 비정상적인 파일 명명 규칙을 사용하거나 임시 파일을 생성하는 과정에서 이중 확장자가 발생할 수 있습니다. 예를 들어, 백업 유틸리티가 'filename.bak.zip'과 같은 파일을 생성할 수 있습니다. 그러나 'benign.dangerous' 패턴은 일반적으로 악성 활동과 강하게 연관됩니다. 알려진 정상적인 패턴이나 특정 애플리케이션을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

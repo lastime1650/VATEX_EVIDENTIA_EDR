@@ -1,0 +1,124 @@
+{
+    "id": "T1578.004-RevertCloudInstance",
+    "name": "Revert Cloud Instance",
+    "description": "Detects attempts by an adversary to revert a cloud instance to a previous state, typically by using cloud CLI tools from a compromised endpoint to restore snapshots or roll back VM configurations, in order to evade detection and remove evidence. This technique focuses on the initiation of such actions from a Windows endpoint.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1578",
+        "subtechnique_id": "T1578.004",
+        "data_sources": [
+            "Process:ProcessCreation"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "gcloud_instance_restore_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "gcloud.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "compute instances restore-from-snapshot"
+                    }
+                ]
+            },
+            "aws_create_snapshot_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "aws.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ec2 create-snapshot"
+                    }
+                ]
+            },
+            "aws_delete_snapshot_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "aws.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ec2 delete-snapshot"
+                    }
+                ]
+            },
+            "az_create_snapshot_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "az.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "snapshot create"
+                    }
+                ]
+            },
+            "az_delete_snapshot_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "az.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "snapshot delete"
+                    }
+                ]
+            }
+        },
+        "condition": "gcloud_instance_restore_command or aws_create_snapshot_command or aws_delete_snapshot_command or az_create_snapshot_command or az_delete_snapshot_command"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 침해된 Windows 엔드포인트에서 클라우드 인스턴스 복원 또는 스냅샷 조작을 시도하는 행위를 탐지할 수 있습니다. 특히 공격자가 악성 활동 후 증거를 제거하거나 탐지를 회피하기 위해 클라우드 인스턴스를 이전 상태로 되돌리려 할 때 유용합니다. 탐지된 이벤트는 자동 알람을 트리거하고, 해당 프로세스 및 사용자 활동에 대한 심층 조사를 시작하는 데 사용됩니다.",
+    "false_positive": "정상적인 클라우드 관리자나 자동화된 스크립트가 클라우드 인스턴스 스냅샷을 생성하거나 삭제, 또는 복원하는 과정에서 탐지될 수 있습니다. 알려진 관리 도구의 명령줄 패턴이나 특정 사용자 계정을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

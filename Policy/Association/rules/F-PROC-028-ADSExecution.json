@@ -1,0 +1,38 @@
+{
+    "id": "F-PROC-028-ADSExecution",
+    "name": "Feature: Execution from Alternate Data Stream",
+    "description": "Identifies processes being launched with a command line that includes a colon ':', which is characteristic of executing content from an NTFS Alternate Data Stream (ADS).",
+    "severity": "medium",
+    "mitre_attack": [
+        {
+            "tactic": "TA0005",
+            "technique_id": "T1564",
+            "subtechnique_id": "T1564.004"
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "ads_execution_pattern",
+                "selections": {
+                    "selection_ads_exec": {
+                        "event_type": "process",
+                        "condition_method": "and",
+                        "conditions": [
+                            {
+                                "field": "body.process.commandline",
+                                "operator": "regex",
+                                "value": ":\\w+\\.(exe|dll|vbs|js|ps1)"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "Feature Captured: Potential execution from an Alternate Data Stream."
+                }
+            }
+        ]
+    }
+}

@@ -1,0 +1,171 @@
+{
+    "id": "T1496.004-CloudServiceHijacking",
+    "name": "Cloud Service Hijacking",
+    "description": "Adversaries may leverage compromised software-as-a-service (SaaS) applications to complete resource-intensive tasks, which may impact hosted service availability. For example, adversaries may leverage email and messaging services, such as AWS Simple Email Service (SES), AWS Simple Notification Service (SNS), SendGrid, and Twilio, in order to send large quantities of spam / Phishing emails and SMS messages. Alternatively, they may engage in LLMJacking by leveraging reverse proxies to hijack the power of cloud-hosted AI models. Leveraging SaaS applications may cause the victim to incur significant financial costs, use up service quotas, and otherwise impact availability.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1496",
+        "subtechnique_id": "T1496.004",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Process:CommandExecution",
+            "Network:NetworkConnection"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_aws_cli_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "aws.exe"
+                    }
+                ]
+            },
+            "s3_az_cli_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "az.exe"
+                    }
+                ]
+            },
+            "s4_gcloud_cli_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "gcloud.exe"
+                    }
+                ]
+            },
+            "s5_mass_comm_commands": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ses send-email"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "sns publish"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "communication send"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "eventgrid publish"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "sendgrid"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "twilio"
+                    }
+                ]
+            },
+            "s6_proxy_tool_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ngrok"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "socat"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "frpc"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "chisel"
+                    }
+                ]
+            },
+            "s7_llm_related_proxy_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "openai.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "anthropic.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "google.ai"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "llm"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ai"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "model"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "proxy"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "tunnel"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create and (((s2_aws_cli_execution or s3_az_cli_execution or s4_gcloud_cli_execution) and s5_mass_comm_commands) or (s6_proxy_tool_execution and s7_llm_related_proxy_keywords))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 클라우드 서비스 하이재킹 시도를 탐지할 수 있습니다. 특히 AWS, Azure, Google Cloud CLI 도구의 실행과 함께 대량 이메일/SMS 발송 명령이 사용되거나, 리버스 프록시 도구가 LLM(대규모 언어 모델) 관련 키워드와 함께 실행되는 경우를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 클라우드 계정 및 관련 프로세스에 대한 긴급 조사 및 대응 절차를 시작하는 데 사용될 수 있습니다. 이는 클라우드 자원의 무단 사용으로 인한 재정적 손실 및 서비스 가용성 저하를 방지하는 데 필수적입니다.",
+    "false_positive": "정상적인 클라우드 관리 스크립트, 개발자가 테스트 목적으로 사용하는 프록시 도구, 또는 합법적인 자동화 시스템이 클라우드 메시징 서비스를 이용하는 경우 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

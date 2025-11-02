@@ -1,0 +1,251 @@
+{
+    "id": "T1650-AcquireAccess",
+    "name": "Acquire Access (Initial Foothold Activity)",
+    "description": "Detects initial activities on a system that are indicative of an adversary leveraging previously acquired access. This includes the use of remote execution tools (e.g., PsExec, WMIC for remote process creation, 'sc.exe' for service manipulation), suspicious inbound RDP connections, or the creation/execution of web shells within web server directories. While the acquisition itself occurs outside the target's visibility, this rule focuses on the immediate post-acquisition actions taken to establish a foothold.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0042",
+        "technique_id": "T1650",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Initial Access:External Remote Services",
+            "Enterprise:Initial Access:Valid Accounts",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Windows Management Instrumentation",
+            "Enterprise:Execution:System Services:Service Execution",
+            "Enterprise:Persistence:Server Software Component:Web Shell",
+            "Enterprise:Lateral Movement:Remote Services:Remote Desktop Protocol",
+            "Enterprise:Lateral Movement:Remote Services:SMB/Windows Admin Shares"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_psexec_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "psexec.exe"
+                    }
+                ]
+            },
+            "s3_sc_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "sc.exe"
+                    }
+                ]
+            },
+            "s4_sc_create_option": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s5_wmic_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wmic.exe"
+                    }
+                ]
+            },
+            "s6_wmic_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "process call create"
+                    }
+                ]
+            },
+            "s7_net_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "net.exe"
+                    }
+                ]
+            },
+            "s8_net_use_option": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "use"
+                    }
+                ]
+            },
+            "s9_net_direction_in": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "in"
+                    }
+                ]
+            },
+            "s10_net_protocol_tcp": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "TCP"
+                    }
+                ]
+            },
+            "s11_net_port_rdp": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 3389
+                    }
+                ]
+            },
+            "s12_fs_create_write_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    }
+                ]
+            },
+            "s13_web_shell_extension_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".aspx"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".php"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".jsp"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".ashx"
+                    }
+                ]
+            },
+            "s14_web_server_directory": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "inetpub\\wwwroot"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "Apache24\\htdocs"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "nginx\\html"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "tomcat\\webapps"
+                    }
+                ]
+            },
+            "s15_web_server_parent_process": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "contains",
+                        "value": "w3wp.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "contains",
+                        "value": "httpd.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "contains",
+                        "value": "nginx.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "contains",
+                        "value": "tomcat.exe"
+                    }
+                ]
+            },
+            "s16_suspicious_child_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "cmd.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and (s2_psexec_cmdline or (s3_sc_exe and s4_sc_create_option) or (s5_wmic_exe and s6_wmic_process_create) or (s7_net_exe and s8_net_use_option))) or (s9_net_direction_in and s10_net_protocol_tcp and s11_net_port_rdp) or (s12_fs_create_write_action and s13_web_shell_extension_path and s14_web_server_directory) or (s1_process_create_action and s15_web_server_parent_process and s16_suspicious_child_exe)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 외부에서 획득한 접근 권한을 이용한 초기 침투 시도를 탐지할 수 있습니다. PsExec, WMIC 원격 실행, 서비스 생성/수정 명령어('sc.exe', 'net.exe use')와 같은 원격 실행 도구 사용, 비정상적인 인바운드 RDP 연결, 또는 웹 서버 디렉터리 내 웹 쉘 파일 생성 및 웹 서버 프로세스가 의심스러운 자식 프로세스를 생성하는 행위 등을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스, 네트워크 연결, 파일 변경 사항에 대한 상세한 조사를 시작하는 데 사용될 수 있습니다. 이는 초기 침투 단계에서 공격자의 활동을 조기에 파악하는 데 중요합니다.",
+    "false_positive": "정상적인 시스템 관리 도구 (PsExec, WMIC, sc.exe, net.exe)의 사용, 합법적인 원격 관리 세션 (RDP), 웹 개발자의 애플리케이션 배포 또는 자동화된 스크립트 실행 등으로 인해 오탐이 발생할 수 있습니다. 알려진 정상 프로세스, 특정 IP 주소 범위, 또는 특정 파일 경로에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

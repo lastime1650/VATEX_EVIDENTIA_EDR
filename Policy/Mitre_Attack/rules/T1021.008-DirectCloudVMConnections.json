@@ -1,0 +1,136 @@
+{
+    "id": "T1021.008-DirectCloudVMConnections",
+    "name": "Direct Cloud VM Connections",
+    "description": "Adversaries may leverage Valid Accounts to log directly into accessible cloud hosted compute infrastructure through cloud native methods. Many cloud providers offer interactive connections to virtual infrastructure that can be accessed through the Cloud API, such as Azure Serial Console, AWS EC2 Instance Connect, and AWS System Manager. Methods of authentication for these connections can include passwords, application access tokens, or SSH keys. These cloud native methods may, by default, allow for privileged access on the host with SYSTEM or root level access. Adversaries may utilize these cloud native methods to directly access virtual infrastructure and pivot through an environment. These connections typically provide direct console access to the VM rather than the execution of scripts (i.e., Cloud Administration Command).",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0008",
+        "technique_id": "T1021",
+        "subtechnique_id": "T1021.008",
+        "data_sources": [
+            "Enterprise:Lateral Movement:Remote Services:Cloud Services",
+            "Enterprise:Initial Access:Valid Accounts:Cloud Accounts",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s_az_cli_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "az.exe"
+                    }
+                ]
+            },
+            "s_az_serial_keyword": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "serial"
+                    }
+                ]
+            },
+            "s_az_console_keyword": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "console"
+                    }
+                ]
+            },
+            "s_az_connect_keyword": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "connect"
+                    }
+                ]
+            },
+            "s_az_enable_keyword": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "enable"
+                    }
+                ]
+            },
+            "s_aws_cli_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "aws.exe"
+                    }
+                ]
+            },
+            "s_aws_ec2_instance_connect_keyword_1": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ec2-instance-connect"
+                    }
+                ]
+            },
+            "s_aws_ec2_instance_connect_keyword_2": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "send-ssh-public-key"
+                    }
+                ]
+            },
+            "s_aws_ssm_keyword_1": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ssm"
+                    }
+                ]
+            },
+            "s_aws_ssm_keyword_2": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "start-session"
+                    }
+                ]
+            }
+        },
+        "condition": "(s_process_create_action and s_az_cli_exe and (s_az_serial_keyword or s_az_console_keyword or s_az_connect_keyword or s_az_enable_keyword)) or (s_process_create_action and s_aws_cli_exe and s_aws_ec2_instance_connect_keyword_1 and s_aws_ec2_instance_connect_keyword_2) or (s_process_create_action and s_aws_cli_exe and s_aws_ssm_keyword_1 and s_aws_ssm_keyword_2)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 클라우드 VM에 대한 직접 연결 시도를 탐지할 수 있습니다. Azure CLI (az.exe) 또는 AWS CLI (aws.exe)를 사용하여 시리얼 콘솔 연결, EC2 인스턴스 연결, 또는 SSM 세션 시작과 같은 명령줄 패턴을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스 및 클라우드 계정에 대한 추가적인 조사를 시작하는 데 사용될 수 있습니다. 특히, 권한 상승 또는 다른 측면 이동 활동과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 클라우드 관리자, 개발자, 또는 자동화된 스크립트가 클라우드 VM에 접근하거나 진단 목적으로 시리얼 콘솔 및 SSM 세션을 사용하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 CLI 호출 패턴이나 특정 사용자/그룹에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

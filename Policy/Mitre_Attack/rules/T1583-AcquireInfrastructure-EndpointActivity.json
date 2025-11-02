@@ -1,0 +1,130 @@
+{
+    "id": "T1583-AcquireInfrastructure-EndpointActivity",
+    "name": "Acquire Infrastructure - Endpoint Interaction",
+    "description": "Detects endpoint activities that may indicate an adversary is interacting with or configuring newly acquired infrastructure. This includes suspicious use of network utility tools, modifications to network proxy settings, or execution of cloud/infrastructure management command-line interface (CLI) tools.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1583",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "WindowsRegistry:WindowsRegistryKeyModification"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "cmdline_netsh_proxy_dns": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "netsh winhttp set proxy"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "netsh interface ip set dns"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "netsh interface ip add address"
+                    }
+                ]
+            },
+            "cmdline_curl_wget_proxy": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "curl -x"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wget --proxy"
+                    }
+                ]
+            },
+            "cmdline_cloud_cli": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "aws "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "az "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "gcloud "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "terraform "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "kubectl "
+                    }
+                ]
+            },
+            "registry_proxy_modification": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "SetValueKey"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\ProxyServer"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\ProxyServer"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "ProxyEnable"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "ProxyOverride"
+                    }
+                ]
+            }
+        },
+        "condition": "(process_create_action and (cmdline_netsh_proxy_dns or cmdline_curl_wget_proxy or cmdline_cloud_cli)) or registry_proxy_modification"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 공격자가 새로 확보한 인프라와 상호작용하거나 이를 구성하려는 시도를 탐지할 수 있습니다. 이는 네트워크 프록시 설정 변경, 'netsh'와 같은 명령줄 도구를 사용한 네트워크 구성 변경, 또는 클라우드/인프라 관리 CLI 도구 실행과 같은 활동을 포함합니다. 탐지된 이벤트는 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있으며, 특히 다른 Command and Control 또는 Defense Evasion 활동과 결합될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 네트워크 설정 변경 스크립트, 개발자가 사용하는 클라우드 CLI 도구, 또는 합법적인 애플리케이션이 네트워크 설정을 조회하거나 변경하는 과정에서 탐지될 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

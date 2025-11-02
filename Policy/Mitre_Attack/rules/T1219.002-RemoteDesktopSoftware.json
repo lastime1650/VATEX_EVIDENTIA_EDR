@@ -1,0 +1,241 @@
+{
+    "id": "T1219.002-RemoteDesktopSoftware",
+    "name": "Remote Desktop Software",
+    "description": "Detects the use of legitimate desktop support software (e.g., VNC, TeamViewer, AnyDesk, ScreenConnect, LogMeIn, AmmyyAdmin, Google Chrome Remote Desktop, RustDesk) to establish an interactive command and control channel to target systems. Adversaries abuse these tools to evade security controls and maintain persistent access.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0011",
+        "technique_id": "T1219",
+        "subtechnique_id": "T1219.002",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "NetworkTraffic:NetworkConnectionCreation",
+            "NetworkTraffic:NetworkTrafficContent"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_proc_exe_teamviewer": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "TeamViewer.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "TeamViewer_Service.exe"
+                    }
+                ]
+            },
+            "s3_proc_exe_anydesk": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "AnyDesk.exe"
+                    }
+                ]
+            },
+            "s4_proc_exe_vnc": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "vncserver.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "vncviewer.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "winvnc.exe"
+                    }
+                ]
+            },
+            "s5_proc_exe_screenconnect": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "ScreenConnect.Client.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "Elsinore.ScreenConnect.Client.exe"
+                    }
+                ]
+            },
+            "s6_proc_exe_logmein": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "LogMeIn.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "LMI_Service.exe"
+                    }
+                ]
+            },
+            "s7_proc_exe_ammyyadmin": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "AmmyyAdmin.exe"
+                    }
+                ]
+            },
+            "s8_proc_cmd_chrome_remote_desktop": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "chrome.exe --enable-remote-desktop"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "remotedesktop.exe"
+                    }
+                ]
+            },
+            "s9_proc_exe_rustdesk": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "rustdesk.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "rustdesk-service.exe"
+                    }
+                ]
+            },
+            "s10_net_teamviewer_port_5938": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 5938
+                    },
+                    {
+                        "field": "body.network.sourceport",
+                        "operator": "equals",
+                        "value": 5938
+                    }
+                ]
+            },
+            "s11_net_anydesk_port_6568_7070": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 6568
+                    },
+                    {
+                        "field": "body.network.sourceport",
+                        "operator": "equals",
+                        "value": 6568
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 7070
+                    },
+                    {
+                        "field": "body.network.sourceport",
+                        "operator": "equals",
+                        "value": 7070
+                    }
+                ]
+            },
+            "s12_net_vnc_ports_5900_5902": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 5900
+                    },
+                    {
+                        "field": "body.network.sourceport",
+                        "operator": "equals",
+                        "value": 5900
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 5901
+                    },
+                    {
+                        "field": "body.network.sourceport",
+                        "operator": "equals",
+                        "value": 5901
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 5902
+                    },
+                    {
+                        "field": "body.network.sourceport",
+                        "operator": "equals",
+                        "value": 5902
+                    }
+                ]
+            },
+            "s13_net_rdp_port_3389": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 3389
+                    },
+                    {
+                        "field": "body.network.sourceport",
+                        "operator": "equals",
+                        "value": 3389
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and (s2_proc_exe_teamviewer or s3_proc_exe_anydesk or s4_proc_exe_vnc or s5_proc_exe_screenconnect or s6_proc_exe_logmein or s7_proc_exe_ammyyadmin or s8_proc_cmd_chrome_remote_desktop or s9_proc_exe_rustdesk) or (s10_net_teamviewer_port_5938 or s11_net_anydesk_port_6568_7070 or s12_net_vnc_ports_5900_5902 or s13_net_rdp_port_3389)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 원격 데스크톱 소프트웨어의 악용 시도를 탐지할 수 있습니다. TeamViewer, AnyDesk, VNC, ScreenConnect, LogMeIn, AmmyyAdmin, Google Chrome Remote Desktop, RustDesk와 같은 합법적인 원격 제어 도구의 프로세스 생성 이벤트를 모니터링하고, 해당 도구들과 관련된 특정 네트워크 포트(예: 5938, 6568, 7070, 5900-5902, 3389)를 통한 비정상적인 네트워크 연결을 탐지합니다. 탐지된 이벤트는 C2 활동으로 간주되어 높은 심각도로 분류되며, 즉각적인 알람을 트리거하고 추가적인 포렌식 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "이 규칙은 합법적인 IT 지원, 시스템 관리, 또는 사용자 개인의 원격 접속 목적으로 사용되는 원격 데스크톱 소프트웨어에 의해 오탐이 발생할 수 있습니다. 특히, 기업 환경에서 공식적으로 허용된 원격 지원 도구의 사용이나, VPN 등을 통해 암호화된 트래픽 내에서 발생하는 유사 패턴에 의해 탐지될 수 있습니다. 알려진 정상적인 사용 패턴을 화이트리스트에 추가하거나, 특정 사용자 그룹, IP 주소, 또는 시간대에 대한 예외 처리를 통해 오탐을 줄일 수 있습니다."
+}

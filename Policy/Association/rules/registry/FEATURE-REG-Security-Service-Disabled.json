@@ -1,0 +1,46 @@
+{
+    "id": "FEATURE-REG-Security-Service-Disabled",
+    "name": "Critical Security Service Start Type Modified",
+    "description": "Detects modification of the 'Start' value for a critical security service (e.g., Defender, Firewall). This is a common defense evasion technique used by malware before execution.",
+    "severity": "high",
+    "mitre_attack": [
+        {
+            "tactic": "TA0005",
+            "technique_id": "T1562",
+            "subtechnique_id": "T1562.001",
+            "data_sources": ["Windows Registry"]
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "disable_sec_service",
+                "selections": {
+                    "selection_set_service_start": {
+                        "event_type": "registry",
+                        "condition_method": "and",
+                        "conditions": [
+                            {
+                                "field": "body.registry.keyclass", 
+                                "operator": "equals", 
+                                "value": "RegNtPreSetValueKey"
+                            },
+                            {
+                                "field": "body.registry.name", 
+                                "operator": "regex", 
+                                "value": ".*\\\\Services\\\\(WinDefend|MpsSvc|wscsvc|Sense|SecurityHealthService)\\\\Start$"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "The start type for a critical security service was modified, indicating a likely attempt to disable it."
+                }
+            }
+        ]
+    },
+    "operational_usage": "A critical defense evasion indicator. SIEM should alert immediately. The 'Start' value is often changed to '4' (Disabled). Investigate the process that made the change.",
+    "false_positive": "Very rare. Only enterprise management tools or administrators should perform this action. Any other source is highly suspect."
+}

@@ -1,0 +1,211 @@
+{
+    "id": "T1588.002-ToolAcquisition",
+    "name": "Tool Acquisition",
+    "description": "Detects attempts by adversaries to acquire software tools, which can be open or closed source, free or commercial, for malicious purposes. This includes monitoring for the execution of common download utilities (e.g., PowerShell, Bitsadmin, Certutil, curl) to retrieve known red-teaming tools (e.g., PsExec, Mimikatz, Cobalt Strike beacon, SharpHound, Netcat) or other suspicious executables.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1588",
+        "subtechnique_id": "T1588.002",
+        "data_sources": [
+            "process",
+            "network",
+            "filesystem"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_psexec_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "psexec.exe"
+                    }
+                ]
+            },
+            "s3_mimikatz_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "mimikatz.exe"
+                    }
+                ]
+            },
+            "s4_cobaltstrike_beacon_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "beacon.exe"
+                    }
+                ]
+            },
+            "s5_sharphound_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "sharphound.exe"
+                    }
+                ]
+            },
+            "s6_netcat_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "nc.exe"
+                    }
+                ]
+            },
+            "s7_powershell_downloader_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s8_powershell_downloader_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-WebRequest"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "IWR"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Net.WebClient"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "DownloadFile"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "DownloadString"
+                    }
+                ]
+            },
+            "s9_bitsadmin_downloader_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "bitsadmin.exe"
+                    }
+                ]
+            },
+            "s10_bitsadmin_downloader_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/transfer"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/addfile"
+                    }
+                ]
+            },
+            "s11_certutil_downloader_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "certutil.exe"
+                    }
+                ]
+            },
+            "s12_certutil_downloader_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-urlcache"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-f"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "retrieve"
+                    }
+                ]
+            },
+            "s13_curl_downloader_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "curl.exe"
+                    }
+                ]
+            },
+            "s14_curl_downloader_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-o"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-O"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and (s2_psexec_execution or s3_mimikatz_execution or s4_cobaltstrike_beacon_execution or s5_sharphound_execution or s6_netcat_execution or (s7_powershell_downloader_cmd and s8_powershell_downloader_keywords) or (s9_bitsadmin_downloader_cmd and s10_bitsadmin_downloader_keywords) or (s11_certutil_downloader_cmd and s12_certutil_downloader_keywords) or (s13_curl_downloader_cmd and s14_curl_downloader_keywords))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 공격자가 시스템에 악성 도구를 획득하려는 시도를 탐지할 수 있습니다. PsExec, Mimikatz, Cobalt Strike beacon, SharpHound, Netcat과 같은 알려진 공격 도구의 실행이나, PowerShell, Bitsadmin, Certutil, curl과 같은 시스템 유틸리티를 통한 파일 다운로드 시도를 모니터링합니다. 탐지된 이벤트는 중간 심각도로 분류되어 알람을 트리거하고, 해당 프로세스의 활동 및 다운로드된 파일에 대한 추가적인 조사를 시작하는 데 사용됩니다. 이는 초기 침투 또는 권한 상승 단계에서 공격자의 활동을 조기에 식별하는 데 중요합니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 소프트웨어 설치 프로그램, 업데이트 유틸리티, 또는 합법적인 애플리케이션이 유사한 명령줄 패턴을 사용하여 파일을 다운로드하거나 특정 도구를 실행하는 경우 오탐이 발생할 수 있습니다. 특히 개발 환경이나 특정 관리 스크립트에서 PowerShell 또는 curl을 사용하는 경우 빈번하게 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

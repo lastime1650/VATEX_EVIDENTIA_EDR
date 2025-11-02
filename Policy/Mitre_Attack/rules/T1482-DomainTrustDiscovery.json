@@ -1,0 +1,123 @@
+{
+    "id": "T1482-DomainTrustDiscovery",
+    "name": "Domain Trust Discovery",
+    "description": "Detects attempts to discover domain trust relationships using utilities like nltest.exe, PowerShell cmdlets (e.g., Get-ADTrust), or Win32/CLR API calls (e.g., DSEnumerateDomainTrusts, GetAllTrustRelationships) to identify lateral movement opportunities in multi-domain environments.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1482",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Command:CommandExecution",
+            "Script:ScriptExecution",
+            "NetworkTraffic:NetworkTrafficContent",
+            "Process:OSAPIExecution"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_nltest_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "nltest.exe"
+                    }
+                ]
+            },
+            "s3_nltest_trust_flags": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/domain_trusts"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/trusted_domains"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/all_trusts"
+                    }
+                ]
+            },
+            "s4_dsenumerate_api_call": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "DSEnumerateDomainTrusts"
+                    }
+                ]
+            },
+            "s5_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s6_powershell_trust_cmdlets": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-ADTrust"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-DomainTrust"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-NetTrust"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-ForestTrust"
+                    }
+                ]
+            },
+            "s7_getalltrustrelationships_api_call": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetAllTrustRelationships"
+                    }
+                ]
+            }
+        },
+        "condition": "s4_dsenumerate_api_call or s7_getalltrustrelationships_api_call or (s1_process_create_action and s2_nltest_exe and s3_nltest_trust_flags) or (s1_process_create_action and s5_powershell_exe and s6_powershell_trust_cmdlets)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 도메인 트러스트 관계를 탐색하려는 시도를 탐지할 수 있습니다. Nltest.exe와 같은 도구를 사용한 특정 명령줄 인자, PowerShell을 통한 도메인 트러스트 관련 cmdlet 실행, 그리고 DSEnumerateDomainTrusts() 또는 GetAllTrustRelationships()와 같은 API 호출을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히 다른 Discovery 또는 Lateral Movement 활동과 결합될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 도메인 관리 도구, 감사 소프트웨어, 또는 합법적인 애플리케이션이 도메인 트러스트 정보를 조회하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,120 @@
+{
+    "id": "T1505-ServerSoftwareComponent-ProcessExecution",
+    "name": "Server Software Component - Suspicious Process Execution",
+    "description": "Adversaries may abuse legitimate extensible development features of servers to establish persistent access to systems. Enterprise server applications may include features that allow developers to write and install software or scripts to extend the functionality of the main application. Adversaries may install malicious components to extend and abuse server applications. This rule specifically focuses on detecting server processes (e.g., web servers, SQL servers) spawning suspicious shell or script interpreter processes, which is a common indicator of web shells or other malicious server-side components.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1505",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Command:CommandExecution"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_parent_is_server_process": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "contains",
+                        "value": "w3wp.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "contains",
+                        "value": "httpd.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "contains",
+                        "value": "nginx.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "contains",
+                        "value": "tomcat.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "contains",
+                        "value": "sqlservr.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "contains",
+                        "value": "iisexpress.exe"
+                    }
+                ]
+            },
+            "s3_child_is_shell_interpreter": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "cmd.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pwsh.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "bash.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "sh.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "python.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "perl.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "cscript.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "wscript.exe"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_action_create and s2_parent_is_server_process and s3_child_is_shell_interpreter"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 웹 서버, SQL 서버 등 주요 서버 애플리케이션에서 비정상적으로 셸 또는 스크립트 인터프리터 프로세스가 생성되는 것을 탐지할 수 있습니다. 이는 웹 셸 설치 또는 서버 소프트웨어 구성 요소 악용을 통한 지속성 확보 시도의 강력한 지표입니다. 탐지 시 즉각적인 알람을 트리거하고, 해당 프로세스의 명령줄 인자, 사용자 계정, 네트워크 연결 등을 추가로 조사하여 침해 여부를 판단하고 대응 우선순위를 지정합니다.",
+    "false_positive": "정상적인 서버 관리 스크립트, 자동화 도구, 또는 특정 애플리케이션의 업데이트 및 유지보수 작업이 서버 프로세스에 의해 셸/스크립트 인터프리터를 실행하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 패턴이나 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

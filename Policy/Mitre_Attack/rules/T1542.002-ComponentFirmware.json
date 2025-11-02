@@ -1,0 +1,198 @@
+{
+    "id": "T1542.002-ComponentFirmware",
+    "name": "Component Firmware Manipulation",
+    "description": "Detects attempts to modify component firmware for persistence or defense evasion. This includes execution of known firmware update utilities, modifications to critical registry keys related to firmware or boot processes, and write operations to EFI System Partition files or common firmware image extensions.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1542",
+        "subtechnique_id": "T1542.002",
+        "data_sources": [
+            "Enterprise:Persistence:Pre-OS Boot:Component Firmware",
+            "Enterprise:Defense Evasion:Pre-OS Boot:Component Firmware",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Defense Evasion:Modify Registry",
+            "Enterprise:Collection:Data from Local System"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_firmware_utility_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "afuwin.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "fptw.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "flash.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "biosflash.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "winflash.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "update_firmware.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "firmware update"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "flash bios"
+                    }
+                ]
+            },
+            "s3_registry_modify_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "SetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "CreateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "RenameKey"
+                    }
+                ]
+            },
+            "s4_registry_firmware_key_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\HARDWARE\\DESCRIPTION\\System\\Firmware"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\FirmwareResources"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Class\\{4d36e96a-e325-11ce-bfc1-08002be10318}"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "EFI\\UEFI"
+                    }
+                ]
+            },
+            "s5_filesystem_write_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "superseded"
+                    }
+                ]
+            },
+            "s6_filesystem_efi_paths_or_extensions": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\EFI\\Microsoft\\Boot\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\Windows\\Boot\\EFI\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\Windows\\Firmware\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".bin"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".rom"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".cap"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".efi"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".smm"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_firmware_utility_execution) or (s3_registry_modify_action and s4_registry_firmware_key_path) or (s5_filesystem_write_action and s6_filesystem_efi_paths_or_extensions)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템 구성 요소 펌웨어 조작 시도를 탐지할 수 있습니다. 펌웨어 업데이트 유틸리티 실행, 펌웨어 관련 레지스트리 키 변경, 또는 EFI 시스템 파티션 및 펌웨어 이미지 파일에 대한 쓰기 작업을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스, 사용자, 파일 해시, 그리고 시스템 펌웨어의 무결성 검증을 위한 추가 포렌식 조사를 시작하는 데 사용될 수 있습니다. 이는 시스템 침해 후 지속성 및 방어 회피를 위한 정교한 공격에 대응하는 데 중요합니다.",
+    "false_positive": "정상적인 시스템 펌웨어 업데이트, 드라이버 설치, 또는 진단 도구가 펌웨어 관련 파일이나 레지스트리 키에 접근하거나 수정할 때 오탐이 발생할 수 있습니다. 알려진 벤더의 합법적인 펌웨어 업데이트 프로세스나 특정 시스템 유지보수 활동에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

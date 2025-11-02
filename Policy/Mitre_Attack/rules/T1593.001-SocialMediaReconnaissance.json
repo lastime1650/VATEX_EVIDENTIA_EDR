@@ -1,0 +1,126 @@
+{
+    "id": "T1593.001-SocialMediaReconnaissance",
+    "name": "Social Media Reconnaissance via Scripting",
+    "description": "Detects attempts by processes to interact with social media platforms using command-line tools or scripting languages (e.g., PowerShell, curl) for reconnaissance purposes. Adversaries may search social media for information about victims that can be used during targeting.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1593",
+        "subtechnique_id": "T1593.001",
+        "data_sources": [
+            "Enterprise:Reconnaissance:Search Open Websites/Domains:Social Media",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_powershell_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s2_powershell_web_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-WebRequest"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-RestMethod"
+                    }
+                ]
+            },
+            "s3_curl_wget_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "curl.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "wget.exe"
+                    }
+                ]
+            },
+            "s4_social_media_domain_in_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "facebook.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "twitter.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "linkedin.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "instagram.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "vk.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "t.me"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "discord.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "reddit.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "youtube.com"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_powershell_process_create and s2_powershell_web_command and s4_social_media_domain_in_cmdline) or (s3_curl_wget_process_create and s4_social_media_domain_in_cmdline)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 통해 PowerShell, curl, 또는 wget과 같은 명령줄 도구를 사용하여 사회관계망서비스(SNS)에 접근하는 의심스러운 활동을 탐지할 수 있습니다. 이는 공격자가 피해자 정보를 수집하기 위해 자동화된 방식으로 SNS를 스캔하거나 정보를 추출하려는 시도를 나타낼 수 있습니다. 탐지된 이벤트는 정찰(Reconnaissance) 활동으로 분류되어 추가적인 조사 및 위협 분석의 우선순위를 높이는 데 사용됩니다.",
+    "false_positive": "정상적인 시스템 관리 스크립트, 개발 도구, 또는 합법적인 자동화 프로세스가 웹 요청을 통해 SNS 도메인과 상호작용하는 경우 오탐이 발생할 수 있습니다. 또한, 특정 애플리케이션이나 서비스가 백그라운드에서 SNS 관련 API를 호출하는 경우에도 탐지될 수 있습니다. 알려진 정상적인 스크립트나 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

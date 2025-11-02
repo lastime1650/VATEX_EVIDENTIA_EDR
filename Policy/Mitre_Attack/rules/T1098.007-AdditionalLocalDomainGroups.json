@@ -1,0 +1,148 @@
+{
+    "id": "T1098.007-AdditionalLocalDomainGroups",
+    "name": "Additional Local or Domain Groups",
+    "description": "An adversary may add additional local or domain groups to an adversary-controlled account to maintain persistent access to a system or domain. On Windows, accounts may use the 'net localgroup' and 'net group' commands to add existing users to local and domain groups. For example, accounts may be added to the local administrators group on Windows devices to maintain elevated privileges. They may also be added to the Remote Desktop Users group, which allows them to leverage Remote Desktop Protocol to log into the endpoints in the future. In Windows environments, machine accounts may also be added to domain groups, allowing the local SYSTEM account to gain privileges on the domain.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1098",
+        "subtechnique_id": "T1098.007",
+        "data_sources": [
+            "Enterprise:Persistence:Account Manipulation:Additional Local or Domain Groups",
+            "Enterprise:Privilege Escalation:Account Manipulation:Additional Local or Domain Groups",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Native API",
+            "Process:ProcessCreation"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_net_command_executable": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "net.exe"
+                    }
+                ]
+            },
+            "s3_net_localgroup_add_commandline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "net localgroup"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/add"
+                    }
+                ]
+            },
+            "s4_net_group_add_commandline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "net group"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/add"
+                    }
+                ]
+            },
+            "s5_apicall_netgroup_add_functions": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "NetGroupAdd"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "NetGroupAddW"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "NetGroupAddA"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "NetGroupAddUser"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "NetGroupAddUserW"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "NetGroupAddUserA"
+                    }
+                ]
+            },
+            "s6_apicall_netlocalgroup_add_functions": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "NetLocalGroupAdd"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "NetLocalGroupAddW"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "NetLocalGroupAddA"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "NetLocalGroupAddMembers"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "NetLocalGroupAddMembersW"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "NetLocalGroupAddMembersA"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create and s2_net_command_executable and (s3_net_localgroup_add_commandline or s4_net_group_add_commandline)) or (s5_apicall_netgroup_add_functions or s6_apicall_netlocalgroup_add_functions)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템 또는 도메인 계정에 추가 로컬 또는 도메인 그룹을 추가하려는 시도를 탐지할 수 있습니다. 'net localgroup' 및 'net group' 명령어를 사용한 그룹 추가 활동이나, 관련 Windows API 호출을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 계정 권한 상승 또는 지속성 확보를 위한 악의적인 활동으로 간주하여 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 스크립트, 또는 합법적인 애플리케이션이 사용자 계정을 관리하거나 그룹에 추가하는 과정에서 오탐이 발생할 수 있습니다. 특히 자동화된 배포 시스템이나 사용자 계정 프로비저닝 도구에서 발생할 수 있으므로, 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

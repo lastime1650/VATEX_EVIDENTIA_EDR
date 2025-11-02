@@ -1,0 +1,176 @@
+{
+    "id": "T1593.003-CodeRepositoriesDiscovery",
+    "name": "Code Repositories Discovery",
+    "description": "Adversaries may search public code repositories for information about victims that can be used during targeting. This rule detects related activity on the endpoint, such as using command-line git tools or web browsers to access public repositories, or accessing local git configuration/credential files.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1593",
+        "subtechnique_id": "T1593.003",
+        "data_sources": [
+            "Enterprise:Reconnaissance:Search Open Websites/Domains:Code Repositories",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Discovery:File and Directory Discovery"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_exe_path_git": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "git.exe"
+                    }
+                ]
+            },
+            "s3_cmdline_git_clone_fetch": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "clone"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "fetch"
+                    }
+                ]
+            },
+            "s4_cmdline_git_public_repo_url": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "github.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "gitlab.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "bitbucket.org"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "sourceforge.net"
+                    }
+                ]
+            },
+            "s5_exe_path_browser": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "chrome.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "msedge.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "firefox.exe"
+                    }
+                ]
+            },
+            "s6_cmdline_browser_public_repo_domain": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "github.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "gitlab.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "bitbucket.org"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "sourceforge.net"
+                    }
+                ]
+            },
+            "s7_filesystem_action_rw": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "read"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "open"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    }
+                ]
+            },
+            "s8_filepath_git_config": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\.git\\config"
+                    }
+                ]
+            },
+            "s9_filepath_git_credentials": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\.git\\credentials"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "_netrc"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_action_create and s2_exe_path_git and s3_cmdline_git_clone_fetch and s4_cmdline_git_public_repo_url) or (s1_process_action_create and s5_exe_path_browser and s6_cmdline_browser_public_repo_domain) or (s7_filesystem_action_rw and s8_filepath_git_config) or (s7_filesystem_action_rw and s9_filepath_git_credentials)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 공용 코드 저장소 관련 정보 수집 시도를 탐지할 수 있습니다. Git 명령줄 도구를 사용하여 저장소를 복제하거나 가져오는 행위, 웹 브라우저를 통해 주요 코드 저장소 사이트에 접근하는 행위, 또는 로컬 .git 설정 및 자격 증명 파일에 대한 접근을 모니터링합니다. 탐지된 이벤트는 정찰 활동의 지표로 분류되어 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "이 규칙은 개발자, CI/CD 파이프라인, 자동화된 빌드 시스템, 또는 기타 합법적인 소프트웨어 개발 활동으로 인해 높은 오탐률을 보일 수 있습니다. 알려진 정상 프로세스, 특정 사용자, 또는 특정 파일 경로를 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

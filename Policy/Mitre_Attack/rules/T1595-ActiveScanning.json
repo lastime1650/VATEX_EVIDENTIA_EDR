@@ -1,0 +1,201 @@
+{
+    "id": "T1595-ActiveScanning",
+    "name": "Active Scanning",
+    "description": "Detects attempts by adversaries to perform active reconnaissance scans to gather information about target infrastructure. This includes the execution of common scanning tools like Nmap or Masscan, PowerShell cmdlets for network testing, or suspicious outbound ICMP/TCP probes.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1595",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Network Traffic:Network Traffic Flow",
+            "Process:Process Creation",
+            "Command:Command Execution"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s_proc_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s_cmd_contains_nmap": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "nmap"
+                    }
+                ]
+            },
+            "s_cmd_contains_masscan": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "masscan"
+                    }
+                ]
+            },
+            "s_exe_path_ping": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "ping.exe"
+                    }
+                ]
+            },
+            "s_cmd_contains_ping_t_option": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-t"
+                    }
+                ]
+            },
+            "s_cmd_contains_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s_cmd_contains_test_netconnection": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Test-NetConnection"
+                    }
+                ]
+            },
+            "s_net_event_type_indicator": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "contains",
+                        "value": ""
+                    }
+                ]
+            },
+            "s_net_protocol_icmp": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "ICMP"
+                    }
+                ]
+            },
+            "s_net_direction_outbound": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    }
+                ]
+            },
+            "s_net_protocol_tcp": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "TCP"
+                    }
+                ]
+            },
+            "s_net_small_tcp_packet_size": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.packetsize",
+                        "operator": "lt",
+                        "value": 60
+                    }
+                ]
+            },
+            "s_net_dest_port_common_scan_targets": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 21
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 22
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 23
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 80
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 135
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 139
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 445
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 3389
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 8080
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 8443
+                    }
+                ]
+            }
+        },
+        "condition": "(s_proc_action_create and (s_cmd_contains_nmap or s_cmd_contains_masscan or (s_exe_path_ping and s_cmd_contains_ping_t_option) or (s_cmd_contains_powershell_exe and s_cmd_contains_test_netconnection))) or (s_net_event_type_indicator and s_net_direction_outbound and (s_net_protocol_icmp or (s_net_protocol_tcp and s_net_small_tcp_packet_size and s_net_dest_port_common_scan_targets)))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 초기 정찰 단계에서 발생하는 능동 스캐닝 시도를 탐지할 수 있습니다. Nmap, Masscan과 같은 전문 스캐닝 도구의 실행, PowerShell의 Test-NetConnection 사용, 또는 비정상적인 대량의 ICMP/TCP SYN 아웃바운드 패킷을 모니터링합니다. 탐지된 이벤트는 정찰 활동으로 분류되어 초기 침해 지표로 활용되며, 추가적인 네트워크 트래픽 분석 및 프로세스 조사를 위한 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 네트워크 진단 유틸리티 (예: ping, Test-NetConnection), 보안 취약점 스캐너, 또는 합법적인 애플리케이션의 네트워크 연결 테스트로 인해 오탐이 발생할 수 있습니다. 특히 ICMP 트래픽은 매우 흔하므로, 특정 IP 주소, 사용자 또는 프로세스에 대한 화이트리스트 정책을 적용하여 오탐을 줄일 수 있습니다."
+}

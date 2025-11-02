@@ -1,0 +1,140 @@
+{
+    "id": "T1195-SupplyChainCompromise",
+    "name": "Supply Chain Compromise Detection",
+    "description": "Detects potential indicators of supply chain compromise, where adversaries manipulate products or product delivery mechanisms prior to receipt by a final consumer. This rule specifically focuses on the creation and execution of suspicious executables or scripts from common temporary, download, or public writeable directories, or executables with installer-like command line arguments, which could indicate a compromised software or update.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0001",
+        "technique_id": "T1195",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Initial Access:Supply Chain Compromise:Compromise Software Supply Chain",
+            "Process:ProcessCreation"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_created": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_suspicious_execution_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.self_exe_path",
+                        "operator": "contains",
+                        "value": "\\Users\\Public\\Downloads\\"
+                    },
+                    {
+                        "field": "body.process.self_exe_path",
+                        "operator": "contains",
+                        "value": "\\Windows\\Temp\\"
+                    },
+                    {
+                        "field": "body.process.self_exe_path",
+                        "operator": "contains",
+                        "value": "\\AppData\\Local\\Temp\\"
+                    },
+                    {
+                        "field": "body.process.self_exe_path",
+                        "operator": "contains",
+                        "value": "\\ProgramData\\"
+                    }
+                ]
+            },
+            "s3_installer_like_commandline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "install"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "setup"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "update"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/s"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-s"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/q"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-q"
+                    }
+                ]
+            },
+            "s4_executable_extensions": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.self_exe_path",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    },
+                    {
+                        "field": "body.process.self_exe_path",
+                        "operator": "endswith",
+                        "value": ".msi"
+                    },
+                    {
+                        "field": "body.process.self_exe_path",
+                        "operator": "endswith",
+                        "value": ".cmd"
+                    },
+                    {
+                        "field": "body.process.self_exe_path",
+                        "operator": "endswith",
+                        "value": ".bat"
+                    },
+                    {
+                        "field": "body.process.self_exe_path",
+                        "operator": "endswith",
+                        "value": ".ps1"
+                    },
+                    {
+                        "field": "body.process.self_exe_path",
+                        "operator": "endswith",
+                        "value": ".vbs"
+                    },
+                    {
+                        "field": "body.process.self_exe_path",
+                        "operator": "endswith",
+                        "value": ".hta"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_created and s4_executable_extensions and (s2_suspicious_execution_path or s3_installer_like_commandline)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 공급망 공격으로 의심되는 프로세스 실행을 탐지할 수 있습니다. 특히, 임시 폴더, 다운로드 폴더, 또는 공용 쓰기 가능한 디렉토리에서 실행되거나, 설치/업데이트와 관련된 명령줄 인자를 포함하는 실행 파일 및 스크립트 활동을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스의 출처, 파일 무결성(SHA256), 부모 프로세스, 네트워크 연결 등을 추가적으로 조사하여 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 소프트웨어 설치 프로그램, 업데이트 유틸리티, 또는 합법적인 스크립트가 임시 또는 다운로드 디렉토리에서 실행되거나 설치 관련 명령줄 인자를 사용하는 경우 오탐이 발생할 수 있습니다. 특히, 사용자 정의 스크립트, 내부 개발 도구, 또는 특정 애플리케이션의 자동 업데이트 메커니즘이 이러한 패턴을 보일 수 있습니다. 알려진 정상 프로세스, 특정 파일 경로, 또는 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

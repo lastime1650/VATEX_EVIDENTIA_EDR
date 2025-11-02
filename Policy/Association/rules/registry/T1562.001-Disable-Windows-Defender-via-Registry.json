@@ -1,0 +1,48 @@
+{
+    "id": "T1562.001-Disable-Windows-Defender-via-Registry",
+    "name": "Attempt to Disable Windows Defender via Registry",
+    "description": "Detects attempts to disable Windows Defender's real-time protection or other key features by modifying its registry keys. This is a strong indicator of defense evasion.",
+    "severity": "critical",
+    "mitre_attack": [
+        {
+            "tactic": "TA0005",
+            "technique_id": "T1562",
+            "subtechnique_id": "T1562.001",
+            "data_sources": [
+                "Windows Registry:Windows Registry Key Modification"
+            ]
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "disable_defender",
+                "selections": {
+                    "selection_modify_defender_policy": {
+                        "event_type": "registry",
+                        "condition_method": "and",
+                        "conditions": [
+                            {
+                                "field": "body.registry.keyclass", 
+                                "operator": "equals", 
+                                "value": "RegNtPreSetValueKey"
+                            },
+                            {
+                                "field": "body.registry.name", 
+                                "operator": "contains", 
+                                "value": "\\SOFTWARE\\Policies\\Microsoft\\Windows Defender"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "A process attempted to set a value in a Windows Defender policy registry key, potentially to disable security features."
+                }
+            }
+        ]
+    },
+    "operational_usage": "This is a critical alert. The system's primary defenses are under attack. Immediately isolate the host and investigate the offending process. Common values set are 'DisableAntiSpyware' or 'DisableRealtimeMonitoring'.",
+    "false_positive": "Should be extremely rare. Only legitimate system management tools like SCCM, Intune, or Group Policy itself should be modifying these keys. Any modification by a user-land process is highly suspicious."
+}

@@ -1,0 +1,48 @@
+{
+    "id": "T1546.012-IFEO-Injection-Persistence",
+    "name": "Process Hijacking or Persistence via IFEO Injection",
+    "description": "Detects the creation of a key under Image File Execution Options (IFEO) and the setting of a 'Debugger' value. This technique is used for persistence or to hijack the execution of a legitimate process.",
+    "severity": "high",
+    "mitre_attack": [
+        {
+            "tactic": "TA0003",
+            "technique_id": "T1546",
+            "subtechnique_id": "T1546.012",
+            "data_sources": [
+                "Windows Registry:Windows Registry Key Creation"
+            ]
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "ifeo_debugger_set",
+                "selections": {
+                    "selection_create_ifeo_key": {
+                        "event_type": "registry",
+                        "condition_method": "and",
+                        "conditions": [
+                            {
+                                "field": "body.registry.keyclass", 
+                                "operator": "regex", 
+                                "value": "RegNtPre.*Key"
+                            },
+                            {
+                                "field": "body.registry.name", 
+                                "operator": "startswith", 
+                                "value": "\\Registry\\Machine\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options\\"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "A process created or modified a key within Image File Execution Options (IFEO), potentially to set a debugger for process hijacking."
+                }
+            }
+        ]
+    },
+    "operational_usage": "Investigate which process key was created (e.g., 'notepad.exe') and what value was set for the 'Debugger' parameter. This is a strong indicator of a sophisticated persistence or hijacking technique.",
+    "false_positive": "Very rare. Some legitimate debugging tools (Visual Studio, WinDbg) or application compatibility shims may use this feature. Any other process modifying these keys is suspicious."
+}

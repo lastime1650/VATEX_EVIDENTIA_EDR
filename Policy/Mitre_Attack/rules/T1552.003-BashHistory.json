@@ -1,0 +1,126 @@
+{
+    "id": "T1552.003-BashHistory",
+    "name": "Bash History",
+    "description": "Adversaries may search the bash command history on compromised systems for insecurely stored credentials. Bash keeps track of the commands users type on the command-line with the \"history\" utility. Once a user logs out, the history is flushed to the user’s ~/.bash_history file. For each user, this file resides at the same location: ~/.bash_history. Typically, this file keeps track of the user’s last 500 commands. Users often type usernames and passwords on the command-line as parameters to programs, which then get saved to this file when they log out. Adversaries can abuse this by looking through the file for potential credentials.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0006",
+        "technique_id": "T1552",
+        "subtechnique_id": "T1552.003",
+        "data_sources": [
+            "Enterprise:Credential Access:Unsecured Credentials:Bash History",
+            "Enterprise:Execution:Command and Scripting Interpreter:Unix Shell"
+        ]
+    },
+    "platform": [
+        "linux",
+        "macos"
+    ],
+    "detection": {
+        "selections": {
+            "s_proc_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s_proc_cmdline_file_access_tool": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "cat "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "less "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "more "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "grep "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "cp "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "mv "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "tar "
+                    }
+                ]
+            },
+            "s_proc_cmdline_history_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "history "
+                    }
+                ]
+            },
+            "s_proc_cmdline_explicit_bash_history_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/.bash_history"
+                    }
+                ]
+            },
+            "s_fs_action_suspicious": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "read"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "open"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "exists"
+                    }
+                ]
+            },
+            "s_fs_filepath_bash_history": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/.bash_history"
+                    }
+                ]
+            }
+        },
+        "condition": "(s_proc_create and s_proc_cmdline_history_command) or (s_proc_create and s_proc_cmdline_file_access_tool and s_proc_cmdline_explicit_bash_history_path) or (s_fs_action_suspicious and s_fs_filepath_bash_history)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 Bash 기록 파일에 대한 비정상적인 접근 시도를 탐지할 수 있습니다. 'history' 명령 실행, 또는 'cat', 'less', 'grep' 등과 같은 파일 접근 도구를 사용하여 '.bash_history' 파일을 직접 조회하거나 복사하는 프로세스 활동을 모니터링합니다. 또한, 파일 시스템 수준에서 '.bash_history' 파일에 대한 읽기, 열기, 존재 여부 확인과 같은 의심스러운 행동을 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 잠재적인 자격 증명 탈취 시도에 대한 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리자나 스크립트가 Bash 기록을 검토하거나 백업하는 경우 오탐이 발생할 수 있습니다. 예를 들어, 사용자가 자신의 터미널에서 'history' 명령을 실행하거나, 시스템 감사 도구가 기록 파일을 분석하는 경우에 탐지될 수 있습니다. 알려진 정상적인 프로세스나 특정 사용자 활동에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

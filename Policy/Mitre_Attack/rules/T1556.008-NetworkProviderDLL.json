@@ -1,0 +1,142 @@
+{
+    "id": "T1556.008-NetworkProviderDLL",
+    "name": "Persistence and Credential Access via Network Provider DLL",
+    "description": "Detects attempts by adversaries to register malicious network provider DLLs to capture cleartext user credentials during the authentication process. This involves monitoring for suspicious registry modifications related to network providers and the creation of new DLL files in system directories, or direct API calls to NPLogonNotify.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0006",
+        "technique_id": "T1556",
+        "subtechnique_id": "T1556.008",
+        "data_sources": [
+            "Windows Registry:Registry Key Creation",
+            "Windows Registry:Registry Key Modification",
+            "Process:OS API Execution",
+            "File:File Creation"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_registry_provider_order_setvalue": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\NetworkProvider\\Order"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "ProviderOrder"
+                    },
+                    {
+                        "field": "body.registry.newold.newname",
+                        "operator": "contains",
+                        "value": ".dll"
+                    }
+                ]
+            },
+            "s2_registry_new_provider_service_key_creation": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreCreateKey"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "endswith",
+                        "value": "\\NetworkProvider"
+                    }
+                ]
+            },
+            "s3_registry_provider_path_setvalue": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "\\NetworkProvider\\ProviderPath"
+                    },
+                    {
+                        "field": "body.registry.newold.newname",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    }
+                ]
+            },
+            "s4_filesystem_dll_creation_in_system_paths": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\Windows\\System32\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\Windows\\SysWOW64\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\Windows\\Temp\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\ProgramData\\"
+                    }
+                ]
+            },
+            "s5_apicall_nplogonnotify": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "NPLogonNotify"
+                    }
+                ]
+            }
+        },
+        "condition": "(s4_filesystem_dll_creation_in_system_paths and (s1_registry_provider_order_setvalue or (s2_registry_new_provider_service_key_creation and s3_registry_provider_path_setvalue))) or s5_apicall_nplogonnotify"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 악성 네트워크 공급자 DLL을 통한 자격 증명 탈취 및 지속성 확보 시도를 탐지할 수 있습니다. 시스템 디렉터리 내 DLL 파일 생성 이벤트, 네트워크 공급자 관련 레지스트리 키 변경(ProviderOrder 값 수정, 새 서비스 키 생성 및 ProviderPath 설정)을 모니터링합니다. 특히, NPLogonNotify API 호출이 감지될 경우 높은 심각도로 분류하여 즉각적인 알람을 트리거하고, 관련 프로세스 및 파일에 대한 상세한 포렌식 조사를 시작해야 합니다. 이는 초기 침투 후 자격 증명 접근 및 지속성 유지 단계에서 중요한 탐지 기회가 됩니다.",
+    "false_positive": "정상적인 VPN 클라이언트, 네트워크 관리 도구, 보안 소프트웨어, 또는 시스템 업데이트가 새로운 네트워크 공급자를 등록하거나 DLL을 생성/수정하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상적인 프로세스나 특정 파일 경로, 레지스트리 변경 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다. 특히, `ProviderOrder` 변경 시 기존 시스템 DLL이 포함될 수 있으므로, 신규 DLL 추가 여부를 면밀히 검토해야 합니다."
+}

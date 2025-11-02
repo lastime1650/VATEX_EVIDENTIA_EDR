@@ -1,0 +1,94 @@
+{
+    "id": "T1001.002-SteganographyC2",
+    "name": "Steganography for Command and Control",
+    "description": "Detects potential command and control activity using steganography techniques, characterized by unusually large outbound network data transfers, especially over protocols not typically used for bulk data, or on common ports to blend in.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0011",
+        "technique_id": "T1001",
+        "subtechnique_id": "T1001.002",
+        "data_sources": [
+            "Enterprise:Command and Control:Data Obfuscation:Steganography"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_outbound_direction": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    }
+                ]
+            },
+            "s2_large_tcp_payload": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "TCP"
+                    },
+                    {
+                        "field": "body.network.packetsize",
+                        "operator": "gte",
+                        "value": 1000000
+                    }
+                ]
+            },
+            "s3_large_udp_payload": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "UDP"
+                    },
+                    {
+                        "field": "body.network.packetsize",
+                        "operator": "gte",
+                        "value": 500000
+                    }
+                ]
+            },
+            "s4_unusually_large_icmp_payload": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "ICMP"
+                    },
+                    {
+                        "field": "body.network.packetsize",
+                        "operator": "gte",
+                        "value": 10000
+                    }
+                ]
+            },
+            "s5_unusually_large_dns_payload": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "DNS"
+                    },
+                    {
+                        "field": "body.network.packetsize",
+                        "operator": "gte",
+                        "value": 2000
+                    }
+                ]
+            }
+        },
+        "condition": "s1_outbound_direction and (s2_large_tcp_payload or s3_large_udp_payload or s4_unusually_large_icmp_payload or s5_unusually_large_dns_payload)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 스테가노그래피를 이용한 C2 통신 시도를 탐지할 수 있습니다. 특히, 비정상적으로 큰 크기의 아웃바운드 패킷이 TCP, UDP, ICMP, 또는 DNS와 같은 프로토콜을 통해 전송되는 네트워크 이벤트를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하며, 관련 프로세스 및 네트워크 연결에 대한 심층 조사를 시작하는 데 사용될 수 있습니다. 이 규칙은 스테가노그래피 C2의 초기 징후를 식별하는 데 도움을 줍니다.",
+    "false_positive": "정상적인 대용량 파일 업로드, 스트리밍 서비스 이용, 네트워크 진단 도구(예: 큰 ICMP 패킷 사용), 또는 DNSSEC와 같은 대규모 DNS 응답으로 인해 오탐이 발생할 수 있습니다. 알려진 정상적인 프로세스나 네트워크 패턴에 대한 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

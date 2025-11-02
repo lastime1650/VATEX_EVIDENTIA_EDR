@@ -1,0 +1,100 @@
+{
+    "id": "T1546.014-EmondPersistence",
+    "name": "Persistence via Emond Rules",
+    "description": "Detects attempts to establish persistence or elevate privileges by creating or modifying Event Monitor Daemon (emond) rule files in /etc/emond.d/rules/ or client queue files in /private/var/db/emondClients. Adversaries abuse emond, which runs with root privileges, to execute commands on specific system events like startup or user authentication.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1546",
+        "subtechnique_id": "T1546.014",
+        "data_sources": [
+            "Enterprise:Persistence:Create or Modify System Process:Launch Daemon",
+            "Enterprise:Execution:Command and Scripting Interpreter:Unix Shell"
+        ]
+    },
+    "platform": [
+        "macos"
+    ],
+    "detection": {
+        "selections": {
+            "s1_emond_rules_dir_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "/etc/emond.d/rules/"
+                    }
+                ]
+            },
+            "s2_emond_clients_dir_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "/private/var/db/emondClients/"
+                    }
+                ]
+            },
+            "s3_file_creation_or_modification_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "superseded"
+                    }
+                ]
+            },
+            "s4_emond_process_creation": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "equals",
+                        "value": "/sbin/emond"
+                    }
+                ]
+            },
+            "s5_emond_process_suspicious_args": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-D"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-d"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_emond_rules_dir_path and s3_file_creation_or_modification_action) or (s2_emond_clients_dir_path and s3_file_creation_or_modification_action) or (s4_emond_process_creation and s5_emond_process_suspicious_args)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 macOS 시스템에서 emond를 이용한 지속성 및 권한 상승 시도를 탐지할 수 있습니다. emond 규칙 파일 디렉토리(/etc/emond.d/rules/) 또는 클라이언트 큐 디렉토리(/private/var/db/emondClients/)에 대한 파일 생성 또는 수정 이벤트를 모니터링합니다. 또한, /sbin/emond 프로세스 생성 이벤트와 함께 비정상적이거나 의심스러운 명령줄 인자를 사용하는 경우를 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 파일 및 프로세스에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 macOS 시스템 업데이트, 소프트웨어 설치 또는 시스템 관리 도구가 emond 규칙을 생성하거나 수정하는 과정에서 오탐이 발생할 수 있습니다. 특히, 새로운 emond 규칙을 배포하는 합법적인 관리 활동이 탐지될 수 있으므로, 알려진 정상 프로세스나 특정 파일 경로에 대한 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

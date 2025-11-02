@@ -1,0 +1,39 @@
+{
+    "id": "T1564.006-RunVirtualInstance",
+    "name": "Run Virtual Instance",
+    "description": "Detects attempts by adversaries to run malicious operations within a virtual instance (e.g., VirtualBox, VMware, Hyper-V, QEMU) to evade detection, hide artifacts, or obscure network traffic. This includes monitoring for the execution of virtualization binaries, suspicious command-line arguments, hypervisor enabling commands, and creation of virtual machine configuration or disk image files.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1564",
+        "subtechnique_id": "T1564.006",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Command:CommandExecution",
+            "WindowsRegistry:WindowsRegistryKeyModification",
+            "File:FileCreation"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_proc_create_action": { "event_type": "process", "conditions": [ { "field": "body.process.action", "operator": "equals", "value": "create" } ] },
+            "s2_hyperv_enable_cmd_dism": { "event_type": "process", "conditions": [ { "field": "body.process.commandline", "operator": "contains", "value": "dism.exe" } ] },
+            "s3_hyperv_enable_cmd_feature": { "event_type": "process", "conditions": [ { "field": "body.process.commandline", "operator": "contains", "value": "/Online /Enable-Feature /FeatureName:Microsoft-Hyper-V" } ] },
+            "s4_vbox_exe_path": { "event_type": "process", "conditions": [ { "field": "body.process.exe_path", "operator": "endswith", "value": "VBoxManage.exe" }, { "field": "body.process.exe_path", "operator": "endswith", "value": "VirtualBox.exe" } ] },
+            "s5_vmware_exe_path": { "event_type": "process", "conditions": [ { "field": "body.process.exe_path", "operator": "endswith", "value": "vmware.exe" }, { "field": "body.process.exe_path", "operator": "endswith", "value": "vmrun.exe" }, { "field": "body.process.exe_path", "operator": "endswith", "value": "vmx.exe" } ] },
+            "s6_qemu_exe_path": { "event_type": "process", "conditions": [ { "field": "body.process.exe_path", "operator": "contains", "value": "qemu-system" }, { "field": "body.process.exe_path", "operator": "contains", "value": "qemu.exe" } ] },
+            "s7_suspicious_vbox_cmd_options": { "event_type": "process", "conditions": [ { "field": "body.process.commandline", "operator": "contains", "value": "-silent" }, { "field": "body.process.commandline", "operator": "contains", "value": "-ignore-reboot" }, { "field": "body.process.commandline", "operator": "contains", "value": "--type headless" }, { "field": "body.process.commandline", "operator": "contains", "value": "GUI/SuppressMessages" } ] },
+            "s8_suspicious_vmware_cmd_options": { "event_type": "process", "conditions": [ { "field": "body.process.commandline", "operator": "contains", "value": "-x" }, { "field": "body.process.commandline", "operator": "contains", "value": "-s" } ] },
+            "s9_reg_access_action": { "event_type": "registry", "conditions": [ { "field": "body.registry.keyclass", "operator": "contains", "value": "Query" }, { "field": "body.registry.keyclass", "operator": "contains", "value": "Open" }, { "field": "body.registry.keyclass", "operator": "contains", "value": "Set" } ] },
+            "s10_reg_hyperv_key_path": { "event_type": "registry", "conditions": [ { "field": "body.registry.name", "operator": "contains", "value": "SYSTEM\\CurrentControlSet\\Services\\vmms" }, { "field": "body.registry.name", "operator": "contains", "value": "SYSTEM\\CurrentControlSet\\Services\\hvboot" }, { "field": "body.registry.name", "operator": "contains", "value": "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Hyper-V" } ] },
+            "s11_fs_create_action": { "event_type": "filesystem", "conditions": [ { "field": "body.filesystem.action", "operator": "equals", "value": "create" } ] },
+            "s12_fs_vm_file_extension": { "event_type": "filesystem", "conditions": [ { "field": "body.filesystem.filepath", "operator": "endswith", "value": ".vmdk" }, { "field": "body.filesystem.filepath", "operator": "endswith", "value": ".vdi" }, { "field": "body.filesystem.filepath", "operator": "endswith", "value": ".vhd" }, { "field": "body.filesystem.filepath", "operator": "endswith", "value": ".vhdx" }, { "field": "body.filesystem.filepath", "operator": "endswith", "value": ".vmx" } ] }
+        },
+        "condition": "s1_proc_create_action and ((s2_hyperv_enable_cmd_dism and s3_hyperv_enable_cmd_feature) or (s4_vbox_exe_path and s7_suspicious_vbox_cmd_options) or (s5_vmware_exe_path and s8_suspicious_vmware_cmd_options) or s6_qemu_exe_path) or (s9_reg_access_action and s10_reg_hyperv_key_path) or (s11_fs_create_action and s12_fs_vm_file_extension)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 가상 인스턴스를 실행하려는 시도를 탐지할 수 있습니다. Hyper-V 활성화 명령 실행, VirtualBox, VMware, QEMU와 같은 가상화 도구의 프로세스 생성 및 의심스러운 명령줄 인자 사용을 모니터링합니다. 또한 가상화 관련 레지스트리 키 접근 및 가상 머신 구성 파일(.vmx) 또는 디스크 이미지 파일(.vmdk, .vdi, .vhd, .vhdx)의 생성을 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히 다른 방어 회피 또는 실행 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 가상화 소프트웨어의 설치, 업데이트, 관리 활동 또는 개발 환경에서의 가상 머신 사용으로 인해 오탐이 발생할 수 있습니다. 시스템 관리자가 Hyper-V를 활성화하거나, 개발자가 VirtualBox/VMware/QEMU를 사용하는 경우 등이 해당됩니다. 알려진 정상 프로세스, 특정 명령줄 패턴, 또는 특정 파일 경로를 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

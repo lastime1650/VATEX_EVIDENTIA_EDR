@@ -1,0 +1,89 @@
+{
+    "id": "T1546.007-NetshHelperDLL",
+    "name": "Netsh Helper DLL Persistence",
+    "description": "Detects attempts to establish persistence by registering malicious content as a Netsh Helper DLL. Netsh.exe can be extended with helper DLLs, and adversaries may modify the HKLM\\SOFTWARE\\Microsoft\\Netsh registry key to load malicious DLLs. This rule also monitors for unusual child processes spawned by netsh.exe, which could indicate the execution of arbitrary code via a malicious helper DLL.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": [
+            "TA0004",
+            "TA0003"
+        ],
+        "technique_id": "T1546",
+        "subtechnique_id": "T1546.007",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Persistence:Modify Registry",
+            "Enterprise:Execution:Shared Modules"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_child_of_netsh": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "endswith",
+                        "value": "netsh.exe"
+                    }
+                ]
+            },
+            "s3_registry_modify_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPostSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreCreateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPostCreateKey"
+                    }
+                ]
+            },
+            "s4_registry_netsh_key_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\\\SOFTWARE\\\\Microsoft\\\\Netsh"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_child_of_netsh) or (s3_registry_modify_action and s4_registry_netsh_key_path)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Netsh Helper DLL을 통한 권한 상승 및 지속성 유지 시도를 탐지할 수 있습니다. netsh.exe에 의해 생성되는 비정상적인 자식 프로세스나, HKLM\\SOFTWARE\\Microsoft\\Netsh 레지스트리 키에 대한 의심스러운 수정/생성 이벤트를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 시스템 변경 사항에 대한 심층적인 포렌식 조사를 시작하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 네트워크 설정 유틸리티, VPN 클라이언트 또는 기타 합법적인 소프트웨어가 netsh.exe를 실행하거나 네트워크 설정을 위해 레지스트리 키를 수정하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상적인 netsh.exe의 사용 패턴, 특정 프로세스 또는 레지스트리 값에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,94 @@
+{
+    "id": "T1036.006-SpaceAfterFilename",
+    "name": "Space After Filename Masquerading",
+    "description": "Detects attempts to execute or manipulate files where the filename contains a trailing space, potentially to masquerade the true file type or evade detection. While Windows typically normalizes filenames by stripping trailing spaces, attempts to use such paths in command lines or specific filesystem operations could indicate malicious intent, especially if the original technique description implies an execution change.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1036",
+        "subtechnique_id": "T1036.006",
+        "data_sources": [
+            "Enterprise:Defense Evasion:Masquerading:Space after Filename"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_creation_event": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_exe_path_ends_with_space": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": " "
+                    }
+                ]
+            },
+            "s3_commandline_ends_with_space": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "endswith",
+                        "value": " "
+                    }
+                ]
+            },
+            "s4_filesystem_modify_event": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "rename"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "superseded"
+                    }
+                ]
+            },
+            "s5_filepath_ends_with_space": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": " "
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_creation_event and (s2_exe_path_ends_with_space or s3_commandline_ends_with_space)) or (s4_filesystem_modify_event and s5_filepath_ends_with_space)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 파일명 끝에 공백이 포함된 파일의 생성, 수정, 또는 실행 시도를 탐지할 수 있습니다. 이는 파일의 실제 유형을 위장하거나 보안 도구의 탐지를 회피하려는 시도일 수 있습니다. 탐지된 이벤트는 중간 심각도로 분류되어 추가 조사를 트리거하고, 잠재적인 악성 활동의 초기 지표로 활용될 수 있습니다. 특히, 다른 마스커레이딩 또는 방어 회피 전술과 결합될 때 중요도가 높아집니다.",
+    "false_positive": "Windows 운영체제는 일반적으로 파일명 끝의 공백을 자동으로 제거하므로, 이 규칙에 의한 탐지는 드물 수 있습니다. 그러나 특정 애플리케이션, 스크립트, 또는 비표준 파일 시스템 상호작용이 파일명에 공백을 포함하거나, 명령줄 인자에 의도치 않게 공백이 포함되는 경우 오탐이 발생할 수 있습니다. 이러한 경우, 해당 프로세스나 파일 경로를 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

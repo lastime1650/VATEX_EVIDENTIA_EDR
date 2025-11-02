@@ -1,0 +1,146 @@
+{
+    "id": "T1036.004-MasqueradeTaskOrService",
+    "name": "Masquerade Task or Service",
+    "description": "Detects attempts by adversaries to manipulate the name of a scheduled task or Windows service to make it appear legitimate or benign, often by creating or modifying tasks/services with names similar to legitimate ones to evade detection.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1036",
+        "subtechnique_id": "T1036.004",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Persistence:Create or Modify System Process:Windows Service",
+            "Enterprise:Persistence:Scheduled Task/Job:Scheduled Task"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s0_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s1_schtasks_commandline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "schtasks.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/change"
+                    }
+                ]
+            },
+            "s2_sc_commandline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "sc.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "config"
+                    }
+                ]
+            },
+            "s3_powershell_task_service_cmdlets": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Register-ScheduledTask"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-Service"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-Service"
+                    }
+                ]
+            },
+            "s4_registry_modify_keyclass": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "SetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "CreateKeyEx"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "RenameKey"
+                    }
+                ]
+            },
+            "s5_registry_service_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\"
+                    }
+                ]
+            },
+            "s6_registry_task_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "\\Microsoft\\Windows NT\\CurrentVersion\\Schedule\\TaskCache\\Tasks\\"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "\\Microsoft\\Windows\\CurrentVersion\\Task Scheduler\\Tasks\\"
+                    }
+                ]
+            }
+        },
+        "condition": "(s0_process_create_action and (s1_schtasks_commandline or s2_sc_commandline or s3_powershell_task_service_cmdlets)) or (s4_registry_modify_keyclass and (s5_registry_service_path or s6_registry_task_path))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 통해 공격자가 합법적인 시스템 서비스나 예약 작업으로 위장하기 위해 시도하는 행위를 탐지할 수 있습니다. 'schtasks.exe', 'sc.exe' 또는 PowerShell 명령어를 사용하여 예약 작업이나 서비스를 생성/수정하는 프로세스 이벤트와, 'HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services' 및 예약 작업 관련 레지스트리 키에 대한 비정상적인 변경 이벤트를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스의 명령줄 인자, 생성된 서비스/작업의 이름 및 경로를 분석하여 위장 여부를 판단하는 데 활용됩니다. 이는 방어 회피 및 지속성 전술 탐지에 중요합니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 소프트웨어 설치 프로그램, 업데이트 프로세스, 또는 기업 정책에 따른 자동화 스크립트가 예약 작업이나 서비스를 생성/수정하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴, 서비스/작업 이름을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

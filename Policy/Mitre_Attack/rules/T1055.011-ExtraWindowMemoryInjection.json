@@ -1,0 +1,54 @@
+{
+    "id": "T1055.011-ExtraWindowMemoryInjection",
+    "name": "Extra Window Memory Injection",
+    "description": "Adversaries may inject malicious code into process via Extra Window Memory (EWM) in order to evade process-based defenses as well as possibly elevate privileges. This technique involves using API functions like GetWindowLong, SetWindowLong, and SendNotifyMessage to manipulate extra window memory for code execution.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1055",
+        "subtechnique_id": "T1055.011",
+        "data_sources": [
+            "Process:OSAPIExecution"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "getwindowlong_api_call": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "contains",
+                        "value": "GetWindowLong"
+                    }
+                ]
+            },
+            "setwindowlong_api_call": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "contains",
+                        "value": "SetWindowLong"
+                    }
+                ]
+            },
+            "sendnotifymessage_api_call": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "contains",
+                        "value": "SendNotifyMessage"
+                    }
+                ]
+            }
+        },
+        "condition": "getwindowlong_api_call or setwindowlong_api_call or sendnotifymessage_api_call"
+    },
+    "operational_usage": "SOC에서는 이 룰을 통해 EWM(Extra Window Memory) 인젝션과 관련된 API 호출(예: GetWindowLong, SetWindowLong, SendNotifyMessage)을 실시간으로 탐지할 수 있습니다. 탐지된 이벤트는 방어 회피 및 권한 상승 시도를 나타낼 수 있으므로, 즉시 알람을 발생시키고 관련 프로세스 활동에 대한 심층 조사를 시작하여 잠재적인 악성 코드 실행을 식별하는 데 활용됩니다. 이를 통해 침해사고 대응팀은 공격의 초기 단계에서 위협을 차단하고 추가적인 피해를 방지할 수 있습니다.",
+    "false_positive": "일부 합법적인 애플리케이션이나 시스템 유틸리티도 창 메모리 조작을 위해 GetWindowLong, SetWindowLong, SendNotifyMessage와 같은 API를 사용할 수 있습니다. 특히 GUI 관련 개발 도구나 레거시 애플리케이션에서 이러한 API 호출이 발생할 수 있으므로, 탐지 시 해당 프로세스의 정당성을 확인하는 추가적인 검토가 필요합니다."
+}

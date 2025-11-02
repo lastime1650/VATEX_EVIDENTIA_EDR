@@ -1,0 +1,134 @@
+{
+    "id": "T1059.012-HypervisorCLIExecution",
+    "name": "Hypervisor CLI Execution",
+    "description": "Detects attempts to abuse hypervisor command line interpreters (CLIs) to execute malicious commands from a Windows system. This includes execution of tools like 'esxcli' or 'vim-cmd' directly (if vCLI is installed), or via remote execution methods like PowerShell (PowerCLI) or SSH/Plink. Adversaries may leverage these tools for various actions such as File and Directory Discovery or Data Encrypted for Impact on virtualized environments.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1059",
+        "subtechnique_id": "T1059.012",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Hypervisor CLI"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_esxcli_commandline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "esxcli"
+                    }
+                ]
+            },
+            "s3_vimcmd_commandline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "vim-cmd"
+                    }
+                ]
+            },
+            "s4_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s5_powercli_cmdlet_connect": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Connect-VIServer"
+                    }
+                ]
+            },
+            "s6_powercli_cmdlet_getvm": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-VM"
+                    }
+                ]
+            },
+            "s7_powercli_cmdlet_invokescript": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-VMScript"
+                    }
+                ]
+            },
+            "s8_ssh_client_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "ssh.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "plink.exe"
+                    }
+                ]
+            },
+            "s9_remote_cmdline_esxcli": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "esxcli"
+                    }
+                ]
+            },
+            "s10_remote_cmdline_vimcmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "vim-cmd"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and (s2_esxcli_commandline or s3_vimcmd_commandline or (s4_powershell_exe_path and (s5_powercli_cmdlet_connect or s6_powercli_cmdlet_getvm or s7_powercli_cmdlet_invokescript)) or (s8_ssh_client_exe_path and (s9_remote_cmdline_esxcli or s10_remote_cmdline_vimcmd)))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Windows 시스템에서 하이퍼바이저 CLI 명령 실행 시도를 탐지할 수 있습니다. 이는 'esxcli' 또는 'vim-cmd'와 같은 직접적인 명령 실행, PowerCLI를 통한 PowerShell cmdlet 사용, 또는 SSH/Plink를 이용한 원격 하이퍼바이저 명령 실행을 포함합니다. 탐지된 이벤트는 가상화 환경에 대한 잠재적인 공격 시도로 분류되어 높은 심각도로 알람을 트리거하고, 추가적인 포렌식 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히, 가상 머신 조작, 파일 시스템 검색, 또는 데이터 암호화와 같은 다른 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 가상화 관리 도구, 자동화 스크립트, 백업 솔루션, 또는 시스템 관리자가 하이퍼바이저를 관리하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상적인 관리 프로세스, 특정 사용자 계정, 또는 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,57 @@
+{
+    "id": "T1102.001-DeadDropResolver",
+    "name": "Dead Drop Resolver",
+    "description": "Detects attempts by adversaries to use existing, legitimate external Web services (e.g., social media, cloud storage) to host information that points to additional command and control (C2) infrastructure. This includes outbound network connections to common web ports that may be used for such communication.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0011",
+        "technique_id": "T1102",
+        "subtechnique_id": "T1102.001",
+        "data_sources": [
+            "Enterprise:Command and Control:Web Service:Dead Drop Resolver",
+            "Enterprise:Command and Control:Application Layer Protocol:Web Protocols",
+            "Enterprise:Command and Control:Encrypted Channel:Symmetric Cryptography",
+            "Enterprise:Command and Control:Encrypted Channel:Asymmetric Cryptography"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "outbound_web_traffic": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    },
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "TCP"
+                    }
+                ]
+            },
+            "web_ports": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 80
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 443
+                    }
+                ]
+            }
+        },
+        "condition": "outbound_web_traffic and web_ports"
+    },
+    "operational_usage": "SOC 팀은 이 룰을 활용하여 시스템에서 외부 웹 서비스로의 아웃바운드 HTTP/HTTPS 통신을 모니터링합니다. 특히, 비정상적인 프로세스가 일반적인 웹 브라우징 패턴과 다르게 이러한 통신을 시도하는 경우, 또는 알려지지 않은 외부 IP 주소로의 연결이 탐지될 때 높은 우선순위로 알람을 발생시킬 수 있습니다. 이 탐지 룰은 초기 단계의 C2 통신 시도를 식별하고, 추가적인 네트워크 및 호스트 기반 조사를 시작하는 데 중요한 정보를 제공합니다.",
+    "false_positive": "이 룰은 모든 아웃바운드 HTTP/HTTPS 트래픽을 탐지하므로, 정상적인 웹 브라우징, 소프트웨어 업데이트, 클라우드 동기화 서비스, 또는 합법적인 애플리케이션의 API 통신으로 인해 높은 오탐이 발생할 수 있습니다. 오탐을 줄이기 위해서는 프로세스 정보, 도메인 평판, 트래픽 볼륨, 그리고 알려진 정상적인 통신 패턴을 화이트리스트에 추가하는 등의 추가적인 분석 및 컨텍스트가 필요합니다."
+}

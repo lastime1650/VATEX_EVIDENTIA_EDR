@@ -22,14 +22,19 @@ namespace EDR
                     ProcessBehaviorLogManager(
                         std::string KafkaBroker,
                         std::string Kafkagroup_id,
-                        std::string Kafkatopic
-                    ) : KafkaConsumer( KafkaBroker, Kafkagroup_id, Kafkatopic ){
+                        std::string Kafkatopic,
+
+                        Solution::Policy::EDRPolicy& EDRPolicyManager
+                    ) : 
+                    KafkaConsumer( KafkaBroker, Kafkagroup_id, Kafkatopic ),
+                    TreeManager(EDRPolicyManager)
+                    {
                         std::cout << "[ProcessBehaviorLogManager]{Notice} created" << std::endl;
                     }
 
                     ~ProcessBehaviorLogManager(){ std::cout << "[ProcessBehaviorLogManager]{Notice} ~ProcessBehaviorLogManager() called " << std::endl; Stop(); }
 
-                    bool Run( Solution::Policy::EDRPolicy& EDRPolicyManager, EDR::Server::AgentTcpManagement::AgentTcp& AgentTCPManager, Solution::Intelligence::Intellina& IntelligenceManager )
+                    bool Run( EDR::Server::AgentTcpManagement::AgentTcp& AgentTCPManager, Solution::Intelligence::Intellina& IntelligenceManager )
                     {
                         is_working = true;
                         std::cout << "[ProcessBehaviorLogManager]{Notice} ProcessBehaviorLogManager.Run() called" << std::endl;
@@ -42,12 +47,9 @@ namespace EDR
                             std::cout << "[ProcessBehaviorLogManager]{Failed} KafkaConsumer.Run() Failed" << std::endl;
                             return false;
                         }
-                            
-
-
 
                         kafka_consuming_agent_log_thread = std::thread(
-                            [this, &EDRPolicyManager, &AgentTCPManager, &IntelligenceManager]()
+                            [this, &AgentTCPManager, &IntelligenceManager]()
                             {
                                 std::cout << "[ProcessBehaviorLogManager]{Notice} kafka_consuming_agent_log_thread Running" << std::endl;
                                 while(this->is_working)
@@ -126,15 +128,20 @@ s
                                         // Step1. Node 추가
                                         EDR::Server::Util::node::ProcessTreeNode* Mynode = nullptr;
                                         this->TreeManager.add_process_node(ev, Mynode);
-                                        
+
                                         if(Mynode)
                                         {
-                                            // 노드가 유효할 때, 후속 작업
-                                            
-                                            // Step2. 인텔리전스 + MITRE_ATTACK Mapping 매핑작업
-                                            /* ... */
-                                            
-                                            // Step3. event 개수 측정 
+                                            if(Mynode->session.Root_SessionID == "39828eb898f3db844250870c9e39b1696a5b2821239151583202ffcddc39f158")
+                                            {
+                                                std::string X = message.original_message + ",";
+                                                testFileHandle.writeToFile("./test.json", std::vector<uint8_t>(X.begin(), X.end()), true);
+                                                //std::cout << message.original_message <<"\n" << std::endl;
+                                                
+
+                                            }
+                                            // Rule기반 탐지
+                                            //if( Mynode->AssociationRuleCTX )
+                                            //    Mynode->AssociationRuleCTX->Match(ev->get_event()); // Match Postfix 작업은 내부에서 Action 됨 (자동화 Rule기반 보안알림 및 대응가능)
                                         }
                                     }
                                         
@@ -198,6 +205,7 @@ s
 
                         }
                     }
+                    EDR::Util::File::FileHandler testFileHandle;
 
                     // node process tree manager
                     EDR::Server::Util::ProcessTreeManager TreeManager;

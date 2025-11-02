@@ -1,0 +1,199 @@
+{
+    "id": "T1557-AdversaryInTheMiddle",
+    "name": "Adversary-in-the-Middle (AiTM)",
+    "description": "Detects attempts by adversaries to position themselves between two or more networked devices to intercept, monitor, or manipulate network traffic. This includes the use of tools for LLMNR/NBT-NS poisoning, ARP spoofing, DHCP spoofing, or modifications to DNS settings via command-line utilities or direct registry changes.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0006",
+        "technique_id": "T1557",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Credential Access:Adversary-in-the-Middle:LLMNR/NBT-NS Poisoning and SMB Relay",
+            "Enterprise:Credential Access:Adversary-in-the-Middle:ARP Cache Poisoning",
+            "Enterprise:Credential Access:Adversary-in-the-Middle:DHCP Spoofing",
+            "Enterprise:Defense Evasion:Modify Registry",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Native API"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "proc_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "cmdline_llmnr_nbtns_tools": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "responder.py"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "inveigh.ps1"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "impacket-responder"
+                    }
+                ]
+            },
+            "cmdline_arp_spoof_tools": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "arpspoof"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ettercap"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "cain.exe"
+                    }
+                ]
+            },
+            "cmdline_dhcp_spoof_tools": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "scapy"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "dhcp"
+                    }
+                ]
+            },
+            "cmdline_netsh_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "netsh.exe"
+                    }
+                ]
+            },
+            "cmdline_netsh_dns_args": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "interface ip set dns"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "interface ip add dns"
+                    }
+                ]
+            },
+            "cmdline_dnscmd_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "dnscmd.exe"
+                    }
+                ]
+            },
+            "cmdline_dnscmd_args": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/ZoneAdd"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/RecordAdd"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/Config"
+                    }
+                ]
+            },
+            "reg_setvalue_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "SetValueKey"
+                    }
+                ]
+            },
+            "reg_dns_path_part1": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "SYSTEM\\\\CurrentControlSet\\\\Services\\\\Tcpip\\\\Parameters\\\\Interfaces"
+                    }
+                ]
+            },
+            "reg_dns_path_part2": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "NameServer"
+                    }
+                ]
+            },
+            "api_network_config_api": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "SetIpNetEntry2"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "SetAdapterInfo"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "SetNetworkParams"
+                    }
+                ]
+            }
+        },
+        "condition": "(proc_create_action and (cmdline_llmnr_nbtns_tools or cmdline_arp_spoof_tools or cmdline_dhcp_spoof_tools)) or (reg_setvalue_action and reg_dns_path_part1 and reg_dns_path_part2) or (proc_create_action and cmdline_netsh_exe and cmdline_netsh_dns_args) or (proc_create_action and cmdline_dnscmd_exe and cmdline_dnscmd_args) or api_network_config_api"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 중간자 공격(AiTM) 시도를 탐지할 수 있습니다. Responder, Ettercap과 같은 AiTM 도구 실행, 'netsh' 또는 'dnscmd'를 이용한 DNS 설정 변경 시도, 또는 네트워크 인터페이스 구성 변경 관련 레지스트리 수정 및 API 호출을 모니터링합니다. 탐지된 이벤트는 즉시 알람을 트리거하고, 네트워크 트래픽 분석 및 관련 프로세스 조사를 통해 추가적인 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 네트워크 관리 도구, VPN 클라이언트, 가상화 소프트웨어, 또는 시스템 진단 유틸리티가 네트워크 설정을 변경하거나 관련 API를 호출하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

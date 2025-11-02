@@ -1,0 +1,151 @@
+{
+    "id": "T1110-BruteForce",
+    "name": "Brute Force",
+    "description": "Detects attempts by adversaries to gain access to accounts when passwords are unknown or when password hashes are obtained, by systematically guessing passwords using repetitive or iterative mechanisms. This includes monitoring for execution of common brute-force tools, suspicious command-line login attempts, and relevant API calls.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0006",
+        "technique_id": "T1110",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Command:CommandExecution",
+            "Process:OSAPIExecution"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_bruteforce_tool_hydra": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "hydra"
+                    }
+                ]
+            },
+            "s3_bruteforce_tool_ncrack": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ncrack"
+                    }
+                ]
+            },
+            "s4_bruteforce_tool_crackmapexec": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "crackmapexec"
+                    }
+                ]
+            },
+            "s5_bruteforce_tool_medusa": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "medusa"
+                    }
+                ]
+            },
+            "s6_bruteforce_tool_patator": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "patator"
+                    }
+                ]
+            },
+            "s7_cmdline_net_use": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "net use"
+                    }
+                ]
+            },
+            "s8_cmdline_user_arg": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/user:"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "username"
+                    }
+                ]
+            },
+            "s9_cmdline_password_arg": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/password:"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "password"
+                    }
+                ]
+            },
+            "s10_apicall_logonuser": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "LogonUserW"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "LogonUserA"
+                    }
+                ]
+            },
+            "s11_apicall_netuserenum": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "NetUserEnum"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and (s2_bruteforce_tool_hydra or s3_bruteforce_tool_ncrack or s4_bruteforce_tool_crackmapexec or s5_bruteforce_tool_medusa or s6_bruteforce_tool_patator or (s7_cmdline_net_use and s8_cmdline_user_arg and s9_cmdline_password_arg)) or s10_apicall_logonuser or s11_apicall_netuserenum"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템 계정에 대한 무차별 대입 공격(Brute Force) 시도를 탐지할 수 있습니다. Hydra, Ncrack, CrackMapExec과 같은 알려진 무차별 대입 도구의 실행, 'net use' 명령을 통한 의심스러운 로그인 시도, 또는 'LogonUser'와 같은 인증 관련 API 호출을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 네트워크 활동에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 짧은 시간 내에 여러 번의 실패한 인증 시도가 발생하는 패턴과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 스크립트, 또는 합법적인 애플리케이션이 사용자 정보를 열거하거나 네트워크 인증을 시도하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

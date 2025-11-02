@@ -1,0 +1,90 @@
+{
+    "id": "T1585.003-CloudAccountInteraction",
+    "name": "Cloud Account Interaction via CLI",
+    "description": "Detects the execution of command-line interface (CLI) tools for major cloud providers (AWS, Azure, Google Cloud). While direct cloud account creation often occurs off-endpoint, adversaries may interact with newly created cloud accounts or resources from a compromised endpoint to upload tools, exfiltrate data, or manage infrastructure. This rule focuses on detecting such interactions.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1585",
+        "subtechnique_id": "T1585.003",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Process:ProcessCreation"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_aws_cli_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "aws.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "aws "
+                    }
+                ]
+            },
+            "s3_azure_cli_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "az.cmd"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "az.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "az "
+                    }
+                ]
+            },
+            "s4_gcloud_cli_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "gcloud.cmd"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "gcloud.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "gcloud "
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and (s2_aws_cli_execution or s3_azure_cli_execution or s4_gcloud_cli_execution)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 엔드포인트에서 주요 클라우드 서비스 공급자의 CLI 도구 실행을 탐지할 수 있습니다. 이는 공격자가 새로 생성한 클라우드 계정이나 리소스와 상호작용하여 도구를 업로드하거나, 데이터를 유출하거나, 인프라를 관리하려는 시도의 지표가 될 수 있습니다. 탐지된 이벤트는 잠재적인 리소스 개발 또는 기타 공격 단계와 연관될 수 있으므로, 비정상적인 CLI 사용 패턴이나 비정상적인 사용자 컨텍스트에서 발생하는 경우 즉각적인 조사가 필요합니다. 특히 개발 환경이 아닌 일반 사용자 환경에서 이러한 도구의 실행이 탐지될 경우 높은 우선순위로 대응해야 합니다.",
+    "false_positive": "개발자, DevOps 엔지니어, 시스템 관리자 또는 자동화된 스크립트가 일상적인 클라우드 관리 작업을 수행하기 위해 AWS CLI, Azure CLI, Google Cloud SDK 등의 도구를 사용하는 경우 오탐이 발생할 수 있습니다. 오탐을 줄이기 위해서는 알려진 정상적인 프로세스, 사용자, 실행 경로를 화이트리스트에 추가하거나, 특정 명령줄 인자(예: 'delete' 또는 'create'와 같은 민감한 작업)에 대한 추가적인 조건을 설정하여 규칙을 세분화할 수 있습니다."
+}

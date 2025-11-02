@@ -1,0 +1,160 @@
+{
+    "id": "T1562.009-SafeModeBoot",
+    "name": "Safe Mode Boot",
+    "description": "Detects attempts by adversaries to abuse Windows safe mode to disable endpoint defenses. This involves modifications to Boot Configuration Data (BCD) stores using utilities like bcdedit.exe or bootcfg.exe, or by modifying specific registry keys related to safe mode startup (e.g., HKLM\\SYSTEM\\CurrentControlSet\\Control\\SafeBoot\\Minimal) or Run keys with a '*Startup' value.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1562",
+        "subtechnique_id": "T1562.009",
+        "data_sources": [
+            "Defense Evasion:Modify Registry",
+            "Execution:Command and Scripting Interpreter:Windows Command Shell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_bcdedit_or_bootcfg_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "bcdedit.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "bootcfg.exe"
+                    }
+                ]
+            },
+            "s3_registry_modify_or_create_keyclass": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreCreateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPostCreateKey"
+                    }
+                ]
+            },
+            "s4_safeboot_minimal_or_network_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\SafeBoot\\Minimal"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\SafeBoot\\Network"
+                    }
+                ]
+            },
+            "s5_autostart_run_key_paths": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnceEx"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\RunServicesOnce"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\RunServicesOnce"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\RunServices"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\RunServices"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer\\Run"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer\\Run"
+                    }
+                ]
+            },
+            "s6_run_key_value_name_wildcard_startup": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "\\\\*Startup"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_bcdedit_or_bootcfg_command) or (s3_registry_modify_or_create_keyclass and s4_safeboot_minimal_or_network_path) or (s3_registry_modify_or_create_keyclass and s5_autostart_run_key_paths and s6_run_key_value_name_wildcard_startup)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 공격자가 엔드포인트 방어를 우회하기 위해 안전 모드 부팅을 악용하려는 시도를 탐지할 수 있습니다. bcdedit.exe 또는 bootcfg.exe와 같은 부팅 구성 도구의 실행, HKLM\\SYSTEM\\CurrentControlSet\\Control\\SafeBoot\\Minimal 또는 \\Network 경로에 대한 레지스트리 키 생성/수정, 또는 자동 실행 레지스트리 Run 키에 '*Startup' 값을 추가하는 행위를 모니터링합니다. 탐지 시 즉각적인 알람을 트리거하고, 해당 프로세스 및 레지스트리 변경 사항에 대한 심층 조사를 시작하여 침해사고 대응의 우선순위를 높일 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 소프트웨어 설치 프로그램, 업데이트 유틸리티, 또는 합법적인 애플리케이션이 부팅 구성을 변경하거나 레지스트리 시작 항목을 관리하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄/레지스트리 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

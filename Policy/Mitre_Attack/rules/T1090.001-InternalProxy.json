@@ -1,0 +1,125 @@
+{
+    "id": "T1090.001-InternalProxy",
+    "name": "Internal Proxy",
+    "description": "Adversaries may use an internal proxy to direct command and control traffic between two or more systems in a compromised environment. Many tools exist that enable traffic redirection through proxies or port redirection, including HTRAN, ZXProxy, and ZXPortMap. Adversaries use internal proxies to manage command and control communications inside a compromised environment, to reduce the number of simultaneous outbound network connections, to provide resiliency in the face of connection loss, or to ride over existing trusted communications paths between infected systems to avoid suspicion. Internal proxy connections may use common peer-to-peer (p2p) networking protocols, such as SMB, to better blend in with the environment. By using a compromised internal system as a proxy, adversaries may conceal the true destination of C2 traffic while reducing the need for numerous connections to external systems.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0011",
+        "technique_id": "T1090",
+        "subtechnique_id": "T1090.001",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Network:NetworkConnection"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_proxy_tool_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "htran.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "zxproxy.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "zxportmap.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "chisel.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "frp.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "nps.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iodine.exe"
+                    }
+                ]
+            },
+            "s3_network_outbound_tcp": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    },
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "TCP"
+                    }
+                ]
+            },
+            "s4_network_proxy_ports": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 3128
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 8080
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 1080
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 8888
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 9050
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 53
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_proxy_tool_cmdline) or (s3_network_outbound_tcp and s4_network_proxy_ports)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 내부 프록시를 통한 C2 통신 시도를 탐지할 수 있습니다. HTRAN, ZXProxy, Chisel, FRP, NPS, Iodine 등 알려진 프록시 도구의 실행, 또는 비정상적인 내부 포트(예: 3128, 8080, 1080, 8888, 9050, 53)로의 아웃바운드 TCP 연결을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 추가적인 네트워크 및 프로세스 포렌식 조사를 시작하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 개발 도구, VPN 클라이언트, 특정 애플리케이션의 내부 통신, 또는 합법적인 시스템 관리 및 모니터링 도구가 프록시 포트를 사용하거나 DNS (포트 53)를 통해 통신할 경우 오탐이 발생할 수 있습니다. 특히, DNS (포트 53)를 통한 프록시 탐지는 정상적인 DNS 쿼리 트래픽으로 인해 오탐이 발생할 가능성이 매우 높으므로, 해당 포트 탐지 시에는 추가적인 맥락 분석이 필요합니다. 알려진 정상 프로세스나 특정 IP 주소/포트 조합에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

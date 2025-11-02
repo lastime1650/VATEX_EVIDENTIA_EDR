@@ -1,0 +1,183 @@
+{
+    "id": "T1557.003-DHCP-Spoofing",
+    "name": "DHCP Spoofing",
+    "description": "Detects attempts by adversaries to redirect network traffic by acting as a malicious DHCP server or by manipulating network configuration on the endpoint. This includes monitoring for suspicious process execution of network configuration tools, unusual network listening activity on DHCP ports, registry modifications related to DNS/gateway settings, and relevant API calls. This technique can lead to adversary-in-the-middle (AiTM) positions, credential collection, and denial of service.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0006",
+        "technique_id": "T1557",
+        "subtechnique_id": "T1557.003",
+        "data_sources": [
+            "Credential Access:Adversary-in-the-Middle",
+            "Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Execution:Native API",
+            "Defense Evasion:Modify Registry",
+            "Command and Control:Application Layer Protocol"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_netsh_exe_usage": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "netsh"
+                    }
+                ]
+            },
+            "s3_netsh_network_config_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "interface"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ip set"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "dns"
+                    }
+                ]
+            },
+            "s4_ipconfig_exe_usage": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ipconfig"
+                    }
+                ]
+            },
+            "s5_ipconfig_renew_release_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/renew"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/release"
+                    }
+                ]
+            },
+            "s6_dhcpstarv_tool_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "dhcpstarv"
+                    }
+                ]
+            },
+            "s7_network_is_udp": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "UDP"
+                    }
+                ]
+            },
+            "s8_network_localport_67_inbound": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.localport",
+                        "operator": "equals",
+                        "value": 67
+                    },
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "in"
+                    }
+                ]
+            },
+            "s9_registry_set_value_keyclass": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    }
+                ]
+            },
+            "s10_registry_tcpip_interfaces_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "SYSTEM\\\\CurrentControlSet\\\\Services\\\\Tcpip\\\\Parameters\\\\Interfaces"
+                    }
+                ]
+            },
+            "s11_registry_dns_value_names": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "NameServer"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "DhcpNameServer"
+                    }
+                ]
+            },
+            "s12_apicall_dhcp_network_functions": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "DhcpRequestParams"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "DhcpReleaseParameters"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "SetTcpipInformation"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create and s2_netsh_exe_usage and s3_netsh_network_config_keywords) or (s1_process_create and s4_ipconfig_exe_usage and s5_ipconfig_renew_release_keywords) or (s1_process_create and s6_dhcpstarv_tool_execution) or (s7_network_is_udp and s8_network_localport_67_inbound) or (s9_registry_set_value_keyclass and s10_registry_tcpip_interfaces_path and s11_registry_dns_value_names) or s12_apicall_dhcp_network_functions"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 DHCP 스푸핑 또는 관련 네트워크 설정 조작 시도를 탐지할 수 있습니다. 'netsh'나 'ipconfig'와 같은 명령줄 도구를 사용하여 네트워크 설정을 변경하려는 시도, 'dhcpstarv'와 같은 알려진 DHCP 공격 도구의 실행, 비정상적인 프로세스가 DHCP 서버 포트(UDP 67)에서 인바운드 트래픽을 수신하는 네트워크 활동, DNS 또는 게이트웨이 관련 레지스트리 키에 대한 의심스러운 변경, 그리고 DHCP 관련 API 호출을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 추가적인 네트워크 및 호스트 기반 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히 다른 Credential Access 또는 Collection 활동과 결합될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 네트워크 진단 도구, VPN 클라이언트, 또는 합법적인 소프트웨어 설치/업데이트 프로세스가 네트워크 설정을 변경하거나 DHCP 관련 API를 호출할 때 오탐이 발생할 수 있습니다. 특히 'ipconfig /renew'와 같은 명령은 일반적인 사용자 활동일 수 있습니다. 알려진 정상 프로세스, 특정 명령줄 패턴, 또는 특정 네트워크 인터페이스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

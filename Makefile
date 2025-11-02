@@ -3,7 +3,7 @@ CXX = g++
 CXXFLAGS = -std=c++20 -O0 -Wall -g -I./include
 
 # 라이브러리
-LDFLAGS = -lcppkafka -lrdkafka++ -lrdkafka -lpthread
+LDFLAGS = -lcppkafka -lrdkafka++ -lrdkafka -lpthread -lsqlite3 -lfmt
 
 # 소스, 오브젝트, 실행파일
 SRCS = main.cpp

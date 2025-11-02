@@ -1,0 +1,112 @@
+{
+    "id": "T1213.002-SharepointInformationDiscovery",
+    "name": "Sharepoint Information Discovery",
+    "description": "Adversaries may leverage the SharePoint repository as a source to mine valuable information. SharePoint will often contain useful information for an adversary to learn about the structure and functionality of the internal network and systems. For example, policies, procedures, and standards, physical/logical network diagrams, system architecture diagrams, technical system documentation, testing/development credentials, work/project schedules, source code snippets, and links to network shares and other internal resources.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0009",
+        "technique_id": "T1213",
+        "subtechnique_id": "T1213.002",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Collection:Data from Information Repositories:Sharepoint"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s3_powershell_sharepoint_cmdlet": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-SPO"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Connect-PnPOnline"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-PnP"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-PnP"
+                    }
+                ]
+            },
+            "s4_powershell_webrequest_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-WebRequest"
+                    }
+                ]
+            },
+            "s5_sharepoint_domain_in_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "sharepoint.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "microsoftonline.com"
+                    }
+                ]
+            },
+            "s6_web_client_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "curl.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "wget.exe"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create AND ((s2_powershell_exe AND (s3_powershell_sharepoint_cmdlet OR (s4_powershell_webrequest_cmd AND s5_sharepoint_domain_in_cmdline))) OR (s6_web_client_exe AND s5_sharepoint_domain_in_cmdline))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 PowerShell 또는 기타 웹 클라이언트 도구를 통한 SharePoint 정보 수집 시도를 탐지할 수 있습니다. 특히, SharePoint 관련 cmdlet 사용이나 SharePoint 도메인을 대상으로 하는 웹 요청을 모니터링하여 공격자가 내부 네트워크 및 시스템 구조에 대한 정보를 수집하려는 시도를 식별합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 스크립트, 자동화된 보고서 생성 프로세스, 또는 합법적인 애플리케이션이 SharePoint와 상호작용하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 PowerShell 스크립트나 웹 클라이언트 호출 패턴에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

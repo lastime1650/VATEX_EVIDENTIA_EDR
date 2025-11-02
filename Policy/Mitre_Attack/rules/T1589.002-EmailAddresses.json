@@ -1,0 +1,183 @@
+{
+    "id": "T1589.002-EmailAddresses",
+    "name": "Email Addresses Discovery",
+    "description": "Detects attempts by adversaries to gather email addresses for targeting, often through command-line tools like PowerShell, Azure CLI, dsquery, ldapsearch, or web utilities like curl/wget querying public API endpoints or services. This information can be used for further reconnaissance, establishing operational resources, or initial access via phishing or brute-force attacks.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1589",
+        "subtechnique_id": "T1589.002",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Command:CommandExecution",
+            "Enterprise:Reconnaissance:Gather Victim Identity Information:Email Addresses",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s3_powershell_email_enum_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-MsolUser"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-AzureADUser"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-Recipient"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-ADUser -Filter {EmailAddress -like '*'} "
+                    }
+                ]
+            },
+            "s4_az_cli_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "az.exe"
+                    }
+                ]
+            },
+            "s5_az_cli_email_enum_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ad user list"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ad group member list"
+                    }
+                ]
+            },
+            "s6_dsquery_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "dsquery.exe"
+                    }
+                ]
+            },
+            "s7_dsquery_email_enum_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "user -attr mail"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "group -attr mail"
+                    }
+                ]
+            },
+            "s8_ldapsearch_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "ldapsearch.exe"
+                    }
+                ]
+            },
+            "s9_ldapsearch_email_enum_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "mail"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "proxyAddresses"
+                    }
+                ]
+            },
+            "s10_web_util_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "curl.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "wget.exe"
+                    }
+                ]
+            },
+            "s11_web_util_email_enum_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "autodiscover"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "GetCredentialType"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "@"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and ( (s2_powershell_exe_path and s3_powershell_email_enum_keywords) or (s4_az_cli_exe_path and s5_az_cli_email_enum_keywords) or (s6_dsquery_exe_path and s7_dsquery_email_enum_keywords) or (s8_ldapsearch_exe_path and s9_ldapsearch_email_enum_keywords) or (s10_web_util_exe_path and s11_web_util_email_enum_keywords) )"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 PowerShell, Azure CLI, dsquery, ldapsearch, 또는 웹 유틸리티(curl/wget)와 같은 명령줄 도구를 통해 이메일 주소 정보 수집 시도를 탐지할 수 있습니다. 프로세스 생성 이벤트와 함께 특정 이메일 열거 명령줄 인자를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 네트워크 활동에 대한 추가적인 조사를 시작하는 데 사용될 수 있습니다. 이는 초기 정찰 단계에서 공격자의 의도를 파악하는 데 중요한 지표가 됩니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 백신 소프트웨어, 또는 합법적인 애플리케이션이 사용자 정보를 조회하거나 웹 서비스와 통신하는 과정에서 오탐이 발생할 수 있습니다. 특히 'curl'이나 'wget'과 같은 일반적인 웹 유틸리티의 경우, 'autodiscover' 또는 '@' 기호를 포함하는 명령줄이 정상적인 용도로 사용될 가능성이 있습니다. 알려진 정상적인 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

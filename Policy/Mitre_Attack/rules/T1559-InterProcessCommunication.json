@@ -1,0 +1,151 @@
+{
+    "id": "T1559-InterProcessCommunication",
+    "name": "Inter-Process Communication Abuse",
+    "description": "Detects attempts by adversaries to abuse Inter-Process Communication (IPC) mechanisms, such as Dynamic Data Exchange (DDE) or Component Object Model (COM), for local code or command execution. This includes monitoring for DDE-related keywords in command lines, specific COM/DDE API calls, and access to critical COM registry keys.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1559",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Process:OSAPIExecution",
+            "WindowsRegistry:WindowsRegistryKeyAccess"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmdline_dde_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "DDEAUTO"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "DDEINITIATE"
+                    }
+                ]
+            },
+            "s3_cmdline_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s4_cmdline_cmd_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "cmd.exe"
+                    }
+                ]
+            },
+            "s5_apicall_com_creation": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "CoCreateInstance"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "CoGetClassObject"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "CoInitializeEx"
+                    }
+                ]
+            },
+            "s6_apicall_dde_communication": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "DdeInitiate"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "DdeConnect"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "DdeClientTransaction"
+                    }
+                ]
+            },
+            "s7_registry_key_read_or_open_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "Query"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "OpenKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "Enumerate"
+                    }
+                ]
+            },
+            "s8_registry_name_clsid_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CLASSES_ROOT\\CLSID"
+                    }
+                ]
+            },
+            "s9_registry_name_interface_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CLASSES_ROOT\\Interface"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_cmdline_dde_keywords and (s3_cmdline_powershell_exe or s4_cmdline_cmd_exe)) or s5_apicall_com_creation or s6_apicall_dde_communication or (s7_registry_key_read_or_open_action and (s8_registry_name_clsid_path or s9_registry_name_interface_path))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 DDE 또는 COM과 같은 IPC 메커니즘을 악용하여 코드를 실행하려는 시도를 탐지할 수 있습니다. DDE 관련 키워드를 포함하는 명령줄을 통한 프로세스 생성, COM 객체 생성 또는 DDE 통신 관련 API 호출, 그리고 COM 클래스 ID 또는 인터페이스 관련 레지스트리 키 접근을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 시스템 활동에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 애플리케이션, 시스템 유틸리티, 또는 개발 도구가 DDE나 COM을 사용하여 프로세스 간 통신을 수행할 수 있어 오탐이 발생할 수 있습니다. 특히 Microsoft Office 제품군이나 특정 개발 환경에서 DDE를 활용하는 경우가 흔합니다. 알려진 정상 프로세스나 특정 IPC 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

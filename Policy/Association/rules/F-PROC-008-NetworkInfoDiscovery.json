@@ -1,0 +1,41 @@
+{
+    "id": "F-PROC-008-NetworkInfoDiscovery",
+    "name": "Feature: Network Information Discovery",
+    "description": "Identifies execution of common network discovery utilities like ipconfig.exe, net.exe, netstat.exe, and arp.exe.",
+    "severity": "info",
+    "mitre_attack": [
+        {
+            "tactic": "TA0007",
+            "technique_id": "T1016"
+        },
+        {
+            "tactic": "TA0007",
+            "technique_id": "T1049"
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "network_discovery_tool_started",
+                "selections": {
+                    "selection_net_tool_path": {
+                        "event_type": "process",
+                        "condition_method": "or",
+                        "conditions": [
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "ipconfig.exe"},
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "net.exe"},
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "netstat.exe"},
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "arp.exe"},
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "route.exe"}
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "Feature Captured: Network Information Discovery Utility Execution"
+                }
+            }
+        ]
+    }
+}

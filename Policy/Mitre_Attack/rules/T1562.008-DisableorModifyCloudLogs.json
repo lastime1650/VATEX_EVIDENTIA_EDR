@@ -1,0 +1,107 @@
+{
+    "id": "T1562.008-DisableorModifyCloudLogs",
+    "name": "Disable or Modify Cloud Logs",
+    "description": "An adversary may disable or modify cloud logging capabilities and integrations to limit what data is collected on their activities and avoid detection. Cloud environments allow for collection and analysis of audit and application logs that provide insight into what activities a user does within the environment. If an adversary has sufficient permissions, they can disable or modify logging to avoid detection of their activities. For example, in AWS an adversary may disable CloudWatch/CloudTrail integrations prior to conducting further malicious activity. They may alternatively tamper with logging functionality – for example, by removing any associated SNS topics, disabling multi-region logging, or disabling settings that validate and/or encrypt log files. In Office 365, an adversary may disable logging on mail collection activities for specific users by using the `Set-MailboxAuditBypassAssociation` cmdlet, by disabling M365 Advanced Auditing for the user, or by downgrading the user’s license from an Enterprise E5 to an Enterprise E3 license.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1562",
+        "subtechnique_id": "T1562.008",
+        "data_sources": [
+            "Defense Evasion:Impair Defenses:Disable or Modify Cloud Logs",
+            "Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Execution:Command and Scripting Interpreter:PowerShell",
+            "Execution:Native API"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s_az_cli_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "az.exe"
+                    }
+                ]
+            },
+            "s_az_delete_diagnostic_settings_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "monitor diagnostic-settings delete"
+                    }
+                ]
+            },
+            "s_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s_powershell_set_mailbox_cmdlet": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-MailboxAuditBypassAssociation"
+                    }
+                ]
+            },
+            "s_apicall_aws_stoplogging": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "StopLogging"
+                    }
+                ]
+            },
+            "s_apicall_aws_deletetrail": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "DeleteTrail"
+                    }
+                ]
+            },
+            "s_apicall_gcp_updatesink": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "google.logging.v2.ConfigServiceV2.UpdateSink"
+                    }
+                ]
+            }
+        },
+        "condition": "(s_process_create and s_az_cli_exe and s_az_delete_diagnostic_settings_cmd) or (s_process_create and s_powershell_exe and s_powershell_set_mailbox_cmdlet) or s_apicall_aws_stoplogging or s_apicall_aws_deletetrail or s_apicall_gcp_updatesink"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 클라우드 환경에서 로깅 기능 비활성화 또는 수정을 시도하는 행위를 탐지할 수 있습니다. Azure CLI를 통한 진단 설정 삭제, PowerShell cmdlet을 이용한 Office 365 메일박스 감사 우회 설정, 또는 AWS 및 GCP의 로깅 관련 API 호출(StopLogging, DeleteTrail, UpdateSink) 등을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 이는 공격자가 자신의 활동을 은폐하려는 시도로 간주되어 추가적인 포렌식 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히, 다른 방어 회피 또는 지속성 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "합법적인 클라우드 관리자가 시스템 유지보수, 비용 최적화, 또는 규정 준수 변경을 위해 로깅 설정을 수정하거나 비활성화하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 관리 활동이나 특정 서비스 계정에서 발생하는 이벤트에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

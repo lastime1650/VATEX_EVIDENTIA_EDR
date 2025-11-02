@@ -1,0 +1,110 @@
+{
+    "id": "T1505.006-ESXiVIBManipulation",
+    "name": "ESXi VIB Manipulation via Windows Management",
+    "description": "Detects attempts to manipulate vSphere Installation Bundles (VIBs) on ESXi hypervisors from a Windows management workstation, primarily through command-line tools like 'esxcli' or PowerShell (PowerCLI). This technique can be used by adversaries to establish persistence on ESXi hosts.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1505",
+        "subtechnique_id": "T1505.006",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Command:CommandExecution"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_esxcli_command_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "esxcli.exe"
+                    }
+                ]
+            },
+            "s3_esxcli_vib_install_force_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "software vib install"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--force"
+                    }
+                ]
+            },
+            "s4_esxcli_acceptance_level_set_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "system settings acceptance set"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--level"
+                    }
+                ]
+            },
+            "s5_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s6_powercli_vib_cmdlets_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Add-EsxCliExtension"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Install-EsxCliVib"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-EsxCliSoftwareAcceptanceLevel"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and ((s2_esxcli_command_exe_path and (s3_esxcli_vib_install_force_cmdline or s4_esxcli_acceptance_level_set_cmdline)) or (s5_powershell_exe_path and s6_powercli_vib_cmdlets_cmdline))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Windows 관리 워크스테이션에서 ESXi VIB를 조작하려는 시도를 탐지할 수 있습니다. 'esxcli' 또는 PowerCLI 명령과 함께 특정 VIB 관련 인자(설치, 강제 적용, 수락 수준 변경 등)를 모니터링하여 하이퍼바이저에 대한 악성 지속성 시도를 식별합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 하이퍼바이저 손상은 매우 중요하므로 관련 프로세스 및 시스템에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 ESXi 관리자 또는 자동화된 관리 도구가 VIB 설치, 업데이트 또는 수락 수준 변경을 수행하는 경우 오탐이 발생할 수 있습니다. 알려진 정상 프로세스, 명령줄 패턴, 또는 특정 사용자/시스템을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

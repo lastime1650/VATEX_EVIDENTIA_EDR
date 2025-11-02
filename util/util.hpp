@@ -9,5 +9,7 @@
 #include "Tcp/server.hpp"
 #include "base64/base64.hpp"
 #include "File/file.hpp"
+#include "Sqlite/SqliteManager.hpp"
+#include "Timestamp/timestamp.hpp"
 
 #endif

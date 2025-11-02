@@ -1,0 +1,46 @@
+{
+    "id": "FEATURE-REG-Network-Proxy-Modification",
+    "name": "System Network Proxy Settings Modified",
+    "description": "Detects modification of the Internet Settings proxy configuration. Adversaries may change proxy settings to intercept network traffic or redirect it to a malicious server.",
+    "severity": "medium",
+    "mitre_attack": [
+        {
+            "tactic": "TA0011",
+            "technique_id": "T1557",
+            "subtechnique_id": "",
+            "data_sources": ["Windows Registry"]
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "proxy_config_change",
+                "selections": {
+                    "selection_set_proxy_server": {
+                        "event_type": "registry",
+                        "condition_method": "and",
+                        "conditions": [
+                            {
+                                "field": "body.registry.keyclass", 
+                                "operator": "equals", 
+                                "value": "RegNtPreSetValueKey"
+                            },
+                            {
+                                "field": "body.registry.name", 
+                                "operator": "regex", 
+                                "value": ".*\\\\Software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Internet Settings\\\\(ProxyEnable|ProxyServer|AutoConfigURL)$"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "The system's network proxy configuration was modified. SIEM should inspect the new proxy address."
+                }
+            }
+        ]
+    },
+    "operational_usage": "This is a critical feature for detecting traffic interception. A change to 'ProxyEnable' (often to 1), 'ProxyServer', or 'AutoConfigURL' by any process other than a browser, VPN client, or Group Policy is highly suspicious.",
+    "false_positive": "Legitimate changes by users, VPN software, or corporate network configuration scripts can occur. The context of the modifying process is key."
+}

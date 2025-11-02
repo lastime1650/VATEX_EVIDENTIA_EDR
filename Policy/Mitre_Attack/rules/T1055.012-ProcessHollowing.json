@@ -1,0 +1,106 @@
+{
+    "id": "T1055.012-ProcessHollowing",
+    "name": "Process Hollowing",
+    "description": "Detects attempts to inject malicious code into a suspended and hollowed process. This technique involves creating a new process in a suspended state, unmapping its legitimate memory, writing malicious code into its address space, and then resuming the thread to execute the injected code. Key indicators include specific Windows API calls for process creation, memory manipulation, and thread control.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1055",
+        "subtechnique_id": "T1055.012",
+        "data_sources": [
+            "Execution:Native API",
+            "Defense Evasion:Process Injection",
+            "Privilege Escalation:Process Injection"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_api_unmap_view": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "ZwUnmapViewOfSection"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "NtUnmapViewOfSection"
+                    }
+                ]
+            },
+            "s2_api_memory_write": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "VirtualAllocEx"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "WriteProcessMemory"
+                    }
+                ]
+            },
+            "s3_api_thread_control": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "SuspendThread"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "SetThreadContext"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "ResumeThread"
+                    }
+                ]
+            },
+            "s4_api_create_remote_thread": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "CreateRemoteThread"
+                    }
+                ]
+            },
+            "s5_process_vm_access_rights": {
+                "event_type": "processaccess",
+                "conditions": [
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_VM_OPERATION"
+                    },
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_VM_READ"
+                    },
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_VM_WRITE"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_api_unmap_view and (s2_api_memory_write or s5_process_vm_access_rights) and s3_api_thread_control) or (s4_api_create_remote_thread and (s2_api_memory_write or s5_process_vm_access_rights) and s3_api_thread_control)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 프로세스 할로잉(Process Hollowing) 공격 시도를 탐지할 수 있습니다. `ZwUnmapViewOfSection`, `NtUnmapViewOfSection`과 같은 메모리 언매핑 API 호출, `VirtualAllocEx`, `WriteProcessMemory`와 같은 원격 프로세스 메모리 조작 API 호출, 그리고 `SuspendThread`, `SetThreadContext`, `ResumeThread`와 같은 스레드 제어 API 호출의 조합을 모니터링합니다. `CreateRemoteThread`와 같은 일반적인 코드 인젝션 API 호출과 함께 메모리 조작 및 스레드 제어 활동이 탐지될 경우 높은 심각도로 분류하여 즉각적인 알람을 트리거하고, 관련 프로세스에 대한 심층 분석 및 침해사고 대응을 시작할 수 있습니다. 특히, 비정상적인 프로세스 생성과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 디버거, 가상화 소프트웨어, 보안 제품(예: 백신, EDR), 또는 합법적인 애플리케이션이 프로세스 메모리나 스레드를 조작하는 과정에서 오탐이 발생할 수 있습니다. 특히, `VirtualAllocEx`, `WriteProcessMemory`, `SuspendThread`, `ResumeThread`와 같은 API는 다양한 합법적인 용도로 사용될 수 있습니다. 알려진 정상 프로세스나 특정 시나리오에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

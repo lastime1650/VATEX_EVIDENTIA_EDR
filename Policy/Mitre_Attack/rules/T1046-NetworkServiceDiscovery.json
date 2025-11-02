@@ -1,0 +1,222 @@
+{
+    "id": "T1046-NetworkServiceDiscovery",
+    "name": "Network Service Discovery",
+    "description": "Detects attempts by adversaries to discover network services running on local or remote hosts using command-line tools, PowerShell cmdlets, or network API calls. This includes common utilities like netstat, ipconfig, ping, nmap, and related PowerShell commands.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1046",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Discovery:Network Service Discovery",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Native API",
+            "Enterprise:Network:Network Traffic Flow"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmdline_netstat": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "netstat"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-ano"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-rn"
+                    }
+                ]
+            },
+            "s3_cmdline_ipconfig": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ipconfig"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/all"
+                    }
+                ]
+            },
+            "s4_cmdline_ping": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ping"
+                    }
+                ]
+            },
+            "s5_cmdline_nmap": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "nmap.exe"
+                    }
+                ]
+            },
+            "s6_cmdline_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s7_cmdline_powershell_net_cmdlets": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-NetTCPConnection"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-NetUDPEndpoint"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Test-NetConnection"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Resolve-DnsName"
+                    }
+                ]
+            },
+            "s8_cmdline_telnet": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "telnet"
+                    }
+                ]
+            },
+            "s9_cmdline_arp": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "arp -a"
+                    }
+                ]
+            },
+            "s10_apicall_net_enum": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetTcpTable"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetUdpTable"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "EnumProtocolsW"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "EnumProtocolsA"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetAdaptersInfo"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetIpAddrTable"
+                    }
+                ]
+            },
+            "s11_network_unusual_outbound_ports": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 22
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 23
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 80
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 443
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 445
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 3389
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create and (s2_cmdline_netstat or s3_cmdline_ipconfig or s4_cmdline_ping or s5_cmdline_nmap or (s6_cmdline_powershell_exe and s7_cmdline_powershell_net_cmdlets) or s8_cmdline_telnet or s9_cmdline_arp) or s10_apicall_net_enum or s11_network_unusual_outbound_ports"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 네트워크 서비스 정보를 수집하려는 시도를 탐지할 수 있습니다. 'netstat', 'ipconfig', 'ping', 'nmap'과 같은 명령 실행, PowerShell을 통한 네트워크 연결 및 정보 조회, 또는 네트워크 관련 API 호출 등을 모니터링합니다. 탐지된 이벤트는 중간 심각도로 분류되어 자동 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히 다른 Discovery 또는 Lateral Movement 활동과 결합될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 네트워크 진단 유틸리티, 백신 소프트웨어, 또는 합법적인 애플리케이션이 네트워크 서비스를 조회하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다. 특히 일반적인 포트(80, 443 등)에 대한 네트워크 연결은 오탐 가능성이 높으므로, 's11_network_unusual_outbound_ports' 조건은 다른 조건과 결합되거나 특정 환경에 맞게 조정될 필요가 있습니다."
+}

@@ -1,0 +1,266 @@
+{
+    "id": "T1574.004-DylibHijacking",
+    "name": "Dylib Hijacking",
+    "description": "Adversaries may execute their own payloads by placing a malicious dynamic library (dylib) with an expected name in a path a victim application searches at runtime. The dynamic loader will try to find the dylibs based on the sequential order of the search paths. Paths to dylibs may be prefixed with @rpath, which allows developers to use relative paths to specify an array of search paths used at runtime based on the location of the executable. Additionally, if weak linking is used, such as the LC_LOAD_WEAK_DYLIB function, an application will still execute even if an expected dylib is not present. Weak linking enables developers to run an application on multiple macOS versions as new APIs are added. Adversaries may gain execution by inserting malicious dylibs with the name of the missing dylib in the identified path. Dylibs are loaded into an application's address space allowing the malicious dylib to inherit the application's privilege level and resources. Based on the application, this could result in privilege escalation and uninhibited network access. This method may also evade detection from security products since the execution is masked under a legitimate process.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1574",
+        "subtechnique_id": "T1574.004",
+        "data_sources": [
+            "Enterprise:Execution:Shared Modules",
+            "Enterprise:Defense Evasion:Hijack Execution Flow:Dylib Hijacking",
+            "Enterprise:Defense Evasion:File and Directory Permissions Modification"
+        ]
+    },
+    "platform": [
+        "macos"
+    ],
+    "detection": {
+        "selections": {
+            "p1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "p2_otool_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "otool -l"
+                    }
+                ]
+            },
+            "p3_dylib_keyword_in_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".dylib"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "@rpath"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "@loader_path"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "@executable_path"
+                    }
+                ]
+            },
+            "p4_install_name_tool_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "install_name_tool"
+                    }
+                ]
+            },
+            "p5_install_name_tool_options": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-change"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-id"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-rpath"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-add_rpath"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-delete_rpath"
+                    }
+                ]
+            },
+            "p6_copy_move_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "cp "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "mv "
+                    }
+                ]
+            },
+            "p7_copy_move_dylib_target": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".dylib"
+                    }
+                ]
+            },
+            "f1_dylib_file_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    }
+                ]
+            },
+            "f2_dylib_path_app_bundle": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": ".app/Contents/Frameworks/"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".dylib"
+                    }
+                ]
+            },
+            "f3_dylib_path_user_library": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/Users/"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/Library/"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".dylib"
+                    }
+                ]
+            },
+            "f4_dylib_path_tmp": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "/tmp/"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "/var/tmp/"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".dylib"
+                    }
+                ]
+            },
+            "i1_dylib_load_path_app_bundle": {
+                "event_type": "imageload",
+                "conditions": [
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": ".app/Contents/Frameworks/"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "endswith",
+                        "value": ".dylib"
+                    }
+                ]
+            },
+            "i2_dylib_load_path_user_library": {
+                "event_type": "imageload",
+                "conditions": [
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "/Users/"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "/Library/"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "endswith",
+                        "value": ".dylib"
+                    }
+                ]
+            },
+            "i3_dylib_load_path_tmp": {
+                "event_type": "imageload",
+                "conditions": [
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "startswith",
+                        "value": "/tmp/"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "startswith",
+                        "value": "/var/tmp/"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "endswith",
+                        "value": ".dylib"
+                    }
+                ]
+            }
+        },
+        "condition": "(p1_process_create_action and p2_otool_cmdline and p3_dylib_keyword_in_cmdline) or (p1_process_create_action and p4_install_name_tool_cmdline and p5_install_name_tool_options) or (p1_process_create_action and p6_copy_move_cmd and p7_copy_move_dylib_target) or ((f1_dylib_file_action and f2_dylib_path_app_bundle) or (f1_dylib_file_action and f3_dylib_path_user_library) or (f1_dylib_file_action and f4_dylib_path_tmp)) or (i1_dylib_load_path_app_bundle or i2_dylib_load_path_user_library or i3_dylib_load_path_tmp)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 macOS 시스템에서 Dylib Hijacking 시도를 탐지할 수 있습니다. `otool -l`과 같은 명령어를 통한 Dylib 정보 수집, `install_name_tool`을 사용한 Dylib 로드 경로 변경, 또는 `cp`, `mv` 명령어를 통한 악성 Dylib 파일 배치 시도를 모니터링합니다. 또한, 애플리케이션 번들, 사용자 라이브러리, 또는 임시 디렉터리와 같은 의심스러운 경로에서 Dylib 파일의 생성, 수정, 또는 로드 이벤트를 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 파일에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 권한 상승이나 방어 회피 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 소프트웨어 설치, 업데이트 프로세스, 개발 도구, 또는 합법적인 애플리케이션이 Dylib 파일을 생성, 수정, 또는 로드하는 과정에서 오탐이 발생할 수 있습니다. 특히 개발 환경이나 특정 소프트웨어의 빌드 프로세스에서 `install_name_tool`이나 `otool`이 사용될 수 있습니다. 알려진 정상적인 프로세스나 특정 파일 경로를 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

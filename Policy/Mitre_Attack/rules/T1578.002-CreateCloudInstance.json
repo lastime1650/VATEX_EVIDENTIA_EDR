@@ -1,0 +1,79 @@
+{
+    "id": "T1578.002-CreateCloudInstance",
+    "name": "Create Cloud Instance",
+    "description": "Detects attempts by an adversary to create a new instance or virtual machine (VM) within a cloud compute service to evade defenses or carry out malicious activities. This includes monitoring for command-line tools like Azure CLI (az.exe), Google Cloud CLI (gcloud.cmd/exe), or AWS CLI (aws.exe) being used to provision new compute resources.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1578",
+        "subtechnique_id": "T1578.002",
+        "data_sources": [
+            "Enterprise:Defense Evasion:Modify Cloud Compute Infrastructure:Create Cloud Instance"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_azure_cli_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "az.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "vm create"
+                    }
+                ]
+            },
+            "s3_gcloud_cli_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "gcloud"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "compute instances create"
+                    }
+                ]
+            },
+            "s4_aws_cli_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "aws.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ec2 run-instances"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_action_create and (s2_azure_cli_execution or s3_gcloud_cli_execution or s4_aws_cli_execution)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 엔드포인트에서 클라우드 인스턴스 생성 시도를 탐지할 수 있습니다. 이는 공격자가 방어 우회 또는 악성 활동을 위해 새로운 VM을 프로비저닝하는 행위를 나타낼 수 있습니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 사용자 계정에 대한 추가적인 조사를 시작하는 데 사용될 수 있습니다. 특히, 비정상적인 사용자 또는 호스트에서 클라우드 리소스 생성 명령이 실행될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 클라우드 관리 작업, 개발/운영(DevOps) 스크립트, 또는 자동화된 배포 시스템이 클라우드 인스턴스를 생성하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상적인 클라우드 CLI 호출 패턴이나 특정 관리 도구에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

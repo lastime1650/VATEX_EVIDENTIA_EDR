@@ -1,0 +1,170 @@
+{
+    "id": "T1673-VirtualMachineDiscovery",
+    "name": "Virtual Machine Discovery",
+    "description": "Detects attempts to enumerate running virtual machines (VMs) after gaining access to a host or hypervisor. This includes using utilities like esxcli or vim-cmd on ESXi, PowerShell cmdlets (e.g., Get-VM) on Windows, or system tools (e.g., dmidecode, virt-what) on Linux to identify virtualized environments. Adversaries use this information to adapt their tactics.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1673",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Discovery:Virtual Machine Discovery",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:Unix Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:Hypervisor CLI"
+        ]
+    },
+    "platform": [
+        "windows",
+        "linux",
+        "macos",
+        "esxi"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_esxcli_vm_process_list": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "esxcli"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "vm process list"
+                    }
+                ]
+            },
+            "s3_vim_cmd_getallvms": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "vim-cmd"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "vmsvc/getallvms"
+                    }
+                ]
+            },
+            "s4_powershell_get_vm": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-VM"
+                    }
+                ]
+            },
+            "s5_wmic_computersystem_virtual": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wmic"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "computersystem get"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "virtual"
+                    }
+                ]
+            },
+            "s6_dmidecode_system_product": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "dmidecode"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "system-product-name"
+                    }
+                ]
+            },
+            "s7_virt_what_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "virt-what"
+                    }
+                ]
+            },
+            "s8_systemd_detect_virt_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "systemd-detect-virt"
+                    }
+                ]
+            },
+            "s9_vboxmanage_list_vms": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "VBoxManage.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "list vms"
+                    }
+                ]
+            },
+            "s10_vmrun_list_vms": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "vmrun.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "list"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and (s2_esxcli_vm_process_list or s3_vim_cmd_getallvms or s4_powershell_get_vm or s5_wmic_computersystem_virtual or s6_dmidecode_system_product or s7_virt_what_execution or s8_systemd_detect_virt_execution or s9_vboxmanage_list_vms or s10_vmrun_list_vms)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템 내 가상 머신(VM) 정보를 수집하려는 시도를 탐지할 수 있습니다. ESXi 환경의 'esxcli' 또는 'vim-cmd', Windows 환경의 PowerShell 'Get-VM' 또는 'wmic', Linux 환경의 'dmidecode', 'virt-what', 'systemd-detect-virt'와 같은 명령줄 도구 실행을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히, 공격자가 환경 적응 및 추가 공격 계획 수립을 위해 VM 정보를 수집하는 초기 단계에서 중요한 탐지 지점이 됩니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 가상화 소프트웨어 (예: VMware Workstation, VirtualBox)의 관리 유틸리티, 또는 개발/테스트 환경에서 VM 상태를 확인하는 스크립트 등에 의해 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

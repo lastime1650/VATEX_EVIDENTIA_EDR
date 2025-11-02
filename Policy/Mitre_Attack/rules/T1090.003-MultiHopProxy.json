@@ -1,0 +1,117 @@
+{
+    "id": "T1090.003-MultiHopProxy",
+    "name": "Multi-hop Proxy",
+    "description": "Adversaries may chain together multiple proxies to disguise the source of malicious traffic, making it difficult to trace back to its original source. This detection rule identifies the execution of known proxy/tunneling tools and outbound network connections to common anonymity network ports (e.g., Tor).",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0011",
+        "technique_id": "T1090",
+        "subtechnique_id": "T1090.003",
+        "data_sources": [
+            "NetworkTraffic:NetworkTrafficFlow",
+            "NetworkTraffic:NetworkTrafficContent",
+            "NetworkTraffic:NetworkConnectionCreation"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmdline_tor": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "tor.exe"
+                    }
+                ]
+            },
+            "s3_cmdline_frp": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "frpc.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "frps.exe"
+                    }
+                ]
+            },
+            "s4_cmdline_chisel": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "chisel.exe"
+                    }
+                ]
+            },
+            "s5_cmdline_ngrok": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ngrok.exe"
+                    }
+                ]
+            },
+            "s6_network_direction_outbound": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    }
+                ]
+            },
+            "s7_network_destination_tor_ports": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 9001
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 9030
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 9050
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 9101
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and (s2_cmdline_tor or s3_cmdline_frp or s4_cmdline_chisel or s5_cmdline_ngrok)) or (s6_network_direction_outbound and s7_network_destination_tor_ports)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 다중 홉 프록시를 이용한 악성 통신 시도를 탐지할 수 있습니다. Tor, FRP, Chisel, Ngrok과 같은 알려진 프록시/터널링 도구의 프로세스 생성 이벤트를 모니터링하고, 동시에 비정상적인 아웃바운드 네트워크 연결(예: Tor 관련 포트)을 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 네트워크 흐름에 대한 추가적인 조사를 시작하여 공격자의 C2 인프라를 식별하는 데 사용될 수 있습니다.",
+    "false_positive": "합법적인 개발 도구, VPN 클라이언트, 또는 특정 네트워크 유틸리티가 유사한 포트나 터널링 기술을 사용하는 경우 오탐이 발생할 수 있습니다. 특히, Tor 브라우저 사용자와 같은 합법적인 익명성 도구 사용 환경에서는 오탐 가능성이 높습니다. 알려진 정상 프로세스 또는 특정 네트워크 트래픽 패턴에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+
+}

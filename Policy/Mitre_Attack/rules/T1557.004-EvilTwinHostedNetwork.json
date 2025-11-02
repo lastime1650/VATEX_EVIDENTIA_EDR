@@ -1,0 +1,75 @@
+{
+    "id": "T1557.004-EvilTwinHostedNetwork",
+    "name": "Evil Twin via Hosted Network Creation",
+    "description": "Detects attempts to create or start a Windows Hosted Network using `netsh wlan` commands. This functionality can be abused by adversaries to establish a rogue Wi-Fi access point, often referred to as an 'Evil Twin', to deceive users into connecting to a malicious network for purposes such as credential harvesting or network sniffing.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0006",
+        "technique_id": "T1557",
+        "subtechnique_id": "T1557.004",
+        "data_sources": [
+            "Enterprise:Credential Access:Adversary-in-the-Middle:Evil Twin",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_netsh_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "netsh.exe"
+                    }
+                ]
+            },
+            "s3_wlan_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wlan"
+                    }
+                ]
+            },
+            "s4_set_hostednetwork_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "set hostednetwork"
+                    }
+                ]
+            },
+            "s5_start_hostednetwork_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "start hostednetwork"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and s2_netsh_execution and s3_wlan_command and (s4_set_hostednetwork_command or s5_start_hostednetwork_command)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Windows 시스템에서 호스트된 네트워크 생성 시도를 탐지할 수 있습니다. 이는 악의적인 Wi-Fi 액세스 포인트(Evil Twin) 설정의 전조 또는 직접적인 행위일 수 있습니다. 'netsh wlan' 명령어를 통한 'set hostednetwork' 또는 'start hostednetwork' 실행을 모니터링하여, 탐지 시 즉각적인 알람을 트리거하고 해당 프로세스 및 관련 네트워크 활동에 대한 심층 조사를 시작해야 합니다. 특히, 의심스러운 사용자 계정 또는 비표준 프로세스에 의해 실행될 경우 중요도가 높아집니다.",
+    "false_positive": "정상적인 시스템 관리자가 인터넷 공유, 무선 네트워크 테스트, 또는 특정 애플리케이션 요구사항을 위해 호스트된 네트워크를 생성하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 사용 사례나 특정 사용자/프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

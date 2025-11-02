@@ -1,0 +1,186 @@
+{
+    "id": "T1587.003-DigitalCertificates",
+    "name": "Digital Certificates Creation",
+    "description": "Detects attempts by adversaries to create self-signed SSL/TLS certificates or manipulate certificate stores on the system. This technique is often used to establish encrypted C2 channels, enable Adversary-in-the-Middle attacks, or facilitate other malicious operations by leveraging seemingly legitimate cryptographic artifacts.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1587",
+        "subtechnique_id": "T1587.003",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "File:FileCreation",
+            "WindowsRegistry:WindowsRegistryKeyModification"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmdline_makecert_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "makecert.exe"
+                    }
+                ]
+            },
+            "s3_cmdline_certreq_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "certreq.exe"
+                    }
+                ]
+            },
+            "s4_cmdline_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s5_cmdline_new_selfsigned_cert_cmdlet": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-SelfSignedCertificate"
+                    }
+                ]
+            },
+            "s6_filesystem_create_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s7_filepath_common_cert_extensions": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".cer"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".crt"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".pem"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".pfx"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".key"
+                    }
+                ]
+            },
+            "s8_registry_modify_keyclass": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPostSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreCreateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPostCreateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreCreateKeyEx"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPostCreateKeyEx"
+                    }
+                ]
+            },
+            "s9_registry_cert_store_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\SystemCertificates\\ROOT\\Certificates"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\SystemCertificates\\MY\\Certificates"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\SystemCertificates\\ROOT\\Certificates"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\SystemCertificates\\MY\\Certificates"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and (s2_cmdline_makecert_exe or s3_cmdline_certreq_exe or (s4_cmdline_powershell_exe and s5_cmdline_new_selfsigned_cert_cmdlet)) or (s6_filesystem_create_action and s7_filepath_common_cert_extensions) or (s8_registry_modify_keyclass and s9_registry_cert_store_path)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 디지털 인증서 생성 또는 조작 시도를 탐지할 수 있습니다. `makecert.exe`, `certreq.exe`, 또는 PowerShell의 `New-SelfSignedCertificate`와 같은 도구의 실행을 모니터링하고, `.cer`, `.crt`, `.pem`, `.pfx` 등 일반적인 인증서 파일 확장자를 가진 파일의 생성을 추적합니다. 또한, 시스템의 인증서 저장소와 관련된 레지스트리 키에 대한 쓰기 또는 생성 작업을 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 잠재적인 C2 설정, 중간자 공격 준비, 또는 기타 악성 활동의 초기 지표로 활용하여 신속한 조사 및 대응을 촉진할 수 있습니다.",
+    "false_positive": "정상적인 소프트웨어 설치, 업데이트 프로세스, 개발 환경 (예: 자체 서명된 개발 인증서 생성), 또는 IT 관리 도구가 합법적인 목적으로 디지털 인증서를 생성하거나 관리하는 경우 오탐이 발생할 수 있습니다. 특정 프로세스, 파일 경로, 또는 명령줄 인자를 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

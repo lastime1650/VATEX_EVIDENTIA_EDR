@@ -1,0 +1,48 @@
+{
+    "id": "T1546.001-File-Association-Hijacking",
+    "name": "File Association Hijacking Attempt",
+    "description": "Detects modification of the command executed when a specific file type is opened. Adversaries can hijack file associations to execute malicious code when a user opens a seemingly benign file.",
+    "severity": "medium",
+    "mitre_attack": [
+        {
+            "tactic": "TA0003",
+            "technique_id": "T1546",
+            "subtechnique_id": "T1546.001",
+            "data_sources": [
+                "Windows Registry:Windows Registry Key Modification"
+            ]
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "hijack_file_open_command",
+                "selections": {
+                    "selection_modify_shell_open": {
+                        "event_type": "registry",
+                        "condition_method": "and",
+                        "conditions": [
+                            {
+                                "field": "body.registry.keyclass", 
+                                "operator": "equals", 
+                                "value": "RegNtPreSetValueKey"
+                            },
+                            {
+                                "field": "body.registry.name", 
+                                "operator": "contains", 
+                                "value": "\\shell\\open\\command"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "The default command for a file association was modified. This could be an attempt to execute malicious code when a user opens a file."
+                }
+            }
+        ]
+    },
+    "operational_usage": "Examine the process making the change and the new command being set. For example, changing the command for '.txt' files from 'notepad.exe' to 'powershell.exe -enc ...' is highly malicious.",
+    "false_positive": "Can occur when a user legitimately changes their default program for a file type (e.g., switching from Notepad to Notepad++). The context of the process (e.g., user-interactive vs. script) is important for triage."
+}

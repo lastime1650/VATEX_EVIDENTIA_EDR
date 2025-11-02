@@ -1,0 +1,46 @@
+{
+    "id": "FEATURE-REG-User-Forensic-Artifact-Access",
+    "name": "Access to User Activity Forensic Artifact Registry Keys",
+    "description": "Access was detected to registry keys that store user activity history, such as recently used files (MRU), typed paths, or explored folders (ShellBags). This feature is valuable for forensic analysis of user and adversary behavior.",
+    "severity": "info",
+    "mitre_attack": [
+        {
+            "tactic": "TA0007",
+            "technique_id": "T1217",
+            "subtechnique_id": "",
+            "data_sources": ["Windows Registry"]
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "user_artifact_query",
+                "selections": {
+                    "selection_query_forensic_keys": {
+                        "event_type": "registry",
+                        "condition_method": "and",
+                        "conditions": [
+                            {
+                                "field": "body.registry.keyclass", 
+                                "operator": "regex", 
+                                "value": "RegNtPre(QueryKey|EnumerateKey)$"
+                            },
+                            {
+                                "field": "body.registry.name", 
+                                "operator": "regex", 
+                                "value": "\\\\(Shell\\\\(BagMRU|Bags)|ComDlg32\\\\(LastVisitedPidlMRU|OpenSavePidlMRU)|TypedPaths|RecentDocs)\\\\"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "A process accessed user activity forensic artifact keys in the registry. Useful for tracking reconnaissance activities."
+                }
+            }
+        ]
+    },
+    "operational_usage": "This alert provides visibility into what an attacker (or user) is looking for. A non-interactive process querying these keys is highly suspicious. It helps build a timeline of activity.",
+    "false_positive": "Windows Explorer and legitimate applications will access these keys during normal operation. The key is to monitor for abnormal access patterns or processes in the SIEM."
+}

@@ -1,0 +1,120 @@
+{
+    "id": "T1667-EmailBombing",
+    "name": "Email Bombing",
+    "description": "Detects attempts by adversaries to flood targeted email addresses with an overwhelming volume of messages, aiming to disrupt business operations by burying legitimate emails or as a precursor to other social engineering attacks. This rule focuses on process execution of email-sending tools and unusual outbound SMTP network traffic.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0040",
+        "technique_id": "T1667",
+        "subtechnique_id": "",
+        "data_sources": [
+            "ApplicationLog:ApplicationLogContent",
+            "NetworkTraffic:NetworkTrafficFlow"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s3_powershell_email_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Send-MailMessage"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "$smtpClient"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "System.Net.Mail.SmtpClient"
+                    }
+                ]
+            },
+            "s4_curl_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "curl.exe"
+                    }
+                ]
+            },
+            "s5_curl_smtp_protocol_args": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "smtp://"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "smtps://"
+                    }
+                ]
+            },
+            "s6_network_outbound_direction": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    }
+                ]
+            },
+            "s7_network_smtp_destination_ports": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 25
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 465
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 587
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_powershell_exe_path and s3_powershell_email_keywords) or (s1_process_create_action and s4_curl_exe_path and s5_curl_smtp_protocol_args) or (s6_network_outbound_direction and s7_network_smtp_destination_ports)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 통해 시스템에서 발생하는 이메일 폭탄 공격 시도를 실시간으로 탐지할 수 있습니다. PowerShell의 Send-MailMessage와 같은 이메일 전송 관련 명령 실행, curl.exe를 이용한 SMTP 프로토콜 통신 시도, 또는 비정상적인 아웃바운드 SMTP 네트워크 연결을 모니터링합니다. 탐지된 이벤트는 즉시 높은 심각도로 분류되어 알람을 트리거하고, 추가적인 프로세스 및 네트워크 포렌식 조사를 시작하여 침해사고 대응의 우선순위를 지정하는 데 활용될 수 있습니다. 특히, 대량의 이메일 전송이 감지될 경우 추가적인 조사가 필요합니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 자동화된 보고서 전송 스크립트, 합법적인 애플리케이션의 알림 기능, 또는 개발 및 테스트 환경에서 대량 이메일을 전송하는 경우 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 IP 주소/도메인에 대한 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,145 @@
+{
+    "id": "T1218.003-CMSTPProxyExecution",
+    "name": "CMSTP Proxy Execution",
+    "description": "Detects attempts to abuse CMSTP.exe for proxy execution of malicious code, including INF files, DLLs, COM scriptlets (SCT), or UAC bypasses via COM interfaces. Adversaries leverage CMSTP.exe, a legitimate system binary, to evade security controls and obscure malicious activity.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1218",
+        "subtechnique_id": "T1218.003",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Command:CommandExecution"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_cmstp_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "cmstp.exe"
+                    }
+                ]
+            },
+            "s2_process_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s3_cmdline_inf_file": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".inf"
+                    }
+                ]
+            },
+            "s4_cmdline_sct_file": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".sct"
+                    }
+                ]
+            },
+            "s5_cmdline_dll_comma": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".dll,"
+                    }
+                ]
+            },
+            "s6_cmdline_dll_hash": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".dll#"
+                    }
+                ]
+            },
+            "s7_cmdline_com_clsid_luacom": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "3E5FC7F9-9A51-4367-9063-A120244FBEC7"
+                    }
+                ]
+            },
+            "s8_cmdline_com_clsid_luautil": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "3E000D72-A845-4CD9-BD83-80C07C3B881F"
+                    }
+                ]
+            },
+            "s9_cmdline_flag_ns": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/ns"
+                    }
+                ]
+            },
+            "s10_cmdline_flag_au": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/au"
+                    }
+                ]
+            },
+            "s11_cmdline_flag_regserver": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/regserver"
+                    }
+                ]
+            },
+            "s12_cmdline_flag_s": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/s"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_cmstp_exe_path and s2_process_action_create and (s3_cmdline_inf_file or s4_cmdline_sct_file or ((s5_cmdline_dll_comma or s6_cmdline_dll_hash) and s9_cmdline_flag_ns and s10_cmdline_flag_au and s11_cmdline_flag_regserver and s12_cmdline_flag_s) or s7_cmdline_com_clsid_luacom or s8_cmdline_com_clsid_luautil)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 CMSTP.exe를 통한 악성 코드 프록시 실행 시도를 탐지할 수 있습니다. CMSTP.exe의 프로세스 생성 이벤트와 함께 비정상적인 명령줄 인자(INF, SCT 파일 로드, DLL 실행, COM 인터페이스 CLSID 사용 등)를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 명령줄 인자에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 방어 회피 및 권한 상승 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 기능, 네트워크 연결 관리자 프로필 설치, 또는 합법적인 애플리케이션이 CMSTP.exe를 사용하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 CMSTP.exe 호출 패턴이나 특정 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

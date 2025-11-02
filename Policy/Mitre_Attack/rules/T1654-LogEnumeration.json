@@ -1,0 +1,184 @@
+{
+    "id": "T1654-LogEnumeration",
+    "name": "Log Enumeration",
+    "description": "Detects attempts by adversaries to enumerate system and service logs on Windows systems to find useful data, such as user authentication records, security or vulnerable software information, or to monitor incident response procedures. This includes the use of utilities like wevtutil.exe, PowerShell cmdlets for event log access, specific Azure VM Agent tools, and direct access to log files or registry keys related to event logs.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1654",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Command:CommandExecution",
+            "Process:ProcessCreation",
+            "File:FileAccess",
+            "WindowsRegistry:WindowsRegistryKeyAccess",
+            "Enterprise:Collection:Data from Local System",
+            "Enterprise:Discovery:System Information Discovery"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_wevtutil_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wevtutil.exe"
+                    }
+                ]
+            },
+            "s2_powershell_exe_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s3_powershell_log_cmdlets": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-WinEvent"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Export-WinEvent"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-EventLog"
+                    }
+                ]
+            },
+            "s4_collectguestlogs_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "CollectGuestLogs.exe"
+                    }
+                ]
+            },
+            "s5_filesystem_log_access_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "read"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "open"
+                    }
+                ]
+            },
+            "s6_filesystem_log_paths": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\Windows\\System32\\winevt\\Logs\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\Windows\\Logs\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\ProgramData\\Microsoft\\Windows Defender\\Scans\\History\\Service\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\ProgramData\\Microsoft\\Windows\\WER\\ReportArchive\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\Windows\\System32\\LogFiles\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\Windows\\security\\logs\\"
+                    }
+                ]
+            },
+            "s7_registry_eventlog_query_open": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "QueryKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "OpenKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "EnumerateKey"
+                    }
+                ]
+            },
+            "s8_registry_eventlog_paths": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\EventLog"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\WINEVT"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\EventLog"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_wevtutil_execution or (s2_powershell_exe_create and s3_powershell_log_cmdlets) or s4_collectguestlogs_execution or (s5_filesystem_log_access_action and s6_filesystem_log_paths) or (s7_registry_eventlog_query_open and s8_registry_eventlog_paths)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템 로그 열거 시도를 탐지할 수 있습니다. 'wevtutil.exe' 또는 PowerShell을 통한 이벤트 로그 접근 및 내보내기 시도, Azure VM Agent의 'CollectGuestLogs.exe' 실행, 일반적인 로그 파일 경로에 대한 읽기/열기 접근, 또는 이벤트 로그 관련 레지스트리 키 조회/열거 시도를 모니터링합니다. 탐지된 이벤트는 자동 알람을 트리거하고, 특히 다른 Discovery 또는 Collection 활동과 결합될 때 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 백신 소프트웨어, 진단 유틸리티, 또는 합법적인 애플리케이션이 시스템 로그를 조회하거나 분석하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

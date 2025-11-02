@@ -1,0 +1,182 @@
+{
+    "id": "T1021.003-DistributedComponentObjectModel",
+    "name": "Distributed Component Object Model",
+    "description": "Detects attempts by adversaries to interact with remote machines using Distributed Component Object Model (DCOM) to achieve lateral movement or remote code execution. This includes monitoring for DCOM-related process creation, registry key access for COM objects, and network traffic on the DCOM RPC port.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0008",
+        "technique_id": "T1021",
+        "subtechnique_id": "T1021.003",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "WindowsRegistry:WindowsRegistryKeyAccess",
+            "NetworkTraffic:NetworkConnectionCreation",
+            "Module:ModuleLoad"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s_dllhost_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "dllhost.exe"
+                    }
+                ]
+            },
+            "s_wmic_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "wmic.exe"
+                    }
+                ]
+            },
+            "s_wmic_dcom_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "path Win32_DCOMApplication"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "call Create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "CoCreateInstance"
+                    }
+                ]
+            },
+            "s_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s_powershell_com_enum_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-CimInstance -ClassName Win32_DCOMApplication"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-WmiObject -Class Win32_DCOMApplication"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-Object -ComObject"
+                    }
+                ]
+            },
+            "s_registry_discovery_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "QueryKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "OpenKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "EnumerateKey"
+                    }
+                ]
+            },
+            "s_registry_com_clsid_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CLASSES_ROOT\\CLSID\\"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Classes\\CLSID\\"
+                    }
+                ]
+            },
+            "s_registry_com_appid_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CLASSES_ROOT\\AppID\\"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Classes\\AppID\\"
+                    }
+                ]
+            },
+            "s_network_tcp_protocol": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "TCP"
+                    }
+                ]
+            },
+            "s_network_port_135": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 135
+                    },
+                    {
+                        "field": "body.network.sourceport",
+                        "operator": "equals",
+                        "value": 135
+                    }
+                ]
+            }
+        },
+        "condition": "(s_process_create_action and s_dllhost_exe) or (s_process_create_action and s_wmic_exe and s_wmic_dcom_command) or (s_process_create_action and s_powershell_exe and s_powershell_com_enum_command) or (s_registry_discovery_action and (s_registry_com_clsid_path or s_registry_com_appid_path)) or (s_network_tcp_protocol and s_network_port_135)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 DCOM을 통한 원격 시스템 상호작용 및 코드 실행 시도를 탐지할 수 있습니다. dllhost.exe, wmic.exe, powershell.exe와 같은 DCOM 관련 프로세스의 생성 이벤트와 함께 비정상적인 명령줄 인자를 모니터링합니다. 또한, COM 객체 관련 레지스트리 키에 대한 쿼리/열기/열거 활동 및 RPC/DCOM에 사용되는 TCP 135번 포트의 네트워크 연결을 감시합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 추가적인 포렌식 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 소프트웨어 설치 프로그램, 업데이트 유틸리티, 또는 합법적인 애플리케이션이 DCOM을 사용하여 시스템 기능을 호출하거나 원격 상호작용을 수행하는 경우 오탐이 발생할 수 있습니다. 특히 135번 포트 네트워크 트래픽은 정상적인 RPC 통신이 많아 오탐률이 높을 수 있으므로, 다른 조건들과 결합하여 사용하거나 알려진 정상 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

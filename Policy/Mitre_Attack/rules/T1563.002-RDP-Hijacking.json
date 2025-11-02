@@ -1,0 +1,96 @@
+{
+    "id": "T1563.002-RDP-Hijacking",
+    "name": "RDP Hijacking",
+    "description": "Detects attempts by adversaries to hijack legitimate Remote Desktop Protocol (RDP) sessions, commonly leveraging the 'tscon.exe' utility with System permissions to take over an active or disconnected session. This rule also covers suspicious service creation involving 'cmd.exe /k' or '/c' as a potential method for persistence or lateral movement related to RDP hijacking.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0008",
+        "technique_id": "T1563",
+        "subtechnique_id": "T1563.002",
+        "data_sources": [
+            "Enterprise:Lateral Movement:Remote Service Session Hijacking:RDP Hijacking",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Persistence:Create or Modify System Process:Windows Service"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_tscon_execution_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "tscon.exe"
+                    }
+                ]
+            },
+            "s2_tscon_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s3_tscon_commandline_with_args": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "tscon.exe "
+                    }
+                ]
+            },
+            "s4_registry_service_imagepath_set": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\"
+                    }
+                ]
+            },
+            "s5a_imagepath_contains_cmd_exe": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.newold.newname",
+                        "operator": "contains",
+                        "value": "cmd.exe"
+                    }
+                ]
+            },
+            "s5b_imagepath_contains_cmd_options": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.newold.newname",
+                        "operator": "contains",
+                        "value": " /k "
+                    },
+                    {
+                        "field": "body.registry.newold.newname",
+                        "operator": "contains",
+                        "value": " /c "
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_tscon_execution_path and s2_tscon_process_create_action and s3_tscon_commandline_with_args) or (s4_registry_service_imagepath_set and s5a_imagepath_contains_cmd_exe and s5b_imagepath_contains_cmd_options)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 RDP 세션 하이재킹 시도를 탐지할 수 있습니다. 'tscon.exe'의 프로세스 생성 이벤트와 함께 명령줄 인자를 모니터링하고, 서비스 레지스트리 키(ImagePath)가 'cmd.exe /k' 또는 '/c'와 같은 의심스러운 명령을 포함하도록 수정되는 이벤트를 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 시스템 활동에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 다른 Lateral Movement 또는 Persistence 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 원격 지원 도구, 또는 합법적인 애플리케이션이 'tscon.exe'를 사용하거나, 서비스 구성에서 'cmd.exe'를 호출하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 'tscon.exe' 사용 패턴, 특정 서비스 구성, 또는 특정 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

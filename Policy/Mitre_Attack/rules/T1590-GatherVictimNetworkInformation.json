@@ -1,0 +1,129 @@
+{
+    "id": "T1590-GatherVictimNetworkInformation",
+    "name": "Gather Victim Network Information via Command-line Tools",
+    "description": "Detects attempts by adversaries to gather information about the victim's networks using common command-line utilities such as ipconfig, netstat, route print, arp, nslookup, ping, and tracert. This information helps attackers understand network topology, active connections, IP configurations, and DNS resolution, which can inform subsequent attack stages.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "reconnaissance",
+        "technique_id": "T1590",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Discovery:Gather Victim Network Information:IP Addresses",
+            "Enterprise:Discovery:Gather Victim Network Information:Network Topology",
+            "Enterprise:Discovery:Gather Victim Network Information:DNS",
+            "Enterprise:Discovery:System Network Connections Discovery",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmdline_ipconfig": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ipconfig"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-NetIPConfiguration"
+                    }
+                ]
+            },
+            "s3_cmdline_netstat": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "netstat"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-NetTCPConnection"
+                    }
+                ]
+            },
+            "s4_cmdline_route_print": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "route print"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-NetRoute"
+                    }
+                ]
+            },
+            "s5_cmdline_arp_a": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "arp -a"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-NetNeighbor"
+                    }
+                ]
+            },
+            "s6_cmdline_nslookup": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "nslookup"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Resolve-DnsName"
+                    }
+                ]
+            },
+            "s7_cmdline_ping_tracert": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ping"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "tracert"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create and (s2_cmdline_ipconfig or s3_cmdline_netstat or s4_cmdline_route_print or s5_cmdline_arp_a or s6_cmdline_nslookup or s7_cmdline_ping_tracert)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 네트워크 정보 수집과 관련된 정찰 활동을 탐지할 수 있습니다. ipconfig, netstat, route print, arp, nslookup, ping, tracert와 같은 일반적인 네트워크 유틸리티의 프로세스 생성 이벤트를 모니터링하여 네트워크 토폴로지 매핑, 활성 연결 검색, IP 구성 식별 시도 등을 파악합니다. 탐지된 이벤트는 즉각적인 조사를 위해 알람을 트리거하며, 특히 비정상적인 프로세스나 사용자 계정에서 발생할 경우 침해사고 대응의 우선순위를 높이는 데 사용될 수 있습니다. 이 정보는 공격자의 발판을 이해하고 후속 공격 단계를 예측하는 데 중요합니다.",
+    "false_positive": "정상적인 시스템 관리자, 네트워크 진단 도구, 또는 자동화된 스크립트가 진단 또는 관리 목적으로 이러한 명령을 실행할 경우 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

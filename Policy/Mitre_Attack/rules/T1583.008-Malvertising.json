@@ -1,0 +1,120 @@
+{
+    "id": "T1583.008-Malvertising",
+    "name": "Malvertising Induced Process Creation",
+    "description": "Adversaries may purchase online advertisements that can be abused to distribute malware to victims. Ads can be purchased to plant as well as favorably position artifacts in specific locations  online, such as prominently placed within search engine results. These ads may make it more difficult for users to distinguish between actual search results and advertisements. Purchased ads may also target specific audiences using the advertising network’s capabilities, potentially further taking advantage of the trust inherently given to search engines and popular websites. Adversaries may purchase ads and other resources to help distribute artifacts containing malicious code to victims. Purchased ads may attempt to impersonate or spoof well-known brands. For example, these spoofed ads may trick victims into clicking the ad which could then send them to a malicious domain that may be a clone of official websites containing trojanized versions of the advertised software. Adversary’s efforts to create malicious domains and purchase advertisements may also be automated at scale to better resist cleanup efforts. Malvertising may be used to support Drive-by Target and Drive-by Compromise, potentially requiring limited interaction from the user if the ad contains code/exploits that infect the target system's web browser. Adversaries may also employ several techniques to evade detection by the advertising network. For example, adversaries may dynamically route ad clicks to send automated crawler/policy enforcer traffic to benign sites while validating potential targets then sending victims referred from real ad clicks to malicious pages. This infection vector may therefore remain hidden from the ad network as well as any visitor not reaching the malicious sites with a valid identifier from clicking on the advertisement. Other tricks, such as intentional typos to avoid brand reputation monitoring, may also be used to evade automated detection.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1583",
+        "subtechnique_id": "T1583.008",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "File:FileCreation"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_parent_is_browser": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "contains",
+                        "value": "chrome.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "contains",
+                        "value": "msedge.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "contains",
+                        "value": "firefox.exe"
+                    }
+                ]
+            },
+            "s3_child_path_is_temp": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "\\AppData\\Local\\Temp\\"
+                    }
+                ]
+            },
+            "s4_child_path_is_downloads": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "\\Downloads\\"
+                    }
+                ]
+            },
+            "s5_child_has_suspicious_extension": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": ".ps1"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": ".vbs"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": ".hta"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": ".js"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": ".cmd"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": ".bat"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and s2_parent_is_browser and (s3_child_path_is_temp or s4_child_path_is_downloads) and s5_child_has_suspicious_extension"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 멀버타이징 캠페인으로 인한 초기 침투 시도를 탐지할 수 있습니다. 웹 브라우저가 임시 폴더 또는 다운로드 폴더와 같은 일반적이지 않은 위치에 실행 파일이나 스크립트를 생성하고 실행하는 프로세스 생성 이벤트를 모니터링합니다. 이 규칙은 드라이브-바이 다운로드 또는 사용자 속임수를 통한 악성코드 실행의 징후를 조기에 포착하는 데 중요합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스 및 관련 파일에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 웹 애플리케이션, 브라우저 확장 기능, 또는 합법적인 소프트웨어 설치 프로그램이 웹 브라우저를 통해 임시 파일이나 다운로드 폴더에 실행 파일을 생성하고 실행하는 경우 오탐이 발생할 수 있습니다. 특히 특정 기업 환경에서 사용되는 사용자 정의 스크립트나 자동화 도구로 인해 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 파일 경로를 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

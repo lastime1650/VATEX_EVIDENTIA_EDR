@@ -1,0 +1,101 @@
+{
+    "id": "T1564.002-HiddenUsers-Windows",
+    "name": "Hidden User Account Creation/Modification (Windows)",
+    "description": "Detects attempts to hide user accounts on Windows systems by modifying the 'SpecialAccounts\\UserList' registry key. This technique allows adversaries to conceal their presence or maintain covert access, preventing the user from being listed on the logon screen.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1564",
+        "subtechnique_id": "T1564.002",
+        "data_sources": [
+            "Enterprise:Defense Evasion:Modify Registry",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Defense Evasion:Hide Artifacts:Hidden Users"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_command_reg_add": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "reg add"
+                    }
+                ]
+            },
+            "s3_command_reg_delete": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "reg delete"
+                    }
+                ]
+            },
+            "s4_command_special_accounts_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\\SpecialAccounts\\UserList"
+                    }
+                ]
+            },
+            "s5_registry_set_or_create_key": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPostSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreCreateKeyEx"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPostCreateKeyEx"
+                    }
+                ]
+            },
+            "s6_registry_special_accounts_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\\SpecialAccounts\\UserList"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and (s2_command_reg_add or s3_command_reg_delete) and s4_command_special_accounts_path) or (s5_registry_set_or_create_key and s6_registry_special_accounts_path)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Windows 시스템에서 사용자 계정을 숨기려는 시도를 탐지할 수 있습니다. 특히 'SpecialAccounts\\UserList' 레지스트리 키에 대한 'reg add' 또는 'reg delete' 명령 실행, 또는 해당 레지스트리 키의 직접적인 값 설정/생성 이벤트를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 사용자 계정에 대한 추가적인 조사를 시작하는 데 사용될 수 있습니다. 이는 공격자가 시스템 내에서 은밀하게 활동하며 지속적인 접근을 유지하려는 방어 회피 전술을 나타낼 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 사용자 관리 스크립트, 또는 합법적인 애플리케이션이 특정 사용자 계정의 가시성을 변경하기 위해 해당 레지스트리 키를 조작하는 경우 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

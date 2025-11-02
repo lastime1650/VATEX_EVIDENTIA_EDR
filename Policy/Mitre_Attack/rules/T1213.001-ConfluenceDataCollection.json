@@ -1,0 +1,170 @@
+{
+    "id": "T1213.001-ConfluenceDataCollection",
+    "name": "Confluence Data Collection",
+    "description": "Adversaries may leverage Confluence repositories to mine valuable information. Often found in development environments alongside Atlassian JIRA, Confluence is generally used to store development-related documentation, however, in general may contain more diverse categories of useful information, such as: Policies, procedures, and standards, Physical / logical network diagrams, System architecture diagrams, Technical system documentation, Testing / development credentials, Work / project schedules, Source code snippets, Links to network shares and other internal resources.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0009",
+        "technique_id": "T1213",
+        "subtechnique_id": "T1213.001",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Network:NetworkConnection"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_creation_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_exe_is_browser_or_scripting_tool": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "chrome.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "firefox.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "msedge.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "iexplore.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "python.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "curl.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "wget.exe"
+                    }
+                ]
+            },
+            "s3_cmdline_confluence_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "confluence"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "atlassian"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "jira"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "api"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "download"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "export"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "get-content"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "invoke-webrequest"
+                    }
+                ]
+            },
+            "s4_network_outbound_web_protocol": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 80
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 443
+                    }
+                ]
+            },
+            "s5_network_large_outbound_data": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.packetsize",
+                        "operator": "gte",
+                        "value": 102400
+                    }
+                ]
+            },
+            "s6_network_outbound_direction": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    }
+                ]
+            },
+            "s7_network_tcp_protocol": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "TCP"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_creation_action and s2_exe_is_browser_or_scripting_tool and s3_cmdline_confluence_keywords) or (s4_network_outbound_web_protocol and s5_network_large_outbound_data and s6_network_outbound_direction and s7_network_tcp_protocol)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Confluence 저장소에서 민감한 정보를 수집하려는 시도를 탐지할 수 있습니다. 특히 브라우저 외의 스크립팅 도구(PowerShell, Python, curl 등)를 사용하여 Confluence 관련 키워드가 포함된 명령줄로 프로세스를 생성하거나, 웹 포트(80, 443)를 통해 대량의 데이터를 외부로 전송하는 네트워크 활동을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 네트워크 연결에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 권한 있는 사용자 계정으로 이러한 활동이 발생하거나, 다른 정보 수집 또는 데이터 유출 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 Confluence 사용자, 합법적인 Confluence 통합 스크립트, 백업 솔루션, 모니터링 도구, 또는 웹 스크래핑 도구가 Confluence 콘텐츠에 접근하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스, 특정 사용자, 또는 특정 IP 주소/도메인에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

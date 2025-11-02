@@ -1,0 +1,122 @@
+{
+    "id": "T1056.001-Keylogging",
+    "name": "Keylogging via API Hooking, Registry, or Driver Installation",
+    "description": "Detects attempts by adversaries to log user keystrokes to intercept credentials, which may involve hooking API callbacks, modifying registry keys for injection or persistence, or installing custom drivers. This rule specifically targets common API calls, AppInit_DLLs modifications, new driver file creations, and process access with injection-like permissions.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0006",
+        "technique_id": "T1056",
+        "subtechnique_id": "T1056.001",
+        "data_sources": [
+            "Enterprise:Credential Access:Input Capture:Keylogging",
+            "Enterprise:Defense Evasion:Hijack Execution Flow:DLL",
+            "Enterprise:Persistence:Boot or Logon Autostart Execution:Kernel Modules and Extensions",
+            "Enterprise:Privilege Escalation:Process Injection"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_api_setwindowshookex_call": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "SetWindowsHookExW"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "SetWindowsHookExA"
+                    }
+                ]
+            },
+            "s2_api_getkeystate_call": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetKeyState"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetAsyncKeyState"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "GetKeyboardState"
+                    }
+                ]
+            },
+            "s3_registry_appinit_dlls_modify": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Windows\\AppInit_DLLs"
+                    }
+                ]
+            },
+            "s4_filesystem_sys_creation": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".sys"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "C:\\Windows\\System32\\drivers\\"
+                    }
+                ]
+            },
+            "s5_process_access_injection_perms": {
+                "event_type": "processaccess",
+                "conditions": [
+                    {
+                        "field": "body.processaccess.handletype",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_VM_WRITE"
+                    },
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_CREATE_THREAD"
+                    },
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_VM_OPERATION"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_api_setwindowshookex_call and s5_process_access_injection_perms) or (s2_api_getkeystate_call and s5_process_access_injection_perms) or s3_registry_appinit_dlls_modify or s4_filesystem_sys_creation"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 발생하는 키로깅 시도를 탐지할 수 있습니다. SetWindowsHookEx와 같은 API 호출이 프로세스 인젝션에 필요한 권한과 함께 발생하거나, GetKeyState/GetAsyncKeyState 호출이 유사한 권한과 결합될 때 높은 심각도의 알람을 트리거합니다. 또한, AppInit_DLLs 레지스트리 키 변경 또는 시스템 드라이버 디렉터리에 새로운 .sys 파일이 생성되는 이벤트를 모니터링하여 드라이버 기반 키로거 설치 시도를 탐지합니다. 탐지된 이벤트는 즉각적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 모니터링 도구, 보안 소프트웨어, 또는 합법적인 애플리케이션이 시스템 후킹, 키보드 상태 조회, 드라이버 설치, 또는 프로세스 메모리 접근을 수행하는 경우 오탐이 발생할 수 있습니다. 알려진 정상 프로세스, 특정 드라이버 파일, 또는 특정 API 호출 패턴에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

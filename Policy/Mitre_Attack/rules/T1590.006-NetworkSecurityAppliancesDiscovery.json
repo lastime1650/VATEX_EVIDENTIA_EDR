@@ -1,0 +1,187 @@
+{
+    "id": "T1590.006-NetworkSecurityAppliancesDiscovery",
+    "name": "Network Security Appliances Discovery",
+    "description": "Detects attempts by adversaries to gather information about the victim's network security appliances (e.g., firewalls, content filters, proxies, bastion hosts, NIDS) using various methods, including command-line utilities, PowerShell cmdlets, and registry access to configuration settings.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1590",
+        "subtechnique_id": "T1590.006",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Command:CommandExecution",
+            "WindowsRegistry:WindowsRegistryKeyAccess",
+            "Enterprise:Reconnaissance:Gather Victim Network Information:Network Security Appliances"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmd_netsh_firewall": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "netsh advfirewall"
+                    }
+                ]
+            },
+            "s3_cmd_netsh_firewall_query_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "show profile"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "show rule"
+                    }
+                ]
+            },
+            "s4_cmd_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s5_cmd_powershell_firewall_cmdlets": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-NetFirewallRule"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-NetConnectionProfile"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-NetAdapter"
+                    }
+                ]
+            },
+            "s6_cmd_sc_query": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "sc query"
+                    }
+                ]
+            },
+            "s7_cmd_sc_query_security_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "firewall"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "proxy"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ids"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ips"
+                    }
+                ]
+            },
+            "s8_cmd_nmap_or_masscan": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "nmap.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "masscan.exe"
+                    }
+                ]
+            },
+            "s9_registry_query_open_enumerate_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "Query"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "Open"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "Enumerate"
+                    }
+                ]
+            },
+            "s10_registry_firewall_policy_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\SharedAccess\\Parameters\\FirewallPolicy"
+                    }
+                ]
+            },
+            "s11_registry_proxy_settings_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\ProxyServer"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\ProxyServer"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_cmd_netsh_firewall and s3_cmd_netsh_firewall_query_keywords) or (s1_process_create_action and s4_cmd_powershell_exe and s5_cmd_powershell_firewall_cmdlets) or (s1_process_create_action and s6_cmd_sc_query and s7_cmd_sc_query_security_keywords) or (s1_process_create_action and s8_cmd_nmap_or_masscan) or (s9_registry_query_open_enumerate_action and s10_registry_firewall_policy_path) or (s9_registry_query_open_enumerate_action and s11_registry_proxy_settings_path)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 네트워크 보안 어플라이언스 정보를 수집하려는 시도를 탐지할 수 있습니다. 'netsh advfirewall', PowerShell cmdlets (예: Get-NetFirewallRule), 'sc query' 명령을 통한 보안 관련 서비스 조회, 또는 'nmap'과 같은 스캐닝 도구 실행을 모니터링합니다. 또한, 방화벽 정책이나 프록시 설정과 관련된 레지스트리 키에 대한 비정상적인 접근도 탐지합니다. 탐지된 이벤트는 중간 심각도로 분류되어, 추가적인 조사 및 다른 Discovery 또는 Collection 활동과의 연관성 분석을 통해 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 네트워크 진단 유틸리티, 보안 소프트웨어, 또는 합법적인 애플리케이션이 네트워크 설정을 조회하거나 보안 관련 서비스를 열거하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,268 @@
+{
+    "id": "T1491.001-InternalDefacement",
+    "name": "Internal Defacement",
+    "description": "An adversary may deface systems internal to an organization in an attempt to intimidate or mislead users, thus discrediting the integrity of the systems. This may take the form of modifications to internal websites or server login messages, or directly to user systems with the replacement of the desktop wallpaper. Disturbing or offensive images may be used as a part of Internal Defacement in order to cause user discomfort, or to pressure compliance with accompanying messages. Since internally defacing systems exposes an adversary's presence, it often takes place after other intrusion goals have been accomplished.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0040",
+        "technique_id": "T1491",
+        "subtechnique_id": "T1491.001",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Command:CommandExecution",
+            "WindowsRegistry:WindowsRegistryKeyModification",
+            "File:FileModification",
+            "File:FileCreation"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmd_reg_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "reg.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "add"
+                    }
+                ]
+            },
+            "s3_cmd_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-ItemProperty"
+                    }
+                ]
+            },
+            "s4_cmd_wallpaper_key_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "HKCU\\Control Panel\\Desktop"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/v Wallpaper"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-Name Wallpaper"
+                    }
+                ]
+            },
+            "s5_cmd_login_banner_key_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/v LegalNoticeText"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/v LegalNoticeCaption"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-Name LegalNoticeText"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-Name LegalNoticeCaption"
+                    }
+                ]
+            },
+            "s6_cmd_file_manipulation_tools": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "copy"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "move"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ren"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "echo"
+                    }
+                ]
+            },
+            "s7_cmd_web_root_target": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "C:\\inetpub\\wwwroot\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "C:\\Apache24\\htdocs\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "C:\\xampp\\htdocs\\"
+                    }
+                ]
+            },
+            "s8_reg_set_value_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "SetValueKey"
+                    }
+                ]
+            },
+            "s9_reg_wallpaper_key_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "equals",
+                        "value": "HKEY_CURRENT_USER\\Control Panel\\Desktop\\Wallpaper"
+                    }
+                ]
+            },
+            "s10_reg_login_banner_key_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "equals",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System\\LegalNoticeText"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "equals",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System\\LegalNoticeCaption"
+                    }
+                ]
+            },
+            "s11_fs_mod_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "rename"
+                    }
+                ]
+            },
+            "s12_fs_web_root_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\inetpub\\wwwroot\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\Apache24\\htdocs\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\xampp\\htdocs\\"
+                    }
+                ]
+            },
+            "s13_fs_user_wallpaper_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\Users\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".jpg"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".jpeg"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".png"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".bmp"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and ( (s2_cmd_reg_exe and s4_cmd_wallpaper_key_path) or (s3_cmd_powershell_exe and s4_cmd_wallpaper_key_path) )) or (s8_reg_set_value_action and s9_reg_wallpaper_key_path) or (s1_process_create_action and ( (s2_cmd_reg_exe and s5_cmd_login_banner_key_path) or (s3_cmd_powershell_exe and s5_cmd_login_banner_key_path) )) or (s8_reg_set_value_action and s10_reg_login_banner_key_path) or (s11_fs_mod_action and s12_fs_web_root_path) or (s1_process_create_action and s6_cmd_file_manipulation_tools and s7_cmd_web_root_target) or (s11_fs_mod_action and s13_fs_user_wallpaper_path)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템 내부 변조 시도를 탐지할 수 있습니다. 이는 사용자 데스크톱 배경화면 변경, 시스템 로그인 메시지/배너 변경, 또는 내부 웹사이트 콘텐츠 변조와 같은 행위를 포함합니다. 프로세스 생성 이벤트를 통해 'reg.exe', 'powershell.exe' 등의 명령줄 도구가 관련 레지스트리 키를 수정하거나, 'copy', 'move', 'echo' 등의 파일 조작 도구가 웹 서버 경로 또는 사용자 프로필의 이미지 파일을 대상으로 하는지 모니터링합니다. 또한, 레지스트리 및 파일 시스템 이벤트에서 직접적인 변경 행위를 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 시스템 무결성 손상에 대한 심층 조사 및 침해사고 대응의 우선순위를 지정하는 데 활용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 합법적인 소프트웨어 설치 또는 업데이트, 사용자 개인화 설정 (예: 배경화면 변경), 또는 웹 서버 관리 활동으로 인해 오탐이 발생할 수 있습니다. 특히, 관리자가 스크립트를 사용하여 대량의 시스템 설정을 변경하거나, 웹 개발자가 웹 콘텐츠를 업데이트하는 경우 탐지될 수 있습니다. 알려진 정상 프로세스, 특정 명령줄 패턴, 또는 특정 파일 경로에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

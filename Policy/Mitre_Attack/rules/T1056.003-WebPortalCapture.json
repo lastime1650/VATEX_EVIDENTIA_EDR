@@ -1,0 +1,79 @@
+{
+    "id": "T1056.003-WebPortalCapture",
+    "name": "Web Portal Capture",
+    "description": "Detects attempts by adversaries to install code on externally facing portals, such as VPN login pages, to capture user credentials. This involves monitoring for unauthorized file modifications (create, write, overwritten, superseded) in common Windows web server directories or paths indicative of login/portal pages.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0009",
+        "technique_id": "T1056",
+        "subtechnique_id": "T1056.003",
+        "data_sources": [
+            "file:filemodification"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_file_modification_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "superseded"
+                    }
+                ]
+            },
+            "s2_web_directory_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "C:\\\\inetpub\\\\wwwroot\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "C:\\\\Apache24\\\\htdocs\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "C:\\\\xampp\\\\htdocs\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "login"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "portal"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_file_modification_action and s2_web_directory_path"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 웹 포털을 통한 자격 증명 탈취 시도를 탐지할 수 있습니다. 웹 서버의 주요 디렉터리 내 파일 생성, 쓰기, 덮어쓰기 등의 변경 행위를 모니터링합니다. 특히 로그인 페이지나 VPN 포털과 관련된 경로에서 이러한 행위가 탐지될 경우, 이는 악성 코드 주입 또는 웹 페이지 변조를 통한 자격 증명 수집 시도로 간주될 수 있습니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 웹 서버 파일 무결성 검사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 웹 애플리케이션 업데이트, 웹 콘텐츠 관리 시스템(CMS)의 파일 변경, 개발 환경에서의 코드 배포, 또는 합법적인 시스템 관리 도구에 의해 웹 서버 파일이 수정되는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 웹 서버 관리 활동이나 특정 업데이트 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

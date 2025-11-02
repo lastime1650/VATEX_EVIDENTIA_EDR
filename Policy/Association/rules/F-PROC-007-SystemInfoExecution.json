@@ -1,0 +1,33 @@
+{
+    "id": "F-PROC-007-SystemInfoExecution",
+    "name": "Feature: System Information Discovery via systeminfo.exe",
+    "description": "Identifies the execution of systeminfo.exe. This command is used to gather detailed configuration information about a computer and its operating system.",
+    "severity": "info",
+    "mitre_attack": [
+        {
+            "tactic": "TA0007",
+            "technique_id": "T1082"
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "systeminfo_process_started",
+                "selections": {
+                    "selection_systeminfo_path": {
+                        "event_type": "process",
+                        "condition_method": "and",
+                        "conditions": [
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "systeminfo.exe"}
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "Feature Captured: System Information Discovery (systeminfo.exe)"
+                }
+            }
+        ]
+    }
+}

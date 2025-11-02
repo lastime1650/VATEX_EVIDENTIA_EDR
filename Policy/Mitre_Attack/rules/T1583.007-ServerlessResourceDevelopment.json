@@ -1,0 +1,160 @@
+{
+    "id": "T1583.007-ServerlessResourceDevelopment",
+    "name": "Serverless Infrastructure Management from Endpoint",
+    "description": "Detects attempts to manage or deploy serverless cloud infrastructure (e.g., AWS Lambda, Google Cloud Functions, Cloudflare Workers) from an endpoint using command-line tools. Adversaries may use a compromised machine to develop or configure serverless resources for later use in operations, such as command and control or data exfiltration.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1583",
+        "subtechnique_id": "T1583.007",
+        "data_sources": [
+            "Enterprise:Resource Development:Acquire Infrastructure:Serverless",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "aws_cli_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "aws.exe"
+                    }
+                ]
+            },
+            "aws_lambda_keyword": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "lambda"
+                    }
+                ]
+            },
+            "aws_lambda_actions": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "create-function"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "update-function-configuration"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "invoke"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "delete-function"
+                    }
+                ]
+            },
+            "gcloud_cli_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "gcloud.cmd"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "gcloud.exe"
+                    }
+                ]
+            },
+            "gcloud_functions_keyword": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "functions"
+                    }
+                ]
+            },
+            "gcloud_functions_actions": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "deploy"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "call"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "delete"
+                    }
+                ]
+            },
+            "wrangler_cli_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wrangler.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wrangler.cmd"
+                    }
+                ]
+            },
+            "wrangler_actions": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "deploy"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "publish"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "delete"
+                    }
+                ]
+            }
+        },
+        "condition": "(process_create_action and aws_cli_exe and aws_lambda_keyword and aws_lambda_actions) or (process_create_action and gcloud_cli_exe and gcloud_functions_keyword and gcloud_functions_actions) or (process_create_action and wrangler_cli_exe and wrangler_actions)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 엔드포인트에서 클라우드 서버리스 인프라를 관리하거나 배포하려는 시도를 탐지할 수 있습니다. 이는 공격자가 탈취한 시스템을 이용하여 C2 인프라를 구축하거나, 데이터 유출을 위한 서버리스 함수를 생성하는 등의 자원 개발 활동을 나타낼 수 있습니다. 탐지된 이벤트는 자동 알람을 트리거하고, 해당 프로세스의 활동을 추가 조사하여 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 클라우드 개발자, DevOps 엔지니어, 또는 시스템 관리자가 AWS CLI, gcloud CLI, Cloudflare Wrangler CLI 도구를 사용하여 서버리스 함수를 배포하거나 관리하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상적인 사용자나 프로세스에 대한 화이트리스팅을 통해 오탐을 줄일 수 있습니다."
+}

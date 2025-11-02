@@ -1,0 +1,166 @@
+{
+    "id": "T1140-DeobfuscateDecodeFilesOrInfo",
+    "name": "Deobfuscate/Decode Files or Information",
+    "description": "Adversaries may use obfuscated files or information to hide artifacts of an intrusion from analysis. They may require separate mechanisms to decode or deobfuscate that information depending on how they intend to use it. Methods for doing that include built-in functionality of malware or by using utilities present on the system, such as certutil to decode files, or copy /b and type commands to reassemble binary fragments. PowerShell can also be used with various decoding cmdlets or methods.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1140",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Script:ScriptExecution",
+            "File:FileModification"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_certutil_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "certutil.exe"
+                    }
+                ]
+            },
+            "s3_certutil_decode_keyword": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "decode"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "decodehex"
+                    }
+                ]
+            },
+            "s4_copy_b_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "copy /b"
+                    }
+                ]
+            },
+            "s5_type_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "type"
+                    }
+                ]
+            },
+            "s6_output_redirection": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ">"
+                    }
+                ]
+            },
+            "s7_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s8_powershell_b64_decode": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "FromBase64String"
+                    }
+                ]
+            },
+            "s9_powershell_encoded_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-EncodedCommand"
+                    }
+                ]
+            },
+            "s10_powershell_iex": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-Expression"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "IEX"
+                    }
+                ]
+            },
+            "s11_powershell_convert_securestring": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ConvertFrom-SecureString"
+                    }
+                ]
+            },
+            "s12_powershell_gzip_decompress": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "System.IO.Compression.GzipStream"
+                    }
+                ]
+            },
+            "s13_powershell_zlib_decompress": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "System.IO.Compression.DeflateStream"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and ((s2_certutil_exe and s3_certutil_decode_keyword) or ((s4_copy_b_command or s5_type_command) and s6_output_redirection) or (s7_powershell_exe and (s8_powershell_b64_decode or s9_powershell_encoded_command or s10_powershell_iex or s11_powershell_convert_securestring or s12_powershell_gzip_decompress or s13_powershell_zlib_decompress)))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 파일 또는 정보 난독화 해제 및 디코딩 시도를 탐지할 수 있습니다. certutil.exe를 이용한 디코딩, copy /b 또는 type 명령을 통한 바이너리 재조립, PowerShell을 이용한 Base64 디코딩, 인코딩된 명령어 실행 등과 같은 특정 명령줄 패턴을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 명령줄 인수에 대한 추가 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히 다른 방어 회피 또는 실행 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 소프트웨어 설치/업데이트 프로세스, 또는 합법적인 개발 도구가 파일을 디코딩하거나 재조립하는 과정에서 오탐이 발생할 수 있습니다. 예를 들어, 소프트웨어 업데이트가 Base64 인코딩된 스크립트를 실행하거나, 시스템 유틸리티가 특정 형식의 데이터를 디코딩하는 경우입니다. 알려진 정상적인 명령줄 패턴이나 특정 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

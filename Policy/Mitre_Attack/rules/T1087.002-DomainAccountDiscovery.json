@@ -1,0 +1,122 @@
+{
+    "id": "T1087.002-DomainAccountDiscovery",
+    "name": "Domain Account Discovery",
+    "description": "Detects attempts to enumerate domain accounts and groups using built-in Windows utilities (e.g., net.exe, PowerShell cmdlets) or direct API calls. This information helps adversaries identify privileged accounts for follow-on attacks.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1087",
+        "subtechnique_id": "T1087.002",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Native API",
+            "Enterprise:Discovery:Network Service Discovery",
+            "Enterprise:Discovery:Permission Groups Discovery:Domain Groups"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_net_exe_commandline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "net.exe"
+                    }
+                ]
+            },
+            "s3_net_domain_enumeration": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "user /domain"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "group /domain"
+                    }
+                ]
+            },
+            "s4_powershell_exe_commandline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s5_powershell_ad_cmdlets": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-ADUser"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-ADGroupMember"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-ADComputer"
+                    }
+                ]
+            },
+            "s6_apicall_domain_user_enum": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "NetUserEnum"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "NetGroupEnum"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "DsGetDcName"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "LsaEnumerateLogonSessions"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "LsaEnumerateAccountRights"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create and s2_net_exe_commandline and s3_net_domain_enumeration) or (s1_process_create and s4_powershell_exe_commandline and s5_powershell_ad_cmdlets) or s6_apicall_domain_user_enum"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Active Directory 도메인 사용자 및 그룹 정보 수집 시도를 탐지할 수 있습니다. 'net user /domain', 'net group /domain'과 같은 명령 실행, PowerShell을 통한 AD 관련 cmdlet 호출, 또는 도메인 사용자/그룹 열거 API 호출 등을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히, 다른 Discovery 또는 Credential Access 활동과 결합될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 백신 소프트웨어, 사용자 환경 설정 스크립트, 또는 합법적인 애플리케이션이 도메인 사용자 정보를 조회하는 과정에서 오탐이 발생할 수 있습니다. 예를 들어, Active Directory 관리 도구, 사용자 프로필 동기화 서비스, 또는 특정 IT 운영 스크립트 등이 이에 해당합니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

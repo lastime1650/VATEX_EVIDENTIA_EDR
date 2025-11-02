@@ -1,0 +1,161 @@
+{
+    "id": "T1553.004-InstallRootCertificate",
+    "name": "Install Root Certificate",
+    "description": "Detects attempts by adversaries to install a root certificate on a compromised system. This technique is often used to avoid warnings when connecting to adversary-controlled web servers, spoof legitimate websites, or degrade the security of TLS/SSL communications. Adversaries may use tools like certutil.exe or PowerShell cmdlets, or directly manipulate registry keys to achieve this.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1553",
+        "subtechnique_id": "T1553.004",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Defense Evasion:Modify Registry"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_certutil_addstore_root": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "certutil.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-addstore Root"
+                    }
+                ]
+            },
+            "s2_powershell_import_certificate": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Import-Certificate"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-CertStoreLocation Cert:\\LocalMachine\\Root"
+                    }
+                ]
+            },
+            "s3_powershell_new_selfsigned_cert_install": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-SelfSignedCertificate"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-CertStoreLocation Cert:\\LocalMachine\\Root"
+                    }
+                ]
+            },
+            "s4_registry_root_cert_key_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\EnterpriseCertificates\\Root\\Certificates\\"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\SystemCertificates\\Root\\Certificates\\"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\Software\\Microsoft\\SystemCertificates\\Root\\Certificates\\"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\Software\\Policies\\Microsoft\\SystemCertificates\\Root\\Certificates\\"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\Software\\Policies\\Microsoft\\SystemCertificates\\Root\\Certificates\\"
+                    }
+                ]
+            },
+            "s5_registry_modification_or_creation_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPostSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtCreateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreCreateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPostCreateKey"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_certutil_addstore_root or s2_powershell_import_certificate or s3_powershell_new_selfsigned_cert_install or (s4_registry_root_cert_key_path and s5_registry_modification_or_creation_action)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에 루트 인증서가 비정상적으로 설치되는 시도를 탐지할 수 있습니다. certutil.exe나 PowerShell을 이용한 명령줄 기반 인증서 설치 시도, 또는 알려진 루트 인증서 저장소 레지스트리 경로에 대한 생성/수정 행위를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스 및 관련 파일에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 이는 중간자 공격(Man-in-the-Middle) 가능성을 시사하므로, 네트워크 트래픽 분석과 연계하여 조사 우선순위를 높일 수 있습니다.",
+    "false_positive": "정상적인 소프트웨어 설치 프로그램, 기업 네트워크 보안 솔루션(예: SSL/TLS 검사를 위한 프록시), VPN 클라이언트, 또는 시스템 업데이트가 합법적인 목적으로 루트 인증서를 설치하거나 수정하는 경우 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 인증서 지문에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

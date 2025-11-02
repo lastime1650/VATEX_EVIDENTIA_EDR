@@ -1,0 +1,143 @@
+{
+    "id": "T1591-GatherVictimOrgInformation_Internal",
+    "name": "Gather Victim Org Information (Internal Enumeration)",
+    "description": "Detects attempts to gather organizational information from a compromised Windows host by enumerating domain and network structures using built-in command-line tools and PowerShell cmdlets. This includes querying domain trusts, listing domain controllers, and retrieving Active Directory organizational units, which can reveal internal organizational hierarchy and naming conventions.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1591",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Discovery:Domain Trust Discovery",
+            "Enterprise:Discovery:Network Service Discovery",
+            "Enterprise:Discovery:Account Discovery"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_net_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "net.exe"
+                    }
+                ]
+            },
+            "s3_net_domain_enum_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " view"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " domain"
+                    }
+                ]
+            },
+            "s4_nltest_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "nltest.exe"
+                    }
+                ]
+            },
+            "s5_nltest_domain_enum_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "\\\\domain_trusts"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "\\\\dclist"
+                    }
+                ]
+            },
+            "s6_nslookup_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "nslookup.exe"
+                    }
+                ]
+            },
+            "s7_nslookup_ad_query_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "_ldap._tcp.dc._msdcs"
+                    }
+                ]
+            },
+            "s8_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s9_powershell_ad_enum_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-ADDomain"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-ADForest"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-ADOrganizationalUnit"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create and s2_net_exe_path and s3_net_domain_enum_cmd) or (s1_process_create and s4_nltest_exe_path and s5_nltest_domain_enum_cmd) or (s1_process_create and s6_nslookup_exe_path and s7_nslookup_ad_query_cmd) or (s1_process_create and s8_powershell_exe_path and s9_powershell_ad_enum_cmd)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 공격자가 시스템 내에서 조직 정보를 수집하려는 시도를 탐지할 수 있습니다. 'net' 명령어를 사용한 도메인 및 네트워크 열거, 'nltest'를 통한 도메인 트러스트 조회, 'nslookup'을 이용한 내부 DNS 레코드 쿼리, 또는 PowerShell의 'Get-AD*' cmdlet을 사용한 Active Directory 정보 수집 시도를 모니터링합니다. 탐지된 이벤트는 초기 침투 후 내부 정찰 활동의 지표로 활용되며, 다른 Discovery 또는 Lateral Movement 활동과 연계하여 침해사고의 전체적인 그림을 파악하고 대응 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 네트워크 진단 유틸리티, 또는 합법적인 스크립트가 네트워크 및 도메인 정보를 조회하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상적인 프로세스, 명령줄 패턴, 또는 특정 사용자 계정을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

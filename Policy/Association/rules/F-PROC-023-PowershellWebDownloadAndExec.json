@@ -1,0 +1,40 @@
+{
+    "id": "F-PROC-023-PowershellWebDownloadAndExec",
+    "name": "Feature: PowerShell In-Memory Download and Execution",
+    "description": "Identifies PowerShell using Invoke-Expression (IEX) on a downloaded string. This pattern downloads and executes a script in memory without touching the disk, a hallmark of fileless attacks.",
+    "severity": "info",
+    "mitre_attack": [
+        {
+            "tactic": "TA0002",
+            "technique_id": "T1059",
+            "subtechnique_id": "T1059.001"
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "powershell_iex_downloadstring",
+                "selections": {
+                    "selection_ps_download_exec": {
+                        "event_type": "process",
+                        "condition_method": "and",
+                        "conditions": [
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "powershell.exe"},
+                            {"field": "body.process.commandline", "operator": "contains", "value": "IEX"},
+                            {
+                                "field": "body.process.commandline",
+                                "operator": "regex",
+                                "value": "(DownloadString|DownloadFile)"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "Feature Captured: PowerShell memory-based download and execution pattern detected."
+                }
+            }
+        ]
+    }
+}

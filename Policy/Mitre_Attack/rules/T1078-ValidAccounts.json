@@ -1,0 +1,113 @@
+{
+    "id": "T1078-ValidAccounts",
+    "name": "Valid Accounts Abuse",
+    "description": "Adversaries may obtain and abuse credentials of existing accounts as a means of gaining Initial Access, Persistence, Privilege Escalation, or Defense Evasion. Compromised credentials may be used to bypass access controls placed on various resources on systems within the network and may even be used for persistent access to remote systems and externally available services, such as VPNs, Outlook Web Access, network devices, and remote desktop. Compromised credentials may also grant an adversary increased privilege to specific systems or access to restricted areas of the network. Adversaries may choose not to use malware or tools in conjunction with the legitimate access those credentials provide to make it harder to detect their presence.\n\nIn some cases, adversaries may abuse inactive accounts: for example, those belonging to individuals who are no longer part of an organization. Using these accounts may allow the adversary to evade detection, as the original account user will not be present to identify any anomalous activity taking place on their account.\n\nThe overlap of permissions for local, domain, and cloud accounts across a network of systems is of concern because the adversary may be able to pivot across accounts and systems to reach a high level of access (i.e., domain or enterprise administrator) to bypass access controls set within the enterprise.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0001",
+        "technique_id": "T1078",
+        "subtechnique_id": "",
+        "data_sources": [
+            "LogonSession:LogonSessionCreation",
+            "UserAccount:UserAccountAuthentication",
+            "LogonSession:LogonSessionMetadata",
+            "Process:ProcessCreation",
+            "Process:OSAPIExecution"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_runas_commandline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "runas"
+                    }
+                ]
+            },
+            "s3_psexec_commandline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "psexec.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "PsExec.exe"
+                    }
+                ]
+            },
+            "s4_mstsc_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "mstsc.exe"
+                    }
+                ]
+            },
+            "s5_logonuser_apicall": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "LogonUserW"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "LogonUserA"
+                    }
+                ]
+            },
+            "s6_createprocesswithlogon_apicall": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "CreateProcessWithLogonW"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "CreateProcessWithLogonA"
+                    }
+                ]
+            },
+            "s7_impersonateloggedonuser_apicall": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "ImpersonateLoggedOnUser"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_runas_commandline) or (s1_process_create_action and s3_psexec_commandline) or (s1_process_create_action and s4_mstsc_execution) or s5_logonuser_apicall or s6_createprocesswithlogon_apicall or s7_impersonateloggedonuser_apicall"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템 내 유효한 계정의 남용 시도를 탐지할 수 있습니다. 'runas' 명령을 통한 다른 사용자 권한으로의 프로세스 실행, 'PsExec'과 같은 원격 실행 도구 사용, 원격 데스크톱 연결(mstsc.exe) 시작, 또는 LogonUser, CreateProcessWithLogon, ImpersonateLoggedOnUser와 같은 인증/권한 관련 API 호출을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련된 계정 및 프로세스에 대한 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히, 권한 상승 또는 원격 접근 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 소프트웨어 배포 도구, 원격 지원 솔루션, 또는 개발/테스트 환경에서 합법적인 'runas' 명령, PsExec 사용, RDP 연결, 또는 인증 관련 API 호출로 인해 오탐이 발생할 수 있습니다. 특정 사용자, 프로세스, 또는 명령줄 패턴에 대한 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

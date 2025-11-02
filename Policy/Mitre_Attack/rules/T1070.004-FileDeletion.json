@@ -1,0 +1,105 @@
+{
+    "id": "T1070.004-FileDeletion",
+    "name": "File Deletion",
+    "description": "Adversaries may delete files left behind by the actions of their intrusion activity. Malware, tools, or other non-native files dropped or created on a system by an adversary may leave traces to indicate to what was done within a network and how. Removal of these files can occur during an intrusion, or as part of a post-intrusion process to minimize the adversary's footprint. This includes execution of commands like 'del', 'erase', 'rmdir' on Windows, or using utilities like 'sdelete.exe' and 'fsutil file deletewiping'.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1070",
+        "subtechnique_id": "T1070.004",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Defense Evasion:Indicator Removal:File Deletion"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cmd_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "cmd.exe"
+                    }
+                ]
+            },
+            "s3_cmdline_del_erase_rmdir": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "del "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "erase "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "rmdir "
+                    }
+                ]
+            },
+            "s4_sdelete_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "sdelete.exe"
+                    }
+                ]
+            },
+            "s5_fsutil_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "fsutil.exe"
+                    }
+                ]
+            },
+            "s6_fsutil_deletewiping_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "file deletewiping"
+                    }
+                ]
+            },
+            "s7_filesystem_remove_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "remove"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_cmd_exe_path and s3_cmdline_del_erase_rmdir) or (s1_process_create_action and s4_sdelete_exe_path) or (s1_process_create_action and s5_fsutil_exe_path and s6_fsutil_deletewiping_cmdline) or s7_filesystem_remove_action"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 파일 삭제 시도를 탐지할 수 있습니다. 'del', 'erase', 'rmdir'과 같은 기본 명령줄 유틸리티 사용, 'sdelete.exe'와 같은 보안 삭제 도구 실행, 또는 'fsutil file deletewiping'과 같은 명령 실행을 모니터링합니다. 또한, 파일 시스템 수준에서 'remove' 액션이 발생하는 이벤트를 직접 탐지하여 악성 파일 제거, 증거 인멸, 또는 방어 회피 시도를 식별할 수 있습니다. 탐지된 이벤트는 즉각적인 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 유지보수 스크립트, 사용자 파일 정리 활동, 소프트웨어 제거 프로그램, 또는 백신 소프트웨어의 격리/삭제 작업 등으로 인해 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 파일 경로에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,100 @@
+{
+    "id": "T1583.003-VirtualPrivateServerAcquisition",
+    "name": "Virtual Private Server Acquisition (Indirect Detection)",
+    "description": "Detects attempts to interact with cloud provider APIs or command-line interfaces (CLIs) from a compromised host, potentially indicating an adversary's resource development activity related to Virtual Private Server (VPS) acquisition or management. This technique is primarily an adversary-side activity, making direct endpoint detection challenging. This rule focuses on indirect indicators such as the execution of cloud CLI tools with commands typically used for VM creation or management.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1583",
+        "subtechnique_id": "T1583.003",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Command:CommandExecution"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_aws_cli_vm_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "aws.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ec2"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "run-instances"
+                    }
+                ]
+            },
+            "s3_azure_cli_vm_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "az.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "vm"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s4_gcloud_cli_vm_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "gcloud.cmd"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "compute"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "instances"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "create"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and (s2_aws_cli_vm_command or s3_azure_cli_vm_command or s4_gcloud_cli_vm_command)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 사용하여 엔드포인트에서 클라우드 서비스 공급자의 CLI 도구를 통해 가상 서버를 생성하거나 관리하려는 시도를 탐지할 수 있습니다. 이는 공격자가 침해된 시스템을 사용하여 추가 인프라를 구축하려 할 때 나타날 수 있는 간접적인 지표입니다. 탐지된 이벤트는 잠재적인 리소스 개발 활동으로 분류되며, 관련 프로세스, 사용자, 그리고 네트워크 연결에 대한 심층 조사를 촉발할 수 있습니다. 이 규칙은 특히 다른 의심스러운 활동과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "이 규칙은 클라우드 관리자, 개발자, 또는 자동화된 스크립트가 합법적으로 클라우드 리소스를 생성하거나 관리하는 경우 높은 오탐을 유발할 수 있습니다. 정상적인 클라우드 관리 활동이 활발한 환경에서는 특정 사용자, 프로세스, 또는 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄이는 것이 필수적입니다."
+}

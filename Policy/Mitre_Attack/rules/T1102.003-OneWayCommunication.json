@@ -1,0 +1,127 @@
+{
+    "id": "T1102.003-OneWayCommunication",
+    "name": "One-Way Communication via Web Services",
+    "description": "Detects processes attempting to establish one-way command and control communication using legitimate external web services (e.g., popular websites, social media) by leveraging common command-line tools for web requests. Adversaries use this technique to hide C2 traffic within expected network noise.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0011",
+        "technique_id": "T1102",
+        "subtechnique_id": "T1102.003",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Command:CommandExecution",
+            "NetworkTraffic:NetworkConnectionCreation",
+            "NetworkTraffic:NetworkTrafficFlow"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_creation": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s3_powershell_web_cmdlet": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-WebRequest"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "IWR"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wget"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "curl"
+                    }
+                ]
+            },
+            "s4_curl_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "curl.exe"
+                    }
+                ]
+            },
+            "s5_curl_web_url": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "http://"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "https://"
+                    }
+                ]
+            },
+            "s6_wget_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "wget.exe"
+                    }
+                ]
+            },
+            "s7_wget_web_url": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "http://"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "https://"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_creation and ((s2_powershell_exe_path and s3_powershell_web_cmdlet) or (s4_curl_exe_path and s5_curl_web_url) or (s6_wget_exe_path and s7_wget_web_url))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 합법적인 웹 서비스를 이용한 일방향 C2 통신 시도를 탐지할 수 있습니다. PowerShell의 Invoke-WebRequest, curl.exe, wget.exe와 같은 도구의 실행을 모니터링하며, 특히 비정상적인 프로세스나 사용자 계정에서 이러한 명령이 실행되는 경우를 집중적으로 조사합니다. 탐지된 이벤트는 C2 활동의 초기 지표로 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 네트워크 연결에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다.",
+    "false_positive": "이 규칙은 시스템 관리, 소프트웨어 업데이트, 개발 스크립트 등 합법적인 목적으로 Invoke-WebRequest, curl, wget이 사용될 때 오탐을 유발할 수 있습니다. 알려진 정상적인 사용 패턴이나 특정 프로세스, 사용자 계정에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

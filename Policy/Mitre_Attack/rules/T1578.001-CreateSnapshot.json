@@ -1,0 +1,140 @@
+{
+    "id": "T1578.001-CreateSnapshot",
+    "name": "Create Snapshot",
+    "description": "An adversary may create a snapshot or data backup within a cloud account to evade defenses. A snapshot is a point-in-time copy of an existing cloud compute component such as a virtual machine (VM), virtual hard drive, or volume. An adversary may leverage permissions to create a snapshot in order to bypass restrictions that prevent access to existing compute service infrastructure, unlike in Revert Cloud Instance (https://attack.mitre.org/techniques/T1578/004) where an adversary may revert to a snapshot to evade detection and remove evidence of their presence.\n\nAn adversary may Create Cloud Instance (https://attack.mitre.org/techniques/T1578/002), mount one or more created snapshots to that instance, and then apply a policy that allows the adversary access to the created instance, such as a firewall policy that allows them inbound and outbound SSH access.(Citation: Mandiant M-Trends 2020)",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1578",
+        "subtechnique_id": "T1578.001",
+        "data_sources": [
+            "Snapshot:SnapshotCreation",
+            "Process:ProcessCreation"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_az_cli_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "az.exe"
+                    }
+                ]
+            },
+            "s3_aws_cli_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "aws.exe"
+                    }
+                ]
+            },
+            "s4_gcloud_cli_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "gcloud.exe"
+                    }
+                ]
+            },
+            "s5_az_snapshot_create_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "snapshot create"
+                    }
+                ]
+            },
+            "s6_az_disk_create_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "disk create"
+                    }
+                ]
+            },
+            "s7_az_source_param": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--source"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--source-snapshot"
+                    }
+                ]
+            },
+            "s8_aws_ec2_create_snapshot_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ec2 create-snapshot"
+                    }
+                ]
+            },
+            "s9_gcloud_compute_disks_create_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "compute disks create"
+                    }
+                ]
+            },
+            "s10_gcloud_compute_instances_create_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "compute instances create"
+                    }
+                ]
+            },
+            "s11_gcloud_source_snapshot_param": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--source-snapshot"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and ( (s2_az_cli_execution and (s5_az_snapshot_create_cmd or (s6_az_disk_create_cmd and s7_az_source_param))) or (s3_aws_cli_execution and s8_aws_ec2_create_snapshot_cmd) or (s4_gcloud_cli_execution and ((s9_gcloud_compute_disks_create_cmd and s11_gcloud_source_snapshot_param) or (s10_gcloud_compute_instances_create_cmd and s11_gcloud_source_snapshot_param))) )"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 클라우드 환경에서 스냅샷 생성 시도를 탐지할 수 있습니다. Azure, AWS, Google Cloud CLI 도구(az.exe, aws.exe, gcloud.exe)의 프로세스 생성 이벤트를 모니터링하며, 스냅샷 생성 또는 스냅샷을 이용한 디스크/인스턴스 생성 관련 명령줄 인자를 분석합니다. 탐지된 이벤트는 방어 회피 전술의 일환으로 분류되어, 즉각적인 알람을 트리거하고 추가적인 클라우드 환경 및 관련 프로세스 조사를 시작하는 데 사용될 수 있습니다. 특히, 비정상적인 계정이나 컨텍스트에서 이러한 활동이 발생할 경우 중요도가 높아집니다.",
+    "false_positive": "정상적인 클라우드 운영, 백업/복구 프로세스, 개발/테스트 환경 설정, 또는 자동화된 인프라 관리 도구가 스냅샷을 생성하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상적인 CLI 호출 패턴, 특정 사용자 계정, 또는 자동화 스크립트에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,193 @@
+{
+    "id": "T1021.002-SMBWindowsAdminShares",
+    "name": "Lateral Movement via SMB/Windows Admin Shares",
+    "description": "Detects attempts by adversaries to interact with remote network shares (e.g., C$, ADMIN$, IPC$) using Server Message Block (SMB) for lateral movement. This includes command-line utilities like 'net use', PowerShell cmdlets for SMB manipulation, PsExec, and direct file system access to administrative shares, often leveraging valid accounts to transfer files or execute binaries remotely.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0008",
+        "technique_id": "T1021",
+        "subtechnique_id": "T1021.002",
+        "data_sources": [
+            "Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Command and Control:Application Layer Protocol:File Transfer Protocols",
+            "Execution:Native API",
+            "Collection:Data from Network Shared Drive",
+            "Discovery:Network Share Discovery"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_net_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "net.exe"
+                    }
+                ]
+            },
+            "s3_net_use_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " use "
+                    }
+                ]
+            },
+            "s4_admin_share_in_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "C$"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ADMIN$"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "IPC$"
+                    }
+                ]
+            },
+            "s5_psexec_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "psexec.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "psexec64.exe"
+                    }
+                ]
+            },
+            "s6_remote_target_in_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "\\\\"
+                    }
+                ]
+            },
+            "s7_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s8_powershell_smb_cmdlets": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-SMBMapping"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-SMBShare"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-Command -ComputerName"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Copy-Item -Destination \\\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Move-Item -Destination \\\\"
+                    }
+                ]
+            },
+            "s9_filesystem_access_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "open"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "read"
+                    }
+                ]
+            },
+            "s10_filesystem_admin_share_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\\\C$\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\\\ADMIN$\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\\\IPC$\\"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_action_create and s2_net_exe_path and s3_net_use_command and s4_admin_share_in_cmdline) or (s1_process_action_create and s5_psexec_exe_path and s6_remote_target_in_cmdline) or (s1_process_action_create and s7_powershell_exe_path and s8_powershell_smb_cmdlets) or (s9_filesystem_access_action and s10_filesystem_admin_share_path)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 SMB/Windows Admin Shares를 통한 측면 이동 시도를 탐지할 수 있습니다. 'net use' 명령을 사용한 관리 공유 연결, PsExec을 통한 원격 실행, PowerShell을 이용한 SMB 매핑 또는 공유 열거, SMB 포트(445)를 통한 비정상적인 네트워크 트래픽, 그리고 로컬 프로세스가 원격 관리 공유에 접근하는 파일 시스템 활동을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스, 네트워크 연결, 및 사용자 계정에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 다른 유효 계정 사용 또는 원격 실행 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 소프트웨어 배포 도구, 백업 솔루션, 또는 합법적인 애플리케이션이 SMB 관리 공유에 접근하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 SMB 공유 접근 패턴, 특정 관리 도구의 명령줄 인자, 또는 특정 IP 주소 대역에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

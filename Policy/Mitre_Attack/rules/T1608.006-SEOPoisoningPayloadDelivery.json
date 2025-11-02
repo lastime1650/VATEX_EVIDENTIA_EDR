@@ -1,0 +1,170 @@
+{
+    "id": "T1608.006-SEOPoisoningPayloadDelivery",
+    "name": "SEO Poisoning: Payload Delivery via Suspicious File Creation",
+    "description": "Detects the creation of suspicious executable or script files in common user download or temporary directories, which could indicate a successful payload delivery facilitated by SEO poisoning tactics. Adversaries use SEO poisoning to lure victims to malicious sites that host these payloads.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1608",
+        "subtechnique_id": "T1608.006",
+        "data_sources": [
+            "File:FileCreation",
+            "Process:ProcessCreation"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_file_action_create_or_write": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "superseded"
+                    }
+                ]
+            },
+            "s2a_filepath_in_user_downloads": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\Users\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\Downloads\\"
+                    }
+                ]
+            },
+            "s2b_filepath_in_user_desktop": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\Users\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\Desktop\\"
+                    }
+                ]
+            },
+            "s2c_filepath_in_user_temp": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\Users\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\AppData\\Local\\Temp\\"
+                    }
+                ]
+            },
+            "s2d_filepath_in_windows_temp": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\Windows\\Temp\\"
+                    }
+                ]
+            },
+            "s3_filepath_has_suspicious_extension": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".ps1"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".bat"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".cmd"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".vbs"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".js"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".hta"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".scr"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".chm"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".lnk"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".msi"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_file_action_create_or_write and (s2a_filepath_in_user_downloads or s2b_filepath_in_user_desktop or s2c_filepath_in_user_temp or s2d_filepath_in_windows_temp) and s3_filepath_has_suspicious_extension"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 SEO Poisoning을 통해 유도된 악성 파일 다운로드 및 생성을 탐지할 수 있습니다. 사용자 다운로드 폴더, 바탕화면, 또는 임시 폴더에 실행 가능한 의심스러운 파일이 생성되는 이벤트를 모니터링합니다. 탐지된 이벤트는 중간 심각도로 분류되어 추가적인 조사(예: 파일의 SHA256 확인, 생성 프로세스 분석, 네트워크 연결 기록 확인)를 트리거하고, 잠재적인 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 소프트웨어 다운로드, 합법적인 임시 파일 생성, 또는 특정 애플리케이션의 업데이트 과정에서 오탐이 발생할 수 있습니다. 특히, 개발자 도구나 시스템 관리 도구가 스크립트 파일을 생성하는 경우에도 탐지될 수 있습니다. 알려진 정상 파일 경로, SHA256 해시, 또는 특정 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

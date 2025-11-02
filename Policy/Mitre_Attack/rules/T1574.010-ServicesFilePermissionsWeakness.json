@@ -1,0 +1,85 @@
+{
+    "id": "T1574.010-ServicesFilePermissionsWeakness",
+    "name": "Services File Permissions Weakness - Binary Replacement",
+    "description": "Adversaries may execute their own malicious payloads by hijacking the binaries used by services. Adversaries may use flaws in the permissions of Windows services to replace the binary that is executed upon service start. These service processes may automatically execute specific binaries as part of their functionality or to perform other actions. If the permissions on the file system directory containing a target binary, or permissions on the binary itself are improperly set, then the target binary may be overwritten with another binary using user-level permissions and executed by the original process. If the original process and thread are running under a higher permissions level, then the replaced binary will also execute under higher-level permissions, which could include SYSTEM. Adversaries may use this technique to replace legitimate binaries with malicious ones as a means of executing code at a higher permissions level. If the executing process is set to run at a specific time or during a certain event (e.g., system bootup) then this technique can also be used for persistence.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1574",
+        "subtechnique_id": "T1574.010",
+        "data_sources": [
+            "Enterprise:Defense Evasion:File and Directory Permissions Modification:Windows File and Directory Permissions Modification",
+            "Enterprise:Persistence:Create or Modify System Process:Windows Service"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_file_modification_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "rename"
+                    }
+                ]
+            },
+            "s2_target_system_service_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "C:\\Windows\\System32\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "C:\\Program Files\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "C:\\Program Files (x86)\\"
+                    }
+                ]
+            },
+            "s3_target_executable_extension": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_file_modification_action and s2_target_system_service_path and s3_target_executable_extension"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Windows 서비스의 실행 바이너리가 파일 시스템 권한 약점을 통해 악의적으로 교체되는 시도를 탐지할 수 있습니다. 시스템 서비스가 일반적으로 위치하는 디렉터리 내에서 실행 파일(.exe 또는 .dll)의 생성, 덮어쓰기, 쓰기 또는 이름 변경과 같은 파일 시스템 활동을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 파일의 해시값 비교, 관련된 프로세스 활동 및 사용자 계정 조사를 통해 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 소프트웨어 업데이트, 패치 적용, 애플리케이션 설치/제거, 또는 합법적인 시스템 관리 도구가 서비스 관련 파일을 수정하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 파일 경로에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

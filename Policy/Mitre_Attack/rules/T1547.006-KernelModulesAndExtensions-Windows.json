@@ -1,0 +1,202 @@
+{
+    "id": "T1547.006-KernelModulesAndExtensions-Windows",
+    "name": "Persistence via Malicious Kernel Driver (Windows Adaptation)",
+    "description": "Detects attempts to install, load, or modify kernel-mode drivers on Windows systems for persistence or privilege escalation. While T1547.006 primarily focuses on macOS/Linux kernel modules, this rule adapts the concept to detect similar activities on Windows, such as manipulating drivers via 'sc.exe', 'pnputil.exe', suspicious file operations on '.sys' files, or direct registry modifications to driver services. Adversaries may leverage these methods to achieve Ring 0 persistence and evade security controls.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1547",
+        "subtechnique_id": "T1547.006",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "File:FileCreation",
+            "File:FileModification",
+            "WindowsRegistry:WindowsRegistryKeyAccess"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_sc_exe_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "sc.exe"
+                    }
+                ]
+            },
+            "s3_sc_driver_creation_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "start"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "binpath="
+                    }
+                ]
+            },
+            "s4_sc_sys_file_reference": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".sys"
+                    }
+                ]
+            },
+            "s5_pnputil_exe_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "pnputil.exe"
+                    }
+                ]
+            },
+            "s6_pnputil_driver_actions": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "add-driver"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "install-driver"
+                    }
+                ]
+            },
+            "s7_filesystem_driver_write_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    }
+                ]
+            },
+            "s8_filesystem_sys_filepath": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".sys"
+                    }
+                ]
+            },
+            "s9_filesystem_system_driver_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\\\Windows\\\\System32\\\\drivers\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\\\Windows\\\\System32\\\\"
+                    }
+                ]
+            },
+            "s10_registry_driver_key_manipulation": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "SetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "CreateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "RenameKey"
+                    }
+                ]
+            },
+            "s11_registry_driver_service_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\\\SYSTEM\\\\CurrentControlSet\\\\Services\\\\"
+                    }
+                ]
+            },
+            "s12_registry_driver_related_values": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "ImagePath"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "Type"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "Start"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "ErrorControl"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_sc_exe_execution and s3_sc_driver_creation_keywords and s4_sc_sys_file_reference) or (s1_process_create_action and s5_pnputil_exe_execution and s6_pnputil_driver_actions) or (s7_filesystem_driver_write_action and s8_filesystem_sys_filepath and s9_filesystem_system_driver_path) or (s10_registry_driver_key_manipulation and s11_registry_driver_service_path and s12_registry_driver_related_values)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Windows 시스템에서 커널 모드 드라이버를 설치, 로드 또는 수정하려는 시도를 탐지할 수 있습니다. 'sc.exe' 또는 'pnputil.exe'와 같은 합법적인 도구를 사용하여 드라이버를 조작하는 프로세스 생성 이벤트, 시스템 드라이버 경로에 '.sys' 파일이 생성/수정되는 파일 시스템 이벤트, 그리고 드라이버 서비스 관련 레지스트리 키 변경을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스, 파일, 레지스트리 활동에 대한 추가적인 포렌식 조사를 시작하여 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히, 권한 상승 또는 방어 회피 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 드라이버 설치, 업데이트, 또는 시스템 관리 도구가 드라이버를 관리하는 과정에서 오탐이 발생할 수 있습니다. 백신 소프트웨어, 시스템 최적화 도구, 또는 특정 하드웨어 드라이버 설치 프로그램 등이 합법적으로 드라이버 파일을 생성하거나 레지스트리 설정을 변경할 수 있습니다. 알려진 정상 프로세스, 특정 드라이버 파일 경로, 또는 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

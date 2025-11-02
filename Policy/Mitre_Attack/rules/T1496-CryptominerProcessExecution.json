@@ -1,0 +1,115 @@
+{
+    "id": "T1496-CryptominerProcessExecution",
+    "name": "Resource Hijacking: Cryptominer Process Execution",
+    "description": "Detects the execution of known cryptocurrency mining software or processes with command-line arguments indicative of mining activities, which can lead to resource hijacking and impact system availability. This rule focuses on process creation events.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0040",
+        "technique_id": "T1496",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Impact:Resource Hijacking:Compute Hijacking",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_known_miner_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "xmrig.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "monerod.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "cpuminer.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "ethminer.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "nicehash.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "phoenixminer.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "lolminer.exe"
+                    }
+                ]
+            },
+            "s3_miner_cmdline_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "--pool"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-o stratum+tcp:\\\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-o stratum+ssl:\\\\"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-u wallet"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-a cryptonight"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "coin-hive"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "miner.exe"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and (s2_known_miner_exe_path or s3_miner_cmdline_keywords)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 암호화폐 채굴 활동으로 인한 리소스 하이재킹 시도를 탐지할 수 있습니다. 프로세스 생성 이벤트에서 알려진 채굴기 실행 파일 경로 또는 채굴 관련 명령줄 인자를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스의 종료 및 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 비정상적인 CPU/GPU 사용량과 함께 탐지될 경우 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 개발 환경 설정, 또는 합법적인 목적으로 사용되는 벤치마킹 소프트웨어 등이 유사한 명령줄 인자나 파일명을 사용하여 오탐을 유발할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

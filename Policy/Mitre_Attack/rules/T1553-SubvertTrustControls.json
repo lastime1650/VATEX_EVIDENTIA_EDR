@@ -1,0 +1,231 @@
+{
+    "id": "T1553-SubvertTrustControls",
+    "name": "Subvert Trust Controls",
+    "description": "Detects attempts by adversaries to undermine security controls that either warn users of untrusted activity or prevent execution of untrusted programs. This includes manipulating code signing certificates, bypassing Mark-of-the-Web (MotW) flags, or altering Security Integrity Provider (SIP) and Image File Execution Options (IFEO) configurations.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1553",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Defense Evasion:Subvert Trust Controls:Code Signing",
+            "Enterprise:Defense Evasion:Subvert Trust Controls:Install Root Certificate",
+            "Enterprise:Defense Evasion:Subvert Trust Controls:Mark-of-the-Web Bypass",
+            "Enterprise:Defense Evasion:Subvert Trust Controls:Code Signing Policy Modification",
+            "Enterprise:Defense Evasion:Modify Registry",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Process Creation",
+            "Enterprise:Defense Evasion:File and Directory Permissions Modification"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_proc_certutil_install_mod": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "certutil.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-addstore"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-delstore"
+                    }
+                ]
+            },
+            "s2_proc_makecert_signtool_exec": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "makecert.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "signtool.exe"
+                    }
+                ]
+            },
+            "s3_reg_mod_root_trusted_certs": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "Set"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "Create"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\SystemCertificates\\ROOT\\Certificates"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\SystemCertificates\\ROOT\\Certificates"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\SystemCertificates\\TrustedPublisher\\Certificates"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\SystemCertificates\\TrustedPublisher\\Certificates"
+                    }
+                ]
+            },
+            "s4_fs_remove_zone_identifier_stream": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "remove"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": ":Zone.Identifier"
+                    }
+                ]
+            },
+            "s5_proc_powershell_motw_bypass": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Remove-Item"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-Stream Zone.Identifier"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Unblock-File"
+                    }
+                ]
+            },
+            "s6_reg_mod_codesigning_policy": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "Set"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "Create"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\Safer\\CodeIdentifiers"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Windows\\Safer\\CodeIdentifiers"
+                    }
+                ]
+            },
+            "s7_reg_mod_sip_trust_providers": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "Set"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "Create"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\Providers"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\OID"
+                    }
+                ]
+            },
+            "s8_reg_mod_ifeo": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "Set"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "Create"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_proc_certutil_install_mod or s2_proc_makecert_signtool_exec or s3_reg_mod_root_trusted_certs or s4_fs_remove_zone_identifier_stream or s5_proc_powershell_motw_bypass or s6_reg_mod_codesigning_policy or s7_reg_mod_sip_trust_providers or s8_reg_mod_ifeo"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템의 신뢰 제어를 우회하려는 시도를 탐지할 수 있습니다. 여기에는 'certutil.exe'를 이용한 인증서 저장소 조작, 'makecert.exe' 또는 'signtool.exe'를 통한 인증서 생성/서명 시도, 루트 또는 신뢰할 수 있는 게시자 인증서 레지스트리 키 변경, Mark-of-the-Web (MotW) 플래그를 제거하는 파일 시스템 작업 또는 PowerShell 명령 실행, 코드 서명 정책 레지스트리 키 수정, 그리고 SIP/Trust Provider 또는 Image File Execution Options (IFEO) 레지스트리 키 변경 등이 포함됩니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 시스템 설정에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 다른 방어 회피 또는 실행 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 소프트웨어 설치 프로그램, 개발 도구, 또는 합법적인 애플리케이션이 인증서 관리, 파일 속성 수정, 또는 시스템 정책 변경을 수행하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상적인 활동 패턴이나 특정 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

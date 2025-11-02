@@ -1,0 +1,201 @@
+{
+    "id": "T1486-DataEncryptedForImpact",
+    "name": "Data Encrypted for Impact",
+    "description": "Detects attempts by adversaries to encrypt data on target systems or network resources to interrupt availability. This includes monitoring for the execution of utilities like vssadmin, wbadmin, and bcdedit (often used for defense evasion before encryption), as well as suspicious file modification or creation activity, particularly the appearance of known ransomware extensions or ransom notes in user directories.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0040",
+        "technique_id": "T1486",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Impact:Data Encrypted for Impact",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Process Creation"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_vssadmin_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "vssadmin.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "delete shadows"
+                    }
+                ]
+            },
+            "s3_wbadmin_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wbadmin.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "delete backup"
+                    }
+                ]
+            },
+            "s4_bcdedit_execution": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "bcdedit.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "recoveryenabled no"
+                    }
+                ]
+            },
+            "s5_filesystem_write_create_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    }
+                ]
+            },
+            "s6_ransom_note_creation": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "HOW_TO_DECRYPT"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "_RANSOM_"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "README_TO_DECRYPT"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".txt"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".html"
+                    }
+                ]
+            },
+            "s7_suspicious_file_extension": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".encrypted"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".lock"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".crypt"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".ransom"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".wannacry"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".ryuk"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".conti"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".blackcat"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".mazen"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".babuk"
+                    }
+                ]
+            },
+            "s8_common_user_directory_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\Users\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\ProgramData\\"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and (s2_vssadmin_execution or s3_wbadmin_execution or s4_bcdedit_execution)) or (s5_filesystem_write_create_action and (s6_ransom_note_creation or (s7_suspicious_file_extension and s8_common_user_directory_path)))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 랜섬웨어 또는 데이터 파괴 공격 시도를 실시간으로 탐지할 수 있습니다. 시스템 복구 기능 무력화를 시도하는 vssadmin, wbadmin, bcdedit와 같은 명령 실행을 모니터링하고, 사용자 및 공용 디렉토리에서 랜섬웨어 관련 파일 확장자를 가진 파일 생성/수정 또는 랜섬 노트 파일 생성을 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스의 격리 및 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 백업 및 복원 작업, 시스템 관리 도구, 또는 특정 애플리케이션이 파일 확장자를 변경하거나 시스템 복구 관련 명령을 실행하는 경우 오탐이 발생할 수 있습니다. 특히, 새로운 파일 확장자를 사용하는 랜섬웨어의 경우, 이 규칙만으로는 탐지하기 어렵습니다. 특정 프로세스나 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

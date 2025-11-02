@@ -1,0 +1,135 @@
+{
+    "id": "T1621-MfaRequestGeneration",
+    "name": "Multi-Factor Authentication Request Generation",
+    "description": "Detects attempts by adversaries to generate multi-factor authentication (MFA) requests, potentially leading to MFA fatigue, by interacting with identity provider (IdP) services via command-line tools or scripts.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0006",
+        "technique_id": "T1621",
+        "subtechnique_id": "",
+        "data_sources": [
+            "process:processcreation",
+            "process:commandexecution"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s3_web_request_cmdlet": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-WebRequest"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-RestMethod"
+                    }
+                ]
+            },
+            "s4_idp_domain_powershell": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "microsoftonline.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "okta.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "duo.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "google.com/accounts"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "login.live.com"
+                    }
+                ]
+            },
+            "s5_curl_wget_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "curl.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "wget.exe"
+                    }
+                ]
+            },
+            "s6_idp_domain_curl_wget": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "microsoftonline.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "okta.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "duo.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "google.com/accounts"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "login.live.com"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create and ((s2_powershell_exe and s3_web_request_cmdlet and s4_idp_domain_powershell) or (s5_curl_wget_exe and s6_idp_domain_curl_wget))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 다단계 인증(MFA) 요청 생성 시도를 탐지할 수 있습니다. 이는 공격자가 합법적인 자격 증명을 획득한 후 MFA 메커니즘을 우회하기 위해 IdP 서비스와 상호작용하는 명령줄 도구(예: PowerShell, curl)나 스크립트를 사용하는 경우를 포함합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스, 사용자 및 잠재적인 네트워크 활동에 대한 심층 조사를 시작하는 데 사용될 수 있습니다. 특히, MFA 피로 공격(MFA fatigue attacks)의 초기 지표로 활용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 스크립트, 자동화된 클라우드 서비스 상호작용 도구, 또는 개발 환경에서 합법적으로 IdP 서비스와 통신하는 경우 오탐이 발생할 수 있습니다. 특정 프로세스나 명령줄 패턴을 화이트리스트에 추가하거나, 추가적인 컨텍스트(예: 비정상적인 사용자, 비정상적인 시간대)와 결합하여 오탐을 줄일 수 있습니다."
+}

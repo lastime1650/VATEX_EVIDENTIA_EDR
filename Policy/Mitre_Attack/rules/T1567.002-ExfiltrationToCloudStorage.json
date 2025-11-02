@@ -1,0 +1,226 @@
+{
+    "id": "T1567.002-ExfiltrationToCloudStorage",
+    "name": "Exfiltration to Cloud Storage",
+    "description": "Detects attempts by adversaries to exfiltrate data to cloud storage services like Dropbox, Google Drive, or AWS S3. This often involves using command-line tools (e.g., rclone, curl, wget) or scripting to upload sensitive data over standard web protocols, blending in with legitimate network traffic. This technique allows for covert data transfer and can be used to bypass traditional data loss prevention mechanisms.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0010",
+        "technique_id": "T1567",
+        "subtechnique_id": "T1567.002",
+        "data_sources": [
+            "Enterprise:Exfiltration:Exfiltration Over Web Service:Exfiltration to Cloud Storage",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Command and Control:Application Layer Protocol:Web Protocols"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_creation_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_rclone_process_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "rclone.exe"
+                    }
+                ]
+            },
+            "s3_rclone_cmdline_transfer_op": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "copy"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "sync"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "move"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "upload"
+                    }
+                ]
+            },
+            "s4_rclone_cmdline_remote_target": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "remote:"
+                    }
+                ]
+            },
+            "s5_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s6_powershell_invoke_webrequest": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-WebRequest"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iwr"
+                    }
+                ]
+            },
+            "s7_powershell_cloud_domains": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "dropbox.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "drive.google.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "onedrive.live.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "s3.amazonaws.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "azure.blob.core.windows.net"
+                    }
+                ]
+            },
+            "s8_curl_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "curl.exe"
+                    }
+                ]
+            },
+            "s9_curl_cmdline_upload_flag": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-T"
+                    }
+                ]
+            },
+            "s10_curl_cmdline_protocol_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "http://"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "https://"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ftp://"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "sftp://"
+                    }
+                ]
+            },
+            "s11_network_outbound_direction": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    }
+                ]
+            },
+            "s12_network_https_port_protocol": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 443
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 80
+                    }
+                ]
+            },
+            "s13_network_tcp_protocol": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "TCP"
+                    }
+                ]
+            },
+            "s14_network_large_packet_size": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.packetsize",
+                        "operator": "gte",
+                        "value": 5242880
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_creation_action and s2_rclone_process_path and s3_rclone_cmdline_transfer_op and s4_rclone_cmdline_remote_target) or (s1_process_creation_action and s5_powershell_exe_path and s6_powershell_invoke_webrequest and s7_powershell_cloud_domains) or (s1_process_creation_action and s8_curl_exe_path and s9_curl_cmdline_upload_flag and s10_curl_cmdline_protocol_keywords) or (s11_network_outbound_direction and s12_network_https_port_protocol and s13_network_tcp_protocol and s14_network_large_packet_size)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 클라우드 저장소로의 데이터 유출 시도를 탐지할 수 있습니다. rclone, curl, PowerShell Invoke-WebRequest와 같은 도구의 사용과 함께 클라우드 서비스 관련 명령줄 인자, 또는 대규모 HTTPS/HTTP 아웃바운드 TCP 트래픽을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 네트워크 연결에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 민감 데이터 유출 가능성이 있는 경우 우선순위가 높습니다.",
+    "false_positive": "정상적인 클라우드 동기화 클라이언트 (Dropbox, Google Drive, OneDrive 등)의 대규모 동기화, 백업 솔루션, 소프트웨어 업데이트, 또는 합법적인 대용량 파일 업로드 시도에 의해 오탐이 발생할 수 있습니다. 특정 프로세스나 네트워크 목적지에 대해 화이트리스트를 적용하거나, 트래픽 볼륨 임계값을 조정하여 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,159 @@
+{
+    "id": "T1564.009-ResourceForking",
+    "name": "Resource Forking (Windows Analogue: Alternate Data Streams and File Hiding)",
+    "description": "Detects attempts to hide malicious code or executables within file structures or by manipulating file attributes on Windows systems, serving as an analogue to the macOS Resource Forking technique (T1564.009). This includes monitoring command-line usage of Alternate Data Streams (ADS) and file attribute modification utilities, as well as filesystem events indicating ADS activity. Adversaries use these methods to evade detection and bypass security applications by obscuring malicious data within legitimate files or streams.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1564",
+        "subtechnique_id": "T1564.009",
+        "data_sources": [
+            "Enterprise:Defense Evasion:Hide Artifacts:Resource Forking",
+            "Process:ProcessCreation",
+            "Command:CommandExecution",
+            "File:FileCreation",
+            "File:FileModification",
+            "File:FileMetadata"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_attrib_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "attrib.exe"
+                    }
+                ]
+            },
+            "s3_attrib_options_hide": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "+h"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "+s"
+                    }
+                ]
+            },
+            "s4_cmd_redirect": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " > "
+                    }
+                ]
+            },
+            "s5_cmd_colon_in_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ":"
+                    }
+                ]
+            },
+            "s6_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s7_powershell_stream_option": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-Stream"
+                    }
+                ]
+            },
+            "s8_powershell_content_cmdlets": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Add-Content"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-Content"
+                    }
+                ]
+            },
+            "s9_fs_action_write_create": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    }
+                ]
+            },
+            "s10_fs_action_read_open": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "read"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "open"
+                    }
+                ]
+            },
+            "s11_fs_path_contains_ads_colon": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": ":"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create and s2_attrib_exe and s3_attrib_options_hide) or (s1_process_create and s4_cmd_redirect and s5_cmd_colon_in_path) or (s1_process_create and s6_powershell_exe and s7_powershell_stream_option and s8_powershell_content_cmdlets) or (s9_fs_action_write_create and s11_fs_path_contains_ads_colon) or (s10_fs_action_read_open and s11_fs_path_contains_ads_colon)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Windows 시스템에서 파일 내 데이터 은닉 또는 파일 속성 조작 시도를 탐지할 수 있습니다. 이는 macOS의 Resource Forking과 유사한 방어 회피 전술에 해당합니다. attrib.exe를 통한 숨김 속성 부여, 명령 프롬프트나 PowerShell을 이용한 Alternate Data Streams(ADS) 생성/조작 명령줄 활동, 또는 ADS 패턴을 포함하는 파일 시스템 쓰기/읽기 이벤트를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 파일에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 백업 소프트웨어, 또는 일부 합법적인 애플리케이션이 ADS를 사용하거나 파일 속성을 변경하는 경우 오탐이 발생할 수 있습니다. 예를 들어, 웹 브라우저가 다운로드한 파일에 Zone.Identifier ADS를 추가하는 경우, 또는 특정 시스템 유틸리티가 숨김 파일을 생성하는 경우 등이 있습니다. 알려진 정상 프로세스, 파일 경로, 또는 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

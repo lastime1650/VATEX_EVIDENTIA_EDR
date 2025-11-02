@@ -1,0 +1,188 @@
+{
+    "id": "T1221",
+    "name": "Template Injection",
+    "description": "Adversaries may create or modify references in user document templates to conceal malicious code or force authentication attempts. For example, Microsoft’s Office Open XML (OOXML) specification defines an XML-based format for Office documents (.docx, xlsx, .pptx) to replace older binary formats (.doc, .xls, .ppt). OOXML files are packed together ZIP archives comprised of various XML files, referred to as parts, containing properties that collectively define how a document is rendered. Properties within parts may reference shared public resources accessed via online URLs. For example, template properties may reference a file, serving as a pre-formatted document blueprint, that is fetched when the document is loaded. Adversaries may abuse these templates to initially conceal malicious code to be executed via user documents. Template references injected into a document may enable malicious payloads to be fetched and executed when the document is loaded. These documents can be delivered via other techniques such as Phishing and/or Taint Shared Content and may evade static detections since no typical indicators (VBA macro, script, etc.) are present until after the malicious payload is fetched. Examples have been seen in the wild where template injection was used to load malicious code containing an exploit. Adversaries may also modify the *\\template control word within an .rtf file to similarly conceal then download malicious code. This legitimate control word value is intended to be a file destination of a template file resource that is retrieved and loaded when an .rtf file is opened. However, adversaries may alter the bytes of an existing .rtf file to insert a template control word field to include a URL resource of a malicious payload. This technique may also enable Forced Authentication by injecting a SMB/HTTPS (or other credential prompting) URL and triggering an authentication attempt.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1221",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Process:Process Creation",
+            "Process:API Call",
+            "Network Traffic:Network Connection Creation",
+            "Network Traffic:Network Traffic Content",
+            "File:File Modification"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_office_parent_process": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "contains",
+                        "value": "winword.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "contains",
+                        "value": "excel.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "contains",
+                        "value": "powerpnt.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "contains",
+                        "value": "outlook.exe"
+                    }
+                ]
+            },
+            "s2_child_process_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s3_child_process_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "cmd.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "mshta.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "cscript.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "wscript.exe"
+                    }
+                ]
+            },
+            "s4_child_process_cmdline_url": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "http://"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "https://"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ftp://"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "file://"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "smb://"
+                    }
+                ]
+            },
+            "s5_apicall_url_download": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "URLDownloadToFileW"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "URLDownloadToFileA"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "InternetOpenUrlW"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "InternetOpenUrlA"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "WinHttpOpen"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "WinHttpConnect"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "WinHttpSendRequest"
+                    }
+                ]
+            },
+            "s6_rtf_file_modification": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".rtf"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_office_parent_process and s2_child_process_action_create and s3_child_process_exe and s4_child_process_cmdline_url) or s5_apicall_url_download or s6_rtf_file_modification"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 문서 애플리케이션(예: Office)을 통한 템플릿 주입 공격 시도를 탐지할 수 있습니다. Office 프로세스가 PowerShell, CMD, MSHTA 등과 같은 의심스러운 자식 프로세스를 생성하고, 이 자식 프로세스의 명령줄에 외부 URL(HTTP, HTTPS, FTP, SMB 등)이 포함된 경우를 모니터링합니다. 또한, URL 다운로드 관련 API 호출(URLDownloadToFile, InternetOpenUrl, WinHttp*)이 탐지되거나, .rtf 파일에 대한 쓰기/수정 활동이 발생하면 알람을 트리거합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있으며, 초기 접근 및 방어 회피 전술과의 연관성을 분석하는 데 중요한 역할을 합니다.",
+    "false_positive": "정상적인 소프트웨어 업데이트, 합법적인 문서 템플릿 다운로드, 콘텐츠 관리 시스템, 또는 개발 도구가 문서 애플리케이션의 네트워크 통신을 유발하거나, 특정 API를 호출하거나, .rtf 파일을 수정하는 경우 오탐이 발생할 수 있습니다. 특히, 기업 환경에서 사용되는 특정 응용 프로그램이나 스크립트가 유사한 동작을 보일 수 있으므로, 화이트리스트 정책을 통해 알려진 정상 활동을 제외하여 오탐을 줄여야 합니다."
+}

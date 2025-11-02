@@ -1,0 +1,46 @@
+{
+    "id": "FEATURE-REG-Browser-General-Config-Access",
+    "name": "Access to Chrome or Edge Registry Configuration",
+    "description": "Detects access to general configuration keys for Google Chrome or Microsoft Edge, such as installation path or version. This is often a reconnaissance step before attempting data theft or exploitation.",
+    "severity": "info",
+    "mitre_attack": [
+        {
+            "tactic": "TA0007",
+            "technique_id": "T1217",
+            "subtechnique_id": "",
+            "data_sources": ["Windows Registry"]
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "browser_recon",
+                "selections": {
+                    "selection_query_browser_key": {
+                        "event_type": "registry",
+                        "condition_method": "and",
+                        "conditions": [
+                            {
+                                "field": "body.registry.keyclass", 
+                                "operator": "regex", 
+                                "value": "RegNtPre(QueryKey|EnumerateKey)$"
+                            },
+                            {
+                                "field": "body.registry.name", 
+                                "operator": "regex", 
+                                "value": ".*\\\\SOFTWARE\\\\(Google\\\\Chrome|Microsoft\\\\Edge|Microsoft\\\\Windows\\\\CurrentVersion\\\\App Paths\\\\(chrome|msedge)\\.exe)"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "A process queried general configuration information for a major web browser."
+                }
+            }
+        ]
+    },
+    "operational_usage": "This is a low-noise feature for tracking reconnaissance. While many legitimate applications query these keys to open links, queries from non-interactive processes, command-line tools, or scripts are suspicious and should be correlated with other activities.",
+    "false_positive": "Frequent. Any application that needs to launch a web browser will query these keys. The value is in identifying anomalous querying processes."
+}

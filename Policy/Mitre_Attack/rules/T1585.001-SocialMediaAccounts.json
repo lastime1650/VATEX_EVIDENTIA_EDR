@@ -1,0 +1,80 @@
+{
+    "id": "T1585.001-SocialMediaAccounts",
+    "name": "Social Media Accounts",
+    "description": "Detects network activity to known social media platforms, which could indicate an an adversary creating or cultivating social media accounts for targeting. This technique involves establishing personas on various social media sites (e.g., Facebook, LinkedIn, Twitter) for reconnaissance or initial access operations.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1585",
+        "subtechnique_id": "T1585.001",
+        "data_sources": [
+            "Enterprise:Resource Development:Establish Accounts:Social Media Accounts",
+            "Enterprise:Command and Control:Application Layer Protocol:Web Protocols"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_network_protocol_tcp": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "TCP"
+                    }
+                ]
+            },
+            "s2_network_destination_port_https": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 443
+                    }
+                ]
+            },
+            "s3_network_to_facebook_ip_range": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationip",
+                        "operator": "startswith",
+                        "value": "157.240."
+                    },
+                    {
+                        "field": "body.network.destinationip",
+                        "operator": "startswith",
+                        "value": "31.13."
+                    }
+                ]
+            },
+            "s4_network_to_twitter_ip_range": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationip",
+                        "operator": "startswith",
+                        "value": "104.244."
+                    }
+                ]
+            },
+            "s5_network_to_linkedin_ip_range": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationip",
+                        "operator": "startswith",
+                        "value": "108.174."
+                    }
+                ]
+            }
+        },
+        "condition": "s1_network_protocol_tcp and s2_network_destination_port_https and (s3_network_to_facebook_ip_range or s4_network_to_twitter_ip_range or s5_network_to_linkedin_ip_range)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 엔드포인트에서 주요 소셜 미디어 플랫폼으로의 HTTPS 네트워크 연결을 모니터링할 수 있습니다. 이는 공격자가 정찰 또는 초기 접근을 위해 소셜 미디어 계정을 생성하거나 관리하는 활동과 연관될 수 있습니다. 탐지된 이벤트는 잠재적인 위협 활동으로 분류되어 추가적인 조사 및 OSINT(공개 출처 정보) 분석을 통해 계정 생성 또는 악용 여부를 확인할 수 있습니다. 특히, 비정상적인 프로세스에 의한 연결이나 특정 조직 계정과의 상호작용이 감지될 경우 우선순위를 높여 대응할 수 있습니다.",
+    "false_positive": "이 규칙은 웹 브라우저를 통한 정상적인 소셜 미디어 사용 활동으로 인해 높은 오탐을 유발할 수 있습니다. 합법적인 마케팅 활동, 개인적인 소셜 미디어 사용, 또는 자동화된 소셜 미디어 관리 도구 등에 의해 탐지될 수 있습니다. 알려진 정상 프로세스나 특정 IP 대역을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

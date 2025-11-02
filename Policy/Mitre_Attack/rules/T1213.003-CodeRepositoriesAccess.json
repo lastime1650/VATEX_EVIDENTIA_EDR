@@ -1,0 +1,37 @@
+{
+    "id": "T1213.003-CodeRepositoriesAccess",
+    "name": "Access to Code Repositories",
+    "description": "Detects attempts by adversaries to access or interact with code repositories (e.g., Git, SVN) through command-line utilities, web browsers, or direct file system access to repository configurations and sensitive files (like SSH keys or credential stores). This technique can be used to collect proprietary source code or unsecured credentials.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0009",
+        "technique_id": "T1213",
+        "subtechnique_id": "T1213.003",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Collection:Data from Local System",
+            "Enterprise:Credential Access:Unsecured Credentials:Credentials In Files",
+            "Enterprise:Command and Control:Application Layer Protocol:Web Protocols"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_creation_action": { "event_type": "process", "conditions": [ { "field": "body.process.action", "operator": "equals", "value": "create" } ] },
+            "s2_git_svn_execution": { "event_type": "process", "conditions": [ { "field": "body.process.exe_path", "operator": "endswith", "value": "git.exe" }, { "field": "body.process.exe_path", "operator": "endswith", "value": "svn.exe" } ] },
+            "s3_browser_process": { "event_type": "process", "conditions": [ { "field": "body.process.exe_path", "operator": "contains", "value": "chrome.exe" }, { "field": "body.process.exe_path", "operator": "contains", "value": "firefox.exe" }, { "field": "body.process.exe_path", "operator": "contains", "value": "msedge.exe" }, { "field": "body.process.exe_path", "operator": "contains", "value": "iexplore.exe" } ] },
+            "s3_repo_domain_in_cmdline": { "event_type": "process", "conditions": [ { "field": "body.process.commandline", "operator": "contains", "value": "github.com" }, { "field": "body.process.commandline", "operator": "contains", "value": "gitlab.com" }, { "field": "body.process.commandline", "operator": "contains", "value": "bitbucket.org" }, { "field": "body.process.commandline", "operator": "contains", "value": "dev.azure.com" }, { "field": "body.process.commandline", "operator": "contains", "value": "sourceforge.net" } ] },
+            "s4_fs_action_read_write": { "event_type": "filesystem", "conditions": [ { "field": "body.filesystem.action", "operator": "equals", "value": "read" }, { "field": "body.filesystem.action", "operator": "equals", "value": "open" }, { "field": "body.filesystem.action", "operator": "equals", "value": "write" }, { "field": "body.filesystem.action", "operator": "equals", "value": "create" } ] },
+            "s5_fs_path_repo_dir": { "event_type": "filesystem", "conditions": [ { "field": "body.filesystem.filepath", "operator": "contains", "value": "\\.git\\" }, { "field": "body.filesystem.filepath", "operator": "contains", "value": "\\.svn\\" } ] },
+            "s6_fs_path_repo_config": { "event_type": "filesystem", "conditions": [ { "field": "body.filesystem.filepath", "operator": "contains", "value": "\\.git\\config" }, { "field": "body.filesystem.filepath", "operator": "contains", "value": "\\.svn\\config" } ] },
+            "s7_fs_action_read": { "event_type": "filesystem", "conditions": [ { "field": "body.filesystem.action", "operator": "equals", "value": "read" }, { "field": "body.filesystem.action", "operator": "equals", "value": "open" } ] },
+            "s8_fs_path_git_creds": { "event_type": "filesystem", "conditions": [ { "field": "body.filesystem.filepath", "operator": "endswith", "value": "gitcredentials" }, { "field": "body.filesystem.filepath", "operator": "endswith", "value": "_netrc" }, { "field": "body.filesystem.filepath", "operator": "endswith", "value": ".git-credentials" } ] },
+            "s9_fs_path_ssh_keys": { "event_type": "filesystem", "conditions": [ { "field": "body.filesystem.filepath", "operator": "contains", "value": "\\.ssh\\" }, { "field": "body.filesystem.filepath", "operator": "endswith", "value": "id_rsa" }, { "field": "body.filesystem.filepath", "operator": "endswith", "value": "id_dsa" }, { "field": "body.filesystem.filepath", "operator": "endswith", "value": "id_ecdsa" }, { "field": "body.filesystem.filepath", "operator": "endswith", "value": "id_ed25519" } ] }
+        },
+        "condition": "(s1_process_creation_action and (s2_git_svn_execution or (s3_browser_process and s3_repo_domain_in_cmdline))) or (s4_fs_action_read_write and (s5_fs_path_repo_dir or s6_fs_path_repo_config)) or (s7_fs_action_read and (s8_fs_path_git_creds or s9_fs_path_ssh_keys))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 통해 시스템에서 코드 리포지토리(Git, SVN 등)에 접근하려는 시도를 탐지할 수 있습니다. `git.exe` 또는 `svn.exe`와 같은 버전 관리 도구의 실행, 웹 브라우저를 통한 주요 리포지토리 도메인 접속, 또는 `.git` 디렉터리 및 관련 설정 파일, SSH 키 파일(`id_rsa`, `id_dsa`)에 대한 파일 시스템 접근 이벤트를 모니터링합니다. 탐지된 이벤트는 잠재적인 소스 코드 유출, 자격 증명 탈취, 또는 내부 정보 수집 활동의 지표로 활용되어 즉각적인 조사 및 침해사고 대응의 우선순위를 높이는 데 사용됩니다.",
+    "false_positive": "정상적인 개발 활동, CI/CD 파이프라인, 자동화된 빌드/배포 스크립트, 합법적인 Git/SVN 클라이언트의 사용, 또는 보안 스캐닝 도구가 코드 리포지토리 관련 파일을 검사하는 경우 오탐이 발생할 수 있습니다. 특정 개발자 계정, CI/CD 서버, 또는 알려진 정상 프로세스를 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,190 @@
+{
+    "id": "T1569-SystemServiceExecution-Process",
+    "name": "System Service Execution via Command-line Utilities",
+    "description": "Detects attempts to abuse system services by executing commands or programs through command-line utilities like sc.exe, net.exe, powershell.exe (with service cmdlets), or wmic.exe to create, modify, start, stop, or delete services. Adversaries leverage legitimate system binaries and scripting tools to manage services for execution, persistence, and privilege escalation.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1569",
+        "subtechnique_id": "",
+        "data_sources": [
+            "process:processcreation",
+            "command:commandexecution"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_sc_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "sc.exe"
+                    }
+                ]
+            },
+            "s3_sc_service_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " config"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " delete"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " start"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " stop"
+                    }
+                ]
+            },
+            "s4_net_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "net.exe"
+                    }
+                ]
+            },
+            "s5_net_service_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "net start"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "net stop"
+                    }
+                ]
+            },
+            "s6_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s7_powershell_service_cmdlet": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-Service"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-Service"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Remove-Service"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Start-Service"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Stop-Service"
+                    }
+                ]
+            },
+            "s8_wmic_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "wmic.exe"
+                    }
+                ]
+            },
+            "s9_wmic_service_keyword": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "service"
+                    }
+                ]
+            },
+            "s10_wmic_service_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "call Create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "call Delete"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "call StartService"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "call StopService"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_action_create and ((s2_sc_exe_path and s3_sc_service_action) or (s4_net_exe_path and s5_net_service_action) or (s6_powershell_exe_path and s7_powershell_service_cmdlet) or (s8_wmic_exe_path and s9_wmic_service_keyword and s10_wmic_service_action))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템 서비스 조작 시도를 탐지할 수 있습니다. `sc.exe`, `net.exe`, `powershell.exe` (서비스 관련 cmdlet), `wmic.exe`와 같은 합법적인 명령줄 유틸리티를 사용하여 서비스 생성, 수정, 시작, 중지, 삭제하는 프로세스 생성 이벤트를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 명령줄 인수에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 이는 공격자가 권한 상승 및 지속성을 확보하기 위해 서비스를 악용하는 일반적인 전술이므로, 다른 침해 활동과의 연관성을 파악하는 데 중요합니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 소프트웨어 설치/업데이트 프로세스, 또는 합법적인 스크립트가 서비스를 관리하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상적인 서비스 관리 활동을 수행하는 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

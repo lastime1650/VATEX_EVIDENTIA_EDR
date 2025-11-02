@@ -1,0 +1,100 @@
+{
+    "id": "T1601-ModifySystemImage",
+    "name": "Modify System Image",
+    "description": "Detects attempts to modify the operating system's boot configuration or critical boot-related files on a Windows system, which could weaken defenses or alter system behavior. This includes using tools like bcdedit.exe to change boot parameters or directly manipulating the Boot Configuration Data (BCD) file.",
+    "severity": "critical",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1601",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "File:FileModification"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_bcdedit_process_creation": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "bcdedit.exe"
+                    }
+                ]
+            },
+            "s2_bcdedit_commandline_modifications": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " /set "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " /deletevalue "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " /createstore "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " /copy "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " /export "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " /import "
+                    }
+                ]
+            },
+            "s3_bcd_file_write_access": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\Boot\\BCD"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_bcdedit_process_creation and s2_bcdedit_commandline_modifications) or s3_bcd_file_write_access"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Windows 시스템의 부팅 구성 또는 핵심 부팅 관련 파일 변경 시도를 탐지할 수 있습니다. bcdedit.exe 실행 및 특정 명령줄 인자 사용, 또는 Boot Configuration Data (BCD) 파일에 대한 직접적인 쓰기/수정 활동을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 시스템 무결성 손상 가능성에 대한 심층적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 작업, Windows 업데이트, 또는 백업/복원 소프트웨어가 부팅 구성을 수정하거나 BCD 파일에 접근하는 경우 오탐이 발생할 수 있습니다. 특히, 가상 환경에서 스냅샷 복원 등의 작업 시 발생할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

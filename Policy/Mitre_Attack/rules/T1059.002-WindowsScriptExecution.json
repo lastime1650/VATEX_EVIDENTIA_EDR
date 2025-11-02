@@ -1,0 +1,162 @@
+{
+    "id": "T1059.002-WindowsScriptExecution",
+    "name": "Windows Script Execution (Analog of AppleScript)",
+    "description": "이 규칙은 PowerShell, Command Prompt, Wscript, Cscript와 같은 일반적인 명령줄 인터프리터를 사용하여 Windows 시스템에서 스크립트를 실행하려는 시도를 탐지합니다. T1059.002는 원래 macOS의 AppleScript를 지칭하지만, 이 규칙은 지속성, 권한 상승 또는 방어 회피와 같은 다양한 목적으로 스크립트 실행과 관련된 유사한 악의적 행위를 탐지하기 위한 Windows 기반의 유사 규칙을 제공합니다. 공격자는 합법적인 스크립팅 엔진을 악용하여 악성 코드를 실행하고, 보안 도구를 우회하며, 활동을 은폐하는 경우가 많습니다.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1059",
+        "subtechnique_id": "T1059.002",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:Visual Basic",
+            "Enterprise:Execution:Command and Scripting Interpreter:JavaScript"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s3_pwsh_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s4_cmd_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "cmd.exe"
+                    }
+                ]
+            },
+            "s5_wscript_cscript_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "wscript.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "cscript.exe"
+                    }
+                ]
+            },
+            "s6_powershell_script_indicators": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".ps1"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-encodedcommand"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-enc"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-executionpolicy bypass"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iex "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "invoke-expression"
+                    }
+                ]
+            },
+            "s7_cmd_script_indicators": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".bat"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".cmd"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/c"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/k"
+                    }
+                ]
+            },
+            "s8_wscript_cscript_script_indicators": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".vbs"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".js"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".jse"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create and (((s2_powershell_exe_path or s3_pwsh_exe_path) and s6_powershell_script_indicators) or (s4_cmd_exe_path and s7_cmd_script_indicators) or (s5_wscript_cscript_exe_path and s8_wscript_cscript_script_indicators))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Windows 환경에서 PowerShell, CMD, Wscript, Cscript와 같은 스크립트 인터프리터를 통한 악성 스크립트 실행 시도를 탐지할 수 있습니다. 프로세스 생성 이벤트와 함께 스크립트 파일 확장자(.ps1, .bat, .cmd, .vbs, .js) 또는 스크립트 실행을 위한 특정 명령줄 인자(예: -encodedcommand, iex, /c)를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 명령줄에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 다른 실행, 방어 회피 또는 지속성 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 스크립트, 소프트웨어 설치 프로그램, 자동화된 작업, 또는 합법적인 애플리케이션이 스크립트를 실행하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 스크립트 실행 패턴, 특정 파일 경로, 또는 서명된 스크립트에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다. 또한, 개발 환경이나 테스트 환경에서는 스크립트 실행이 빈번하게 발생할 수 있으므로 해당 환경에 대한 예외 처리가 필요할 수 있습니다."
+}

@@ -18,7 +18,7 @@ namespace EDR
                     std::string Kafkagroup_id,
                     std::string Kafkatopic,
 
-                    std::string Mitre_Attack_rule_dir_path,
+                    std::string rule_dir_path,
                     std::string Scenario_rule_dir_path,
                     
 
@@ -32,12 +32,10 @@ namespace EDR
                     unsigned int VATEX_INTELLINA_API_ServerPort = 51034
                 ) 
                 : IntelligenceManager(VATEX_INTELLINA_API_ServerIp, VATEX_INTELLINA_API_ServerPort),
-                BehaviorManager( KafkaBroker, Kafkagroup_id, Kafkatopic ),
-                AgentTCPManager(EDR_AgentTCPServerIp, EDR_AgentTCPServerPort),
-                PolicyManager(Mitre_Attack_rule_dir_path, Scenario_rule_dir_path)
-                {
-                    
-                }   
+                PolicyManager(rule_dir_path),
+                BehaviorManager( KafkaBroker, Kafkagroup_id, Kafkatopic, PolicyManager ),
+                AgentTCPManager(EDR_AgentTCPServerIp, EDR_AgentTCPServerPort)
+                {}
 
                 ~EDRServer(){ std::cout << "~EDRServer" << std::endl; Stop(); }
 
@@ -55,7 +53,7 @@ namespace EDR
                         return false;
 
                     // Step 2. [에이전트 Kakfa기반 로그 관리 및 정책처리 ] Tree Behavior 수집 인스턴스 생성
-                    if( !BehaviorManager.Run( PolicyManager, AgentTCPManager, IntelligenceManager ) )
+                    if( !BehaviorManager.Run( AgentTCPManager, IntelligenceManager ) )
                         return false;
                    
 

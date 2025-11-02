@@ -1,0 +1,191 @@
+{
+    "id": "T1565.002-TransmittedDataManipulation",
+    "name": "Transmitted Data Manipulation",
+    "description": "Adversaries may alter data en route to storage or other systems in order to manipulate external outcomes or hide activity, thus threatening the integrity of the data. By manipulating transmitted data, adversaries may attempt to affect a business process, organizational understanding, and decision making. Manipulation may be possible over a network connection or between system processes where there is an opportunity deploy a tool that will intercept and change information. The type of modification and the impact it will have depends on the target transmission mechanism as well as the goals and objectives of the adversary. For complex systems, an adversary would likely need special expertise and possibly access to specialized software related to the system that would typically be gained through a prolonged information gathering campaign in order to have the desired impact.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0040",
+        "technique_id": "T1565",
+        "subtechnique_id": "T1565.002",
+        "data_sources": [
+            "Execution:Native API",
+            "Command and Control:Data Encoding:Non-Standard Encoding",
+            "Command and Control:Protocol Tunneling"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s_netsh_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "netsh.exe"
+                    }
+                ]
+            },
+            "s_netsh_portproxy_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "interface portproxy"
+                    }
+                ]
+            },
+            "s_netsh_firewall_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "advfirewall firewall add rule"
+                    }
+                ]
+            },
+            "s_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s_powershell_set_firewall_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-NetFirewallRule"
+                    }
+                ]
+            },
+            "s_powershell_new_firewall_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-NetFirewallRule"
+                    }
+                ]
+            },
+            "s_powershell_add_route_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Add-NetRoute"
+                    }
+                ]
+            },
+            "s_powershell_socket_object_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "[System.Net.Sockets.TcpClient]"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "[System.Net.Sockets.UdpClient]"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "[System.Net.Sockets.Socket]"
+                    }
+                ]
+            },
+            "s_ettercap_or_mitmproxy_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "ettercap.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "mitmproxy.exe"
+                    }
+                ]
+            },
+            "s_netcat_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "nc.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "ncat.exe"
+                    }
+                ]
+            },
+            "s_netcat_listen_exec_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-l"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-e"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-c"
+                    }
+                ]
+            },
+            "s_netcat_redirection_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ">"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "<"
+                    }
+                ]
+            }
+        },
+        "condition": "s_process_create and (((s_netsh_exe and (s_netsh_portproxy_cmd or s_netsh_firewall_cmd)) or (s_powershell_exe and (s_powershell_set_firewall_cmd or s_powershell_new_firewall_cmd or s_powershell_add_route_cmd or s_powershell_socket_object_cmd))) or s_ettercap_or_mitmproxy_exe or (s_netcat_exe and s_netcat_listen_exec_cmd and s_netcat_redirection_cmd))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 전송 중인 데이터를 조작하려는 시도를 탐지할 수 있습니다. `netsh.exe`를 이용한 포트 프록시 설정 또는 방화벽 규칙 변경, `powershell.exe`를 통한 네트워크 설정 조작 또는 직접적인 소켓 통신, `ettercap.exe`, `mitmproxy.exe`, `nc.exe`/`ncat.exe`와 같은 패킷 조작 또는 데이터 전송 도구의 실행을 모니터링합니다. 탐지된 이벤트는 데이터 무결성 위협으로 간주되어 높은 심각도로 분류되며, 즉각적인 알람을 트리거하고 관련 프로세스 및 네트워크 활동에 대한 심층 조사를 시작하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 네트워크 관리 도구, 개발자 디버깅 유틸리티, VPN 소프트웨어, 또는 합법적인 애플리케이션이 네트워크 설정을 변경하거나 직접 소켓 통신을 수행하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스, 특정 명령줄 패턴, 또는 특정 사용자 계정을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,35 @@
+{
+    "id": "F-PROC-004-ServiceManipulation",
+    "name": "Feature: Service Manipulation via sc.exe",
+    "description": "Identifies the use of sc.exe to create or configure a system service, often used for persistence.",
+    "severity": "info",
+    "mitre_attack": [
+        {
+            "tactic": "TA0003",
+            "technique_id": "T1543",
+            "subtechnique_id": "T1543.003"
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "sc_process_started",
+                "selections": {
+                    "selection_sc_execution": {
+                        "event_type": "process",
+                        "condition_method": "and",
+                        "conditions": [
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "sc.exe"},
+                            {"field": "body.process.commandline", "operator": "contains", "value": "create"}
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "Feature Captured: Service Creation (sc.exe)"
+                }
+            }
+        ]
+    }
+}

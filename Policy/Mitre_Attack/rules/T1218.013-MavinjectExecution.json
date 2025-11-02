@@ -1,0 +1,76 @@
+{
+    "id": "T1218.013-MavinjectExecution",
+    "name": "Mavinject Proxy Execution",
+    "description": "Detects attempts to abuse mavinject.exe to proxy execution of malicious code. Mavinject.exe is the Microsoft Application Virtualization Injector, a Windows utility that can inject code into external processes as part of Microsoft Application Virtualization (App-V). Adversaries may abuse mavinject.exe to inject malicious DLLs into running processes (i.e. Dynamic-link Library Injection), allowing for arbitrary code execution (ex. C:\\Windows\\system32\\mavinject.exe PID /INJECTRUNNING PATH_DLL). Since mavinject.exe may be digitally signed by Microsoft, proxying execution via this method may evade detection by security products because the execution is masked under a legitimate process. In addition to Dynamic-link Library Injection, Mavinject.exe can also be abused to perform import descriptor injection via its /HMODULE command-line parameter (ex. mavinject.exe PID /HMODULE=BASE_ADDRESS PATH_DLL ORDINAL_NUMBER). This command would inject an import table entry consisting of the specified DLL into the module at the given base address.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1218",
+        "subtechnique_id": "T1218.013",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Shared Modules",
+            "Enterprise:Defense Evasion:Process Injection:Dynamic-link Library Injection"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_mavinject_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "mavinject.exe"
+                    }
+                ]
+            },
+            "s3_cmdline_injectrunning_dll": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/INJECTRUNNING"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".dll"
+                    }
+                ]
+            },
+            "s4_cmdline_hmodule_dll": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/HMODULE="
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".dll"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and s2_mavinject_exe_path and (s3_cmdline_injectrunning_dll or s4_cmdline_hmodule_dll)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 mavinject.exe를 통한 악성 코드 실행 및 DLL 주입 시도를 탐지할 수 있습니다. mavinject.exe의 프로세스 생성 이벤트와 함께 '/INJECTRUNNING' 또는 '/HMODULE='과 같은 비정상적인 명령줄 인자 및 '.dll' 파일 경로를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 주입된 모듈에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 다른 방어 회피 또는 실행 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 기능, Microsoft Application Virtualization (App-V) 환경의 합법적인 애플리케이션, 또는 특정 소프트웨어의 설치/업데이트 프로세스에서 mavinject.exe를 사용하여 DLL을 로드하거나 시스템 기능을 호출하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 mavinject.exe 호출 패턴이나 특정 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

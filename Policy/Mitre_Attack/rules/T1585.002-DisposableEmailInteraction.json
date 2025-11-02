@@ -1,0 +1,126 @@
+{
+    "id": "T1585.002-DisposableEmailInteraction",
+    "name": "Disposable Email Account Interaction",
+    "description": "Detects attempts to interact with known disposable email services from the endpoint, potentially as part of resource development for phishing campaigns or infrastructure acquisition. This rule monitors process creation events for scripting tools or web browsers whose command lines contain patterns indicative of disposable email domains.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0008",
+        "technique_id": "T1585",
+        "subtechnique_id": "T1585.002",
+        "data_sources": [
+            "Enterprise:Resource Development:Establish Accounts:Email Accounts",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:Python"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_scripting_tool_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "cmd.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "python.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "curl.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "wget.exe"
+                    }
+                ]
+            },
+            "s3_browser_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "msedge.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "chrome.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "firefox.exe"
+                    }
+                ]
+            },
+            "s4_disposable_email_domain_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "mailinator.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "temp-mail.org"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "guerrillamail.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "10minutemail.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "yopmail.com"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "disposable-email.org"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "anonbox.net"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and ((s2_scripting_tool_exe_path and s4_disposable_email_domain_cmdline) or (s3_browser_exe_path and s4_disposable_email_domain_cmdline))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 엔드포인트에서 임시 또는 일회용 이메일 서비스와의 상호작용 시도를 탐지할 수 있습니다. 특히 PowerShell, CMD, Python 스크립트 또는 웹 브라우저의 명령줄 인자에 알려진 일회용 이메일 도메인이 포함된 경우를 모니터링합니다. 이는 공격자가 피싱 캠페인 준비, 인프라 확보 또는 익명 활동을 위해 리소스를 개발하는 초기 단계의 지표가 될 수 있습니다. 탐지된 이벤트는 중간 심각도로 분류되어 추가 조사 및 위협 분석의 우선순위를 지정하는 데 활용됩니다.",
+    "false_positive": "정상적인 시스템 관리자나 개발자가 테스트 목적으로 일회용 이메일 서비스를 사용하거나, 특정 애플리케이션이 자동화된 방식으로 웹 서비스를 호출하는 경우 오탐이 발생할 수 있습니다. 웹 브라우저의 경우, 사용자가 URL을 명령줄로 직접 실행하는 경우는 드물지만, 스크립트를 통해 실행될 경우 탐지될 수 있습니다. 알려진 정상적인 사용 사례나 특정 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

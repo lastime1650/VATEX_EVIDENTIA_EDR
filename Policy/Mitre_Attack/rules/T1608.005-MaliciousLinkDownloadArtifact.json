@@ -1,0 +1,155 @@
+{
+    "id": "T1608.005-MaliciousLinkDownloadArtifact",
+    "name": "Malicious Link Target Download Artifact",
+    "description": "Detects the creation or modification of suspicious executable or script files in common user download or temporary directories. This activity often indicates a user interacting with a malicious link target, which could originate from phishing campaigns or drive-by downloads, leading to the staging or execution of adversary tools.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1608",
+        "subtechnique_id": "T1608.005",
+        "data_sources": [
+            "File:FileCreation",
+            "File:FileModification"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_fs_action_create_write_overwritten": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    }
+                ]
+            },
+            "s2_fs_filepath_user_profile_prefix": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "C:\\Users\\"
+                    }
+                ]
+            },
+            "s3_fs_filepath_in_downloads_folder": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "Downloads\\"
+                    }
+                ]
+            },
+            "s4_fs_filepath_in_temp_folders": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "Temp\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "AppData\\Local\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "ProgramData\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "Windows\\Temp\\"
+                    }
+                ]
+            },
+            "s5_fs_filepath_suspicious_extensions": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".ps1"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".hta"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".vbs"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".js"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".zip"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".iso"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".img"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".msi"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".bat"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".cmd"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_fs_action_create_write_overwritten and s5_fs_filepath_suspicious_extensions and (s2_fs_filepath_user_profile_prefix and (s3_fs_filepath_in_downloads_folder or s4_fs_filepath_in_temp_folders))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 사용자가 악성 링크 타겟과 상호작용했을 때 발생할 수 있는 엔드포인트 활동, 특히 의심스러운 실행 파일 또는 스크립트 파일이 사용자 다운로드 또는 임시 디렉토리에 생성되거나 수정되는 것을 탐지합니다. 탐지된 이벤트는 잠재적인 초기 접근 또는 실행 시도로 간주되어 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 소프트웨어 다운로드, 업데이트 프로세스, 또는 합법적인 애플리케이션이 임시 파일을 생성하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상적인 파일 경로, 파일 해시, 또는 특정 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

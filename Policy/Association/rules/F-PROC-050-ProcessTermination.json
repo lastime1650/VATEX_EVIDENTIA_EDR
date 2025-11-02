@@ -1,0 +1,33 @@
+{
+    "id": "F-PROC-050-ProcessTermination",
+    "name": "Feature: Process Termination via taskkill.exe",
+    "description": "Identifies the use of taskkill.exe to terminate a process. This can be used to disable security software or other critical processes.",
+    "severity": "info",
+    "mitre_attack": [
+        {
+            "tactic": "TA0005",
+            "technique_id": "T1489"
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "taskkill_execution",
+                "selections": {
+                    "selection_taskkill": {
+                        "event_type": "process",
+                        "condition_method": "and",
+                        "conditions": [
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "taskkill.exe"}
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "Feature Captured: A process was terminated using taskkill.exe."
+                }
+            }
+        ]
+    }
+}

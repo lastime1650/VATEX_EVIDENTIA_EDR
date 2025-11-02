@@ -1,0 +1,91 @@
+{
+    "id": "T1554-CompromiseHostSoftwareBinary",
+    "name": "Compromise Host Software Binary",
+    "description": "Detects attempts by adversaries to modify, replace, or infect legitimate host software binaries (executables, DLLs, system files) on disk to establish persistent access, alter functionality, or evade defenses. This technique ensures malicious code executes automatically when the compromised binary is invoked.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1554",
+        "subtechnique_id": "",
+        "data_sources": [
+            "File:FileModification",
+            "File:FileCreation",
+            "File:FileDeletion"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_binary_modification_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    }
+                ]
+            },
+            "s2_target_system_binary_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "C:\\\\Windows\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "C:\\\\Program Files\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "C:\\\\Program Files (x86)\\\\"
+                    }
+                ]
+            },
+            "s3_target_executable_extension": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".sys"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".ocx"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".cpl"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_binary_modification_action and s2_target_system_binary_path and s3_target_executable_extension"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 중요한 시스템 바이너리 또는 설치된 애플리케이션 파일에 대한 무단 수정 시도를 탐지할 수 있습니다. 특히 윈도우즈 시스템 및 프로그램 파일 경로 내에서 실행 파일, DLL, 드라이버 등의 바이너리 파일에 대한 '쓰기' 또는 '덮어쓰기' 활동을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 파일 변경을 수행한 프로세스, 관련 사용자, 그리고 변경된 파일의 무결성 검증을 위한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 알려지지 않거나 신뢰할 수 없는 프로세스에 의한 변경, 또는 비정상적인 시간에 발생하는 변경은 더욱 면밀히 조사되어야 합니다.",
+    "false_positive": "정상적인 소프트웨어 업데이트, 패치 설치, 애플리케이션 재설치, 시스템 구성 변경, 또는 안티바이러스 소프트웨어의 파일 수정 활동으로 인해 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 업데이트 경로에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

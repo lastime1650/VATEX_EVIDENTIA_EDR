@@ -1,0 +1,161 @@
+{
+    "id": "T1559.002-DynamicDataExchange",
+    "name": "Dynamic Data Exchange (DDE) Abuse",
+    "description": "Detects attempts by adversaries to use Windows Dynamic Data Exchange (DDE) for executing arbitrary commands, often through Microsoft Office applications. This includes Office applications spawning suspicious child processes like command interpreters with DDE-related command-line arguments, or modifications to registry keys that control DDE behavior.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1559",
+        "subtechnique_id": "T1559.002",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Defense Evasion:Modify Registry"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_office_parent_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "endswith",
+                        "value": "excel.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "endswith",
+                        "value": "word.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "endswith",
+                        "value": "outlook.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "endswith",
+                        "value": "powerpnt.exe"
+                    },
+                    {
+                        "field": "body.process.parent_exe_path",
+                        "operator": "endswith",
+                        "value": "msaccess.exe"
+                    }
+                ]
+            },
+            "s3_suspicious_child_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "cmd.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "mshta.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "wscript.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "cscript.exe"
+                    }
+                ]
+            },
+            "s4_child_cmdline_dde_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ddeauto"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ddeexec"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "javascript:"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "cmd.exe /c"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell -command"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell -enc"
+                    }
+                ]
+            },
+            "s5_registry_set_value_keyclass": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    }
+                ]
+            },
+            "s6_dde_block_registry_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "SOFTWARE\\Microsoft\\Office"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "Security\\DDEBlockNonLocal"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "contains",
+                        "value": "Security\\DDEBlockLocal"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and s2_office_parent_exe_path and s3_suspicious_child_exe_path and s4_child_cmdline_dde_keywords or (s5_registry_set_value_keyclass and s6_dde_block_registry_path)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 DDE를 악용하는 공격을 탐지할 수 있습니다. Microsoft Office 애플리케이션이 cmd.exe, powershell.exe, mshta.exe 등과 같은 의심스러운 자식 프로세스를 생성하고, 해당 자식 프로세스의 명령줄에 'ddeauto', 'ddeexec', 'javascript:' 또는 명령 실행을 지시하는 키워드가 포함된 경우 높은 심각도로 탐지합니다. 또한, DDE 기능의 활성화/비활성화와 관련된 레지스트리 키 변경 시도도 모니터링하여 공격자가 DDE를 악용하기 위한 환경을 설정하는 행위를 포착합니다. 탐지된 이벤트는 즉각적인 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 합법적인 소프트웨어 설치 또는 업데이트 프로세스가 Office 애플리케이션을 통해 스크립트 호스트를 실행하거나, DDE 관련 레지스트리 설정을 변경하는 경우 오탐이 발생할 수 있습니다. 특정 환경에서 허용되는 Office 매크로 또는 스크립트 실행 패턴, 그리고 알려진 정상적인 레지스트리 변경 사항을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

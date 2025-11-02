@@ -1,0 +1,155 @@
+{
+    "id": "T1059.007-JavaScriptExecution",
+    "name": "JavaScript Execution",
+    "description": "Detects attempts to execute JavaScript code via Windows Script Host (wscript.exe, cscript.exe), MSHTA, PowerShell, or by loading scripting engine DLLs (jscript.dll, vbscript.dll). Adversaries abuse JavaScript for various execution behaviors, including malicious scripts on websites or as secondary payloads.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1059",
+        "subtechnique_id": "T1059.007",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Shared Modules"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s_wscript_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "wscript.exe"
+                    }
+                ]
+            },
+            "s_cscript_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "cscript.exe"
+                    }
+                ]
+            },
+            "s_mshta_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "mshta.exe"
+                    }
+                ]
+            },
+            "s_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s_powershell_js_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "javascript:"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ActiveXObject"
+                    }
+                ]
+            },
+            "s_cmdline_js_file": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "endswith",
+                        "value": ".js"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".js "
+                    }
+                ]
+            },
+            "s_cmdline_jse_file": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "endswith",
+                        "value": ".jse"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".jse "
+                    }
+                ]
+            },
+            "s_cmdline_hta_file_extension": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "endswith",
+                        "value": ".hta"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".hta "
+                    }
+                ]
+            },
+            "s_imageload_jscript_dll": {
+                "event_type": "imageload",
+                "conditions": [
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "endswith",
+                        "value": "jscript.dll"
+                    }
+                ]
+            },
+            "s_imageload_vbscript_dll": {
+                "event_type": "imageload",
+                "conditions": [
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "endswith",
+                        "value": "vbscript.dll"
+                    }
+                ]
+            }
+        },
+        "condition": "s_process_create and (s_wscript_exe or s_cscript_exe or s_mshta_exe or (s_powershell_exe and s_powershell_js_cmdline) or s_cmdline_js_file or s_cmdline_jse_file or s_cmdline_hta_file_extension) or (s_imageload_jscript_dll or s_imageload_vbscript_dll)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 JavaScript 코드를 실행하려는 시도를 탐지할 수 있습니다. wscript.exe, cscript.exe, mshta.exe와 같은 Windows Script Host 프로세스의 생성 이벤트, PowerShell을 통한 JavaScript 실행 시도, 또는 jscript.dll, vbscript.dll과 같은 스크립팅 엔진 DLL 로드 이벤트를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 로드된 모듈에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 다른 방어 회피 또는 실행 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 웹 브라우저 활동, 개발 도구, 합법적인 스크립트 기반 애플리케이션, 또는 시스템 관리 유틸리티가 JavaScript를 실행하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상적인 스크립트 실행 패턴이나 특정 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

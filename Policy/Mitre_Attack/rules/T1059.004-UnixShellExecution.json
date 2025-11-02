@@ -1,0 +1,187 @@
+{
+    "id": "T1059.004-UnixShellExecution",
+    "name": "Unix Shell Execution",
+    "description": "Detects attempts to execute commands or scripts via Unix shells (sh, bash, zsh, ash, etc.) on Linux, macOS, and ESXi systems. Adversaries commonly abuse Unix shells for command and control, lateral movement, persistence, and executing various payloads, often involving obfuscation or direct script execution.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1059",
+        "subtechnique_id": "T1059.004",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Unix Shell"
+        ]
+    },
+    "platform": [
+        "linux",
+        "network devices",
+        "macos",
+        "esxi"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_shell_exec_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "/bin/sh"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "/bin/bash"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "/bin/zsh"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "/bin/ash"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "/usr/bin/env"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "/bin/dash"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "/bin/busybox"
+                    }
+                ]
+            },
+            "s3_cmdline_script_exec_patterns": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " -c "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "startswith",
+                        "value": "./"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "source "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " . "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "eval "
+                    }
+                ]
+            },
+            "s4_cmdline_pipe_to_shell": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "| sh"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "| bash"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "| zsh"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "| ash"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "| busybox sh"
+                    }
+                ]
+            },
+            "s5_cmdline_encoded_execution_source": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "echo "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "base64 -d"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "xxd -r -p"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "python -c"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "perl -e"
+                    }
+                ]
+            },
+            "s6_cmdline_suspicious_download_source": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wget -O - "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "curl -sL "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "curl -k "
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create AND (s2_shell_exec_path OR s3_cmdline_script_exec_patterns OR (s4_cmdline_pipe_to_shell AND (s5_cmdline_encoded_execution_source OR s6_cmdline_suspicious_download_source)))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Linux, macOS, ESXi 시스템에서 Unix 셸을 통한 악성 명령 및 스크립트 실행 시도를 탐지할 수 있습니다. 셸 프로세스 생성 이벤트와 함께 '-c' 옵션을 사용한 명령 실행, 스크립트 파일 직접 실행, 파이프를 통한 인코딩된 명령 또는 원격 다운로드된 스크립트 실행과 같은 비정상적인 명령줄 패턴을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 명령줄 인자에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 다른 실행 또는 방어 회피 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 스크립트 기반 자동화 도구, 개발 환경, 또는 합법적인 애플리케이션이 Unix 셸을 통해 명령을 실행하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 셸 호출 패턴, 특정 스크립트 또는 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다. 특히, '/usr/bin/env'와 같은 유틸리티 사용은 정상적인 스크립트 실행에 자주 사용되므로 주의 깊은 튜닝이 필요합니다."
+}

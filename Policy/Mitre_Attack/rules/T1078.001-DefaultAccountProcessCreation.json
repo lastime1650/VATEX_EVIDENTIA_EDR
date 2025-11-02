@@ -1,0 +1,95 @@
+{
+    "id": "T1078.001-DefaultAccountProcessCreation",
+    "name": "Process Creation by Default Accounts",
+    "description": "Detects the creation of processes under default system accounts (e.g., Administrator, Guest, SYSTEM, Local Service, Network Service). Adversaries may abuse these accounts for initial access, persistence, privilege escalation, or defense evasion. While many legitimate system processes run under these accounts, monitoring for unexpected process creations can indicate malicious activity.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0001",
+        "technique_id": "T1078",
+        "subtechnique_id": "T1078.001",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "UserAccount:UserAccountAuthentication"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_admin_account": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.user.sid",
+                        "operator": "endswith",
+                        "value": "-500"
+                    },
+                    {
+                        "field": "body.user.username",
+                        "operator": "equals",
+                        "value": "Administrator"
+                    }
+                ]
+            },
+            "s3_guest_account": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.user.sid",
+                        "operator": "endswith",
+                        "value": "-501"
+                    },
+                    {
+                        "field": "body.user.username",
+                        "operator": "equals",
+                        "value": "Guest"
+                    }
+                ]
+            },
+            "s4_system_account": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.user.username",
+                        "operator": "equals",
+                        "value": "NT AUTHORITY\\SYSTEM"
+                    }
+                ]
+            },
+            "s5_local_service_account": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.user.username",
+                        "operator": "equals",
+                        "value": "NT AUTHORITY\\LOCAL SERVICE"
+                    }
+                ]
+            },
+            "s6_network_service_account": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.user.username",
+                        "operator": "equals",
+                        "value": "NT AUTHORITY\\NETWORK SERVICE"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and (s2_admin_account or s3_guest_account or s4_system_account or s5_local_service_account or s6_network_service_account)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Administrator, Guest, SYSTEM, Local Service, Network Service와 같은 기본 계정으로 프로세스가 생성되는 이벤트를 탐지할 수 있습니다. 이는 공격자가 기본 계정의 자격 증명을 악용하여 초기 접근, 권한 에스컬레이션, 지속성 또는 방어 회피를 시도하는 징후일 수 있습니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스의 명령줄, 부모 프로세스, 실행 경로 등을 상세히 조사하여 악성 여부를 판단하는 데 사용될 수 있습니다. 특히, 비정상적인 실행 파일이나 경로에서 기본 계정으로 프로세스가 생성되는 경우 심각하게 분석해야 합니다.",
+    "false_positive": "Windows 운영 체제는 수많은 정상적인 시스템 프로세스를 SYSTEM, Local Service, Network Service 계정으로 실행합니다. 또한, 관리자가 'Administrator' 계정으로 합법적인 작업을 수행할 때도 오탐이 발생할 수 있습니다. 알려진 정상적인 시스템 프로세스나 특정 경로에서 실행되는 프로세스에 대해 화이트리스트를 적용하거나, 기본 계정으로 실행되는 프로세스의 명령줄 및 부모 프로세스를 추가적으로 분석하여 오탐을 줄일 수 있습니다."
+}

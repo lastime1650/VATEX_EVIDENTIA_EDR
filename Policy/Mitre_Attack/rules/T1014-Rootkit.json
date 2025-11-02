@@ -1,0 +1,273 @@
+{
+    "id": "T1014-Rootkit",
+    "name": "Rootkit",
+    "description": "Adversaries may use rootkits to hide the presence of programs, files, network connections, services, drivers, and other system components. Rootkits are programs that hide the existence of malware by intercepting/hooking and modifying operating system API calls that supply system information. Rootkits or rootkit enabling functionality may reside at the user or kernel level in the operating system or lower, to include a hypervisor, Master Boot Record, or System Firmware. Rootkits have been seen for Windows, Linux, and Mac OS X systems.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1014",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Defense Evasion:File and Directory Permissions Modification",
+            "Defense Evasion:Modify Registry",
+            "Defense Evasion:Process Injection",
+            "Execution:Native API",
+            "Execution:Shared Modules"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_imageload_suspicious_extension": {
+                "event_type": "imageload",
+                "conditions": [
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "endswith",
+                        "value": ".sys"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    }
+                ]
+            },
+            "s2_imageload_suspicious_path": {
+                "event_type": "imageload",
+                "conditions": [
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "\\\\temp\\\\"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "\\\\programdata\\\\"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "\\\\users\\\\public\\\\"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "\\\\appdata\\\\local\\\\"
+                    },
+                    {
+                        "field": "body.imageload.filepath",
+                        "operator": "contains",
+                        "value": "\\\\appdata\\\\roaming\\\\"
+                    }
+                ]
+            },
+            "s3_registry_modify_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "SetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "CreateKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "RenameKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "contains",
+                        "value": "SetInformationKey"
+                    }
+                ]
+            },
+            "s4_registry_driver_service_keys": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\\\SYSTEM\\\\CurrentControlSet\\\\Services\\\\"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\\\SOFTWARE\\\\Microsoft\\\\Windows NT\\\\CurrentVersion\\\\Drivers32"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\\\SYSTEM\\\\CurrentControlSet\\\\Control\\\\Class\\\\"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\\\SOFTWARE\\\\Classes\\\\CLSID\\\\"
+                    }
+                ]
+            },
+            "s5_processaccess_high_priv_access": {
+                "event_type": "processaccess",
+                "conditions": [
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_ALL_ACCESS"
+                    },
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_VM_WRITE"
+                    },
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_CREATE_THREAD"
+                    }
+                ]
+            },
+            "s6_processaccess_target_system_process": {
+                "event_type": "processaccess",
+                "conditions": [
+                    {
+                        "field": "body.processaccess.filepath",
+                        "operator": "endswith",
+                        "value": "lsass.exe"
+                    },
+                    {
+                        "field": "body.processaccess.filepath",
+                        "operator": "endswith",
+                        "value": "services.exe"
+                    },
+                    {
+                        "field": "body.processaccess.filepath",
+                        "operator": "endswith",
+                        "value": "winlogon.exe"
+                    },
+                    {
+                        "field": "body.processaccess.filepath",
+                        "operator": "endswith",
+                        "value": "smss.exe"
+                    },
+                    {
+                        "field": "body.processaccess.filepath",
+                        "operator": "endswith",
+                        "value": "csrss.exe"
+                    },
+                    {
+                        "field": "body.processaccess.filepath",
+                        "operator": "endswith",
+                        "value": "explorer.exe"
+                    }
+                ]
+            },
+            "s7_apicall_hooking_api": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "NtSetSystemInformation"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "ZwSetSystemInformation"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "SetWindowLongPtr"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "NtCreateThreadEx"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "RtlSetProcessIsCritical"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "LdrLoadDll"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "CreateRemoteThread"
+                    }
+                ]
+            },
+            "s8_filesystem_critical_file_write": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s9_filesystem_critical_file_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\\\Windows\\\\System32\\\\drivers\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\\\Windows\\\\System32\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "C:\\\\Windows\\\\SysWOW64\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".sys"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_imageload_suspicious_extension and s2_imageload_suspicious_path) or (s3_registry_modify_action and s4_registry_driver_service_keys) or (s5_processaccess_high_priv_access and s6_processaccess_target_system_process) or s7_apicall_hooking_api or (s8_filesystem_critical_file_write and s9_filesystem_critical_file_path)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에 대한 루트킷 설치 및 활동 시도를 탐지할 수 있습니다. 비표준 경로에서 드라이버/DLL 로드 시도, 중요 레지스트리 키(드라이버, 서비스 관련)에 대한 비정상적인 수정, 시스템 프로세스에 대한 고수준 접근 시도, 그리고 알려진 후킹/은폐 API 호출 등을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 시스템에 대한 심층 포렌식 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히 다른 방어 회피 및 권한 상승 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 업데이트, 드라이버 설치, 백신 소프트웨어, 또는 합법적인 관리 도구가 시스템 파일, 레지스트리, 프로세스에 접근하거나 DLL을 로드하는 과정에서 오탐이 발생할 수 있습니다. 특정 파일 경로, 프로세스 이름, 또는 API 호출 패턴에 대한 화이트리스트를 신중하게 적용하여 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,34 @@
+{
+    "id": "F-PROC-016-WinRSExecution",
+    "name": "Feature: Windows Remote Shell Execution",
+    "description": "Identifies the execution of winrs.exe, the client for Windows Remote Management, often used for lateral movement.",
+    "severity": "info",
+    "mitre_attack": [
+        {
+            "tactic": "TA0002",
+            "technique_id": "T1021",
+            "subtechnique_id": "T1021.006"
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "winrs_process_started",
+                "selections": {
+                    "selection_winrs_path": {
+                        "event_type": "process",
+                        "condition_method": "and",
+                        "conditions": [
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "winrs.exe"}
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "Feature Captured: Windows Remote Shell (winrs.exe) execution"
+                }
+            }
+        ]
+    }
+}

@@ -1,0 +1,60 @@
+{
+    "id": "T1216-PubPrnProxyExecution",
+    "name": "System Script Proxy Execution via PubPrn.vbs",
+    "description": "Detects attempts to use trusted Microsoft scripts like PubPrn.vbs to proxy the execution of malicious files. Adversaries leverage such scripts to bypass application control and signature validation by executing through a legitimate, signed binary.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1216",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:Visual Basic"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_cscript_wscript_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "cscript.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "wscript.exe"
+                    }
+                ]
+            },
+            "s3_pubprn_vbs_in_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "PubPrn.vbs"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and s2_cscript_wscript_exe and s3_pubprn_vbs_in_cmdline"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 PubPrn.vbs와 같은 시스템 스크립트를 통한 악성 코드 프록시 실행 시도를 탐지할 수 있습니다. cscript.exe 또는 wscript.exe 프로세스 생성 이벤트와 함께 명령줄에 'PubPrn.vbs'가 포함된 경우를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 명령줄 인자에 대한 추가적인 조사를 시작하는 데 사용될 수 있습니다. 이는 방어 회피 전술에 대한 중요한 지표가 됩니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 프린터 드라이버 설치 또는 문제 해결 스크립트가 PubPrn.vbs를 합법적으로 호출하는 경우 오탐이 발생할 수 있습니다. 특히, 레거시 시스템 관리 스크립트에서 발생할 가능성이 있습니다. 알려진 정상적인 사용 패턴이나 특정 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

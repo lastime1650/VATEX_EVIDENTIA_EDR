@@ -1,0 +1,46 @@
+{
+    "id": "FEATURE-REG-Service-ImagePath-Modification",
+    "name": "Windows Service ImagePath Modified",
+    "description": "Detects the modification of a service's 'ImagePath' value, which specifies the executable to be run. This is a high-confidence indicator of a service hijacking attempt for privilege escalation or persistence.",
+    "severity": "high",
+    "mitre_attack": [
+        {
+            "tactic": "TA0004",
+            "technique_id": "T1574",
+            "subtechnique_id": "T1574.011",
+            "data_sources": ["Windows Registry"]
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "service_hijack",
+                "selections": {
+                    "selection_set_imagepath": {
+                        "event_type": "registry",
+                        "condition_method": "and",
+                        "conditions": [
+                            {
+                                "field": "body.registry.keyclass", 
+                                "operator": "equals", 
+                                "value": "RegNtPreSetValueKey"
+                            },
+                            {
+                                "field": "body.registry.name", 
+                                "operator": "regex", 
+                                "value": ".*\\\\Services\\\\[^\\\\]+\\\\ImagePath$"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "A service's executable path ('ImagePath') was modified. This is a strong indicator of a hijacking attempt."
+                }
+            }
+        ]
+    },
+    "operational_usage": "This is a critical feature alert. Immediately investigate the process making the change and the new file path. Legitimate updaters might do this, but any change by a non-installer or script is highly malicious.",
+    "false_positive": "Possible with some software updaters that modify service paths. However, the risk is high enough that every instance should be reviewed."
+}

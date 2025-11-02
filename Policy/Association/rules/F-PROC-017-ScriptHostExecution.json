@@ -1,0 +1,35 @@
+{
+    "id": "F-PROC-017-ScriptHostExecution",
+    "name": "Feature: Windows Script Host Execution",
+    "description": "Identifies the execution of the Windows Script Host engines (wscript.exe or cscript.exe), which run VBScript and JScript files. These are frequently used for malware droppers and loaders.",
+    "severity": "info",
+    "mitre_attack": [
+        {
+            "tactic": "TA0002",
+            "technique_id": "T1059",
+            "subtechnique_id": "T1059.005"
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "script_host_process_started",
+                "selections": {
+                    "selection_script_host_path": {
+                        "event_type": "process",
+                        "condition_method": "or",
+                        "conditions": [
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "wscript.exe"},
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "cscript.exe"}
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "Feature Captured: Windows Script Host (cscript/wscript) execution"
+                }
+            }
+        ]
+    }
+}

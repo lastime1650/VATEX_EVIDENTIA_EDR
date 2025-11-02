@@ -1,0 +1,115 @@
+{
+    "id": "T1218.001-CompiledHTMLFile",
+    "name": "Compiled HTML File (CHM) Proxy Execution",
+    "description": "Adversaries may abuse Compiled HTML files (.chm) to conceal malicious code. CHM files are commonly distributed as part of the Microsoft HTML Help system. CHM files are compressed compilations of various content such as HTML documents, images, and scripting/web related programming languages such VBA, JScript, Java, and ActiveX. CHM content is displayed using underlying components of the Internet Explorer browser loaded by the HTML Help executable program (hh.exe). A custom CHM file containing embedded payloads could be delivered to a victim then triggered by User Execution. CHM execution may also bypass application control on older and/or unpatched systems that do not account for execution of binaries through hh.exe.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1218",
+        "subtechnique_id": "T1218.001",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Command:CommandExecution"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_hh_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "hh.exe"
+                    }
+                ]
+            },
+            "s2_process_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s3_cmdline_chm_file": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".chm"
+                    }
+                ]
+            },
+            "s4_cmdline_suspicious_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "javascript:"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "mshta.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "cmd.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wscript.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "cscript.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "certutil.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "bitsadmin.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "regsvr32.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "rundll32.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "msiexec.exe"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_hh_exe_path and s2_process_action_create and s3_cmdline_chm_file and s4_cmdline_suspicious_keywords"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 Compiled HTML Help (CHM) 파일을 악용하여 악성 코드를 프록시 실행하려는 시도를 탐지할 수 있습니다. hh.exe 프로세스 생성 이벤트와 함께 .chm 파일 경로를 포함하고, 추가적으로 명령줄에 JavaScript 실행, 다른 스크립트/실행 파일 호출과 같은 의심스러운 키워드가 포함된 경우를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 로드된 모듈에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 다른 방어 회피 또는 실행 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 HTML 도움말 파일 실행, 소프트웨어 설치 프로그램, 또는 합법적인 애플리케이션이 hh.exe를 사용하여 도움말 파일을 열거나 특정 시스템 기능을 호출하는 경우 오탐이 발생할 수 있습니다. 특히 hh.exe가 합법적인 CHM 파일을 열면서 동시에 명령줄에 우연히 특정 키워드가 포함될 가능성이 있습니다. 알려진 정상적인 hh.exe 호출 패턴이나 특정 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

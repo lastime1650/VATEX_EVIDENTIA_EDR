@@ -1,0 +1,187 @@
+{
+    "id": "T1098.004-SSHAuthorizedKeys",
+    "name": "SSH Authorized Keys",
+    "description": "Adversaries may modify the SSH authorized_keys file to maintain persistence on a victim host. This file is usually found in the user's home directory under <user-home>/.ssh/authorized_keys (or, on ESXi, /etc/ssh/keys-<username>/authorized_keys). Adversaries may also modify the SSH config file (/etc/ssh/sshd_config) to enable public key or root authentication. In cloud environments, adversaries may use command-line interfaces or REST APIs to modify SSH authorized_keys files of virtual machines.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1098",
+        "subtechnique_id": "T1098.004",
+        "data_sources": [
+            "Command:CommandExecution",
+            "Process:ProcessCreation",
+            "File:FileModification"
+        ]
+    },
+    "platform": [
+        "linux",
+        "macos"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_filesystem_modify_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "rename"
+                    }
+                ]
+            },
+            "s3_target_authorized_keys_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/.ssh/authorized_keys"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/etc/ssh/keys-"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "authorized_keys"
+                    }
+                ]
+            },
+            "s4_target_sshd_config_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": "/etc/ssh/sshd_config"
+                    }
+                ]
+            },
+            "s5_cmdline_authorized_keys_tools": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "authorized_keys"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "echo"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "cat"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "cp"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "mv"
+                    }
+                ]
+            },
+            "s6_cmdline_sshd_config_modification": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/etc/ssh/sshd_config"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "PubkeyAuthentication"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "RSAAuthentication"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "PermitRootLogin"
+                    }
+                ]
+            },
+            "s7_cmdline_gcloud_ssh_keys": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "gcloud"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "compute instances add-metadata"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ssh-keys"
+                    }
+                ]
+            },
+            "s8_cmdline_az_ssh_keys": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "az"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "vm user update"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ssh-key-value"
+                    }
+                ]
+            }
+        },
+        "condition": "(s2_filesystem_modify_action and s3_target_authorized_keys_path) or (s2_filesystem_modify_action and s4_target_sshd_config_path) or (s1_process_create_action and s5_cmdline_authorized_keys_tools) or (s1_process_create_action and s6_cmdline_sshd_config_modification) or (s1_process_create_action and s7_cmdline_gcloud_ssh_keys) or (s1_process_create_action and s8_cmdline_az_ssh_keys)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 통해 SSH authorized_keys 파일 또는 sshd_config 파일에 대한 비정상적인 변경 시도를 탐지할 수 있습니다. 파일 시스템 이벤트로 파일 생성, 쓰기, 덮어쓰기, 이름 변경을 모니터링하고, 프로세스 생성 이벤트로 'echo', 'cat', 'cp', 'mv'와 같은 명령어를 사용하여 authorized_keys 파일을 조작하거나, 'gcloud', 'az' CLI 도구를 통해 클라우드 VM의 SSH 키를 업데이트하는 행위를 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 시스템의 사용자 계정 및 SSH 설정에 대한 추가적인 조사를 시작하는 데 활용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리자가 SSH 키를 교체하거나, SSH 설정을 변경하는 경우, 또는 자동화된 배포 스크립트가 SSH 설정을 업데이트하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상적인 관리 활동이나 특정 사용자 및 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

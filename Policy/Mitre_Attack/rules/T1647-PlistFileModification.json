@@ -1,0 +1,185 @@
+{
+    "id": "T1647-PlistFileModification",
+    "name": "Plist File Modification",
+    "description": "Detects attempts by adversaries to modify macOS property list (plist) files. These modifications can be used to achieve persistence (e.g., via Launch Agents/Daemons), evade defenses (e.g., hiding application windows), or influence system behaviors by altering application configurations or system settings. This rule focuses on detecting the use of command-line tools to edit plists and direct filesystem modifications to sensitive plist locations.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1647",
+        "subtechnique_id": "",
+        "data_sources": [
+            "process:processcreation",
+            "file:filemodification"
+        ]
+    },
+    "platform": [
+        "macos"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_plist_editor_command": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "defaults "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "plutil "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "PlistBuddy "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "sed "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "awk "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "nano "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "vim "
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "pico "
+                    }
+                ]
+            },
+            "s3_sensitive_plist_path_in_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/Library/LaunchAgents/"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/Library/LaunchDaemons/"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/Library/Preferences/"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/Contents/Info.plist"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "com.apple.dock.plist"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "backgrounditems.btm"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "endswith",
+                        "value": ".plist"
+                    }
+                ]
+            },
+            "s4_filesystem_modify_action": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "rename"
+                    }
+                ]
+            },
+            "s5_sensitive_plist_filepath": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/Library/LaunchAgents/"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/Library/LaunchDaemons/"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/Library/Preferences/"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/Contents/Info.plist"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "com.apple.dock.plist"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "backgrounditems.btm"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".plist"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and (s2_plist_editor_command and s3_sensitive_plist_path_in_cmdline)) or (s4_filesystem_modify_action and s5_sensitive_plist_filepath)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 macOS 시스템에서 plist 파일 수정 시도를 탐지할 수 있습니다. 특히 Launch Agents/Daemons, 애플리케이션 Info.plist, 또는 사용자 선호도 파일과 같은 민감한 위치의 plist 파일에 대한 변경을 모니터링합니다. plist 편집 도구(defaults, plutil, PlistBuddy 등)의 프로세스 생성 이벤트와 해당 명령줄 인자에 민감한 plist 경로가 포함된 경우, 또는 민감한 plist 파일에 대한 직접적인 파일 생성/쓰기/덮어쓰기/이름 변경 활동이 탐지될 경우 높은 심각도의 알람을 트리거합니다. 이는 잠재적인 지속성 확보, 방어 회피 또는 시스템 설정 조작 시도를 나타낼 수 있으며, 추가적인 포렌식 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 업데이트, 소프트웨어 설치 또는 제거, 사용자 환경 설정 변경, 또는 합법적인 관리 스크립트(예: MDM 솔루션)가 plist 파일을 수정하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스, 특정 plist 파일, 또는 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

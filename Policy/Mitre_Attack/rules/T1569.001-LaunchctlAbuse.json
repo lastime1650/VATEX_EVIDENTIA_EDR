@@ -1,0 +1,174 @@
+{
+    "id": "T1569.001-LaunchctlAbuse",
+    "name": "Launchctl Abuse for Execution or Persistence",
+    "description": "Detects attempts to abuse 'launchctl' on macOS to execute commands or programs, typically for persistence as Launch Agents or Launch Daemons. This includes monitoring for 'launchctl load', 'start', or 'unload' commands, as well as the creation or modification of associated .plist files in standard system/user directories or suspicious locations like /tmp or /Shared.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1569",
+        "subtechnique_id": "T1569.001",
+        "data_sources": [
+            "Enterprise:Execution:Command and Scripting Interpreter:Unix Shell",
+            "Enterprise:Execution:System Services:Service Execution",
+            "Enterprise:Persistence:Boot or Logon Autostart Execution:Launchd",
+            "Enterprise:Persistence:Create or Modify System Process:Launch Agent",
+            "Enterprise:Persistence:Create or Modify System Process:Launch Daemon",
+            "Enterprise:File:File Modification"
+        ]
+    },
+    "platform": [
+        "macos"
+    ],
+    "detection": {
+        "selections": {
+            "s_proc_action_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s_proc_exe_launchctl": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "/bin/launchctl"
+                    }
+                ]
+            },
+            "s_proc_cmdline_launchctl_contains": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "launchctl"
+                    }
+                ]
+            },
+            "s_proc_cmdline_load_start": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "load"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "start"
+                    }
+                ]
+            },
+            "s_proc_cmdline_unload": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "unload"
+                    }
+                ]
+            },
+            "s_fs_action_write_create": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    }
+                ]
+            },
+            "s_fs_filepath_plist_ext": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".plist"
+                    }
+                ]
+            },
+            "s_fs_filepath_sys_launch_agent": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/Library/LaunchAgents/"
+                    }
+                ]
+            },
+            "s_fs_filepath_sys_launch_daemon": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/Library/LaunchDaemons/"
+                    }
+                ]
+            },
+            "s_fs_filepath_user_home_prefix": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/Users/"
+                    }
+                ]
+            },
+            "s_fs_filepath_user_launch_agent_suffix": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "Library/LaunchAgents"
+                    }
+                ]
+            },
+            "s_fs_filepath_susp_tmp": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/tmp/"
+                    }
+                ]
+            },
+            "s_fs_filepath_susp_shared": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "/Shared/"
+                    }
+                ]
+            }
+        },
+        "condition": "(s_proc_action_create and (s_proc_exe_launchctl or s_proc_cmdline_launchctl_contains) and (s_proc_cmdline_load_start or s_proc_cmdline_unload)) or (s_fs_action_write_create and s_fs_filepath_plist_ext and (s_fs_filepath_sys_launch_agent or s_fs_filepath_sys_launch_daemon or (s_fs_filepath_user_home_prefix and s_fs_filepath_user_launch_agent_suffix) or s_fs_filepath_susp_tmp or s_fs_filepath_susp_shared))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 macOS 시스템에서 'launchctl' 명령을 통한 잠재적인 악성 코드 실행 또는 지속성(persistence) 시도를 탐지할 수 있습니다. 특히 'launchctl load', 'start', 'unload'와 같은 명령줄 인자 사용이나, 표준 Launch Agent/Daemon 경로(/Library/LaunchAgents/, /Library/LaunchDaemons/, /Users/<user>/Library/LaunchAgents/) 외에 /tmp 또는 /Shared와 같은 의심스러운 위치에 .plist 파일이 생성/수정되는 이벤트를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련된 프로세스 활동 및 파일 무결성에 대한 추가적인 조사를 시작하는 데 사용될 수 있습니다. 이는 특히 권한 상승 및 방어 회피 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 소프트웨어 설치/업데이트, 또는 합법적인 애플리케이션이 launchctl을 사용하여 서비스를 관리하거나 .plist 파일을 생성/수정하는 경우 오탐이 발생할 수 있습니다. 특히 개발 환경이나 특정 관리 도구에서 발생할 가능성이 높습니다. 알려진 정상적인 launchctl 호출 패턴이나 특정 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

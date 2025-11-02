@@ -1,0 +1,177 @@
+{
+    "id": "T1199-TrustedRelationshipInitialRecon",
+    "name": "Trusted Relationship - Initial Reconnaissance & Suspicious Network Activity",
+    "description": "Detects initial reconnaissance activities and suspicious outbound network connections often performed by adversaries after gaining initial access via a compromised trusted relationship (e.g., third-party vendor access). This rule focuses on common system information, account, and network discovery commands, as well as unusual network communication patterns.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0001",
+        "technique_id": "T1199",
+        "subtechnique_id": "",
+        "data_sources": [
+            "LogonSession:LogonSessionCreation",
+            "NetworkTraffic:NetworkTrafficContent",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Discovery:System Information Discovery",
+            "Enterprise:Discovery:Network Service Discovery",
+            "Enterprise:Discovery:Account Discovery",
+            "Enterprise:Command and Control:Application Layer Protocol",
+            "Enterprise:Command and Control:Non-Application Layer Protocol"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s_recon_commands_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "whoami"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "systeminfo"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "net user"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "net group"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "ipconfig /all"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "netstat -ano"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "tasklist"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "quser"
+                    }
+                ]
+            },
+            "s_powershell_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s_powershell_recon_cmdlets": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-WmiObject"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-Net"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-LocalUser"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-ADUser"
+                    }
+                ]
+            },
+            "s_network_outbound_direction": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    }
+                ]
+            },
+            "s_network_suspicious_ports": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 8080
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 4444
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 8443
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 6667
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 5000
+                    }
+                ]
+            },
+            "s_network_suspicious_protocols": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "ICMP"
+                    }
+                ]
+            }
+        },
+        "condition": "(s_process_create_action and s_recon_commands_cmd) or (s_process_create_action and s_powershell_exe_path and s_powershell_recon_cmdlets) or (s_network_outbound_direction and (s_network_suspicious_ports or s_network_suspicious_protocols))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 신뢰 관계를 악용한 초기 침투 이후 발생하는 정찰 활동 및 비정상적인 네트워크 통신을 탐지할 수 있습니다. 'whoami', 'systeminfo', 'net user' 등과 같은 시스템/계정/네트워크 정보 수집 명령 실행, 그리고 PowerShell을 이용한 유사한 정찰 시도를 모니터링합니다. 또한, 일반적이지 않은 포트(8080, 4444, 8443, 6667, 5000)로의 외부 통신이나 ICMP 프로토콜을 이용한 비정상적인 외부 통신을 탐지합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히, 이러한 활동이 평소 신뢰할 수 있는 계정이나 시스템에서 발생할 경우 더욱 중요하게 다루어져야 합니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 스크립트, 백신 소프트웨어, 또는 합법적인 애플리케이션이 시스템 정보 조회나 특정 네트워크 통신을 수행하는 과정에서 오탐이 발생할 수 있습니다. 특히 네트워크 포트 기반 탐지는 정상적인 개발/테스트 환경이나 특정 서비스의 비표준 포트 사용으로 인해 오탐될 가능성이 있습니다. 알려진 정상 프로세스, 명령줄 패턴, 또는 IP/포트 조합을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

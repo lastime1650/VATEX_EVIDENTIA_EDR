@@ -1,0 +1,55 @@
+{
+    "id": "T1602-DataFromConfigurationRepository",
+    "name": "Data from Configuration Repository",
+    "description": "Detects network traffic patterns indicative of an adversary collecting data from configuration repositories, such as querying network devices via SNMP. This technique involves accessing sensitive system administration data from management systems.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0009",
+        "technique_id": "T1602",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Collection:Data from Configuration Repository:SNMP (MIB Dump)",
+            "Enterprise:Collection:Data from Configuration Repository:Network Device Configuration Dump"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_network_event_type": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "UDP"
+                    }
+                ]
+            },
+            "s2_destination_port_161": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 161
+                    }
+                ]
+            },
+            "s3_destination_port_162": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 162
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_network_event_type and s2_destination_port_161) or (s1_network_event_type and s3_destination_port_162)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 네트워크 구성 저장소로부터 데이터를 수집하려는 시도를 탐지할 수 있습니다. 특히 SNMP 프로토콜의 표준 포트(UDP 161, 162)를 사용한 비정상적인 네트워크 연결을 모니터링합니다. 탐지된 이벤트는 자동 알람을 트리거하고, 해당 연결을 시작한 프로세스 및 대상 IP에 대한 추가적인 조사를 시작하는 데 활용됩니다. 이는 공격자가 네트워크 장치 정보를 수집하는 정찰 또는 데이터 수집 단계에 있음을 나타낼 수 있습니다.",
+    "false_positive": "정상적인 네트워크 모니터링 시스템, 네트워크 관리 소프트웨어, 자산 관리 도구, 또는 합법적인 취약점 스캐너가 SNMP를 사용하여 네트워크 장치 정보를 수집하는 경우 오탐이 발생할 수 있습니다. 알려진 정상 프로세스, 내부 네트워크 관리 시스템의 IP 주소, 또는 특정 네트워크 세그먼트를 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

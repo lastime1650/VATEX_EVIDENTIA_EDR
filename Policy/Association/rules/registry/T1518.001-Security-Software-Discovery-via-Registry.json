@@ -1,0 +1,48 @@
+{
+    "id": "T1518.001-Security-Software-Discovery-via-Registry",
+    "name": "Security Software Discovery via Registry Query",
+    "description": "Detects queries to registry keys associated with common security products (Antivirus, EDR). This is an indicator of reconnaissance by an adversary attempting to identify defenses before deploying exploits or malware.",
+    "severity": "low",
+    "mitre_attack": [
+        {
+            "tactic": "TA0007",
+            "technique_id": "T1518",
+            "subtechnique_id": "T1518.001",
+            "data_sources": [
+                "Windows Registry:Windows Registry Key Access"
+            ]
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "security_product_recon",
+                "selections": {
+                    "selection_query_av_key": {
+                        "event_type": "registry",
+                        "condition_method": "and",
+                        "conditions": [
+                            {
+                                "field": "body.registry.keyclass", 
+                                "operator": "equals", 
+                                "value": "RegNtPreQueryKey"
+                            },
+                            {
+                                "field": "body.registry.name", 
+                                "operator": "regex", 
+                                "value": "(AntiVirus|Firewall).*\\Products"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "A process queried the WSC (Windows Security Center) registry keys, likely to enumerate installed Antivirus or Firewall products."
+                }
+            }
+        ]
+    },
+    "operational_usage": "This is a low-severity alert but provides valuable context. The querying process should be examined. While not malicious in itself, it can be a precursor to defense evasion techniques. Correlate with other suspicious activities from the same process.",
+    "false_positive": "Legitimate system inventory tools, asset management software, or even Windows Security Center itself may query these keys. It's important to baseline normal activity and focus on unusual processes performing these queries."
+}

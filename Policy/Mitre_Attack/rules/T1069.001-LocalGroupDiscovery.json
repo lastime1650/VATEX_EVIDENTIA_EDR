@@ -1,0 +1,122 @@
+{
+    "id": "T1069.001-LocalGroupDiscovery",
+    "name": "Local Group Discovery",
+    "description": "Detects attempts by adversaries to enumerate local system groups and their members to identify users with elevated permissions. This includes execution of commands like 'net localgroup', 'wmic group', PowerShell cmdlets like 'Get-LocalGroup', or direct API calls such as 'NetLocalGroupEnum' and 'NetGroupEnum'.",
+    "severity": "medium",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1069",
+        "subtechnique_id": "T1069.001",
+        "data_sources": [
+            "Enterprise:Discovery:Permission Groups Discovery:Local Groups",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell",
+            "Enterprise:Execution:Native API"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s_proc_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s_cmdline_net": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "net"
+                    }
+                ]
+            },
+            "s_cmdline_localgroup": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "localgroup"
+                    }
+                ]
+            },
+            "s_cmdline_wmic": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wmic"
+                    }
+                ]
+            },
+            "s_cmdline_group_wmic": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "group"
+                    }
+                ]
+            },
+            "s_exe_path_powershell": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s_cmdline_get_localgroup_cmdlet": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-LocalGroup"
+                    }
+                ]
+            },
+            "s_apicall_netlocalgroupenum": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "NetLocalGroupEnum"
+                    }
+                ]
+            },
+            "s_apicall_netgroupenum": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "NetGroupEnum"
+                    }
+                ]
+            }
+        },
+        "condition": "s_proc_create_action and ((s_cmdline_net and s_cmdline_localgroup) or (s_cmdline_wmic and s_cmdline_group_wmic) or (s_exe_path_powershell and s_cmdline_get_localgroup_cmdlet)) or s_apicall_netlocalgroupenum or s_apicall_netgroupenum"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템의 로컬 그룹 및 사용자 권한 정보 수집 시도를 탐지할 수 있습니다. 'net localgroup', 'wmic group'과 같은 명령 실행, PowerShell을 통한 로컬 그룹 열거 시도, 또는 'NetLocalGroupEnum', 'NetGroupEnum'과 같은 API 호출 등을 모니터링합니다. 탐지된 이벤트는 중간 심각도로 분류되어 알람을 트리거하고, 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 특히, 다른 Discovery 또는 Privilege Escalation 활동과 결합될 때 중요도가 높아집니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 감사 스크립트, 또는 합법적인 애플리케이션이 로컬 그룹 정보를 조회하는 과정에서 오탐이 발생할 수 있습니다. 예를 들어, IT 관리 스크립트나 보안 솔루션이 시스템 그룹 정보를 수집할 수 있습니다. 알려진 정상 프로세스나 특정 명령줄 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

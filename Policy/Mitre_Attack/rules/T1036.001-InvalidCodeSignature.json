@@ -1,0 +1,100 @@
+{
+    "id": "T1036.001-InvalidCodeSignature",
+    "name": "Invalid Code Signature",
+    "description": "Detects modification or creation of executable files (.exe, .dll, .sys, .cpl) in critical system directories (e.g., C:\\Windows\\System32, C:\\Program Files). Such actions can indicate an adversary's attempt to use a mimicked or invalidated code signature for defense evasion, as modifying a signed binary invalidates its signature.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1036",
+        "subtechnique_id": "T1036.001",
+        "data_sources": [
+            "File:FileModification",
+            "File:FileCreation"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s_filesystem_action_relevant": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "overwritten"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s_target_critical_system_path": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "C:\\Windows\\System32\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "C:\\Windows\\SysWOW64\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "C:\\Windows\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "C:\\Program Files\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "startswith",
+                        "value": "C:\\Program Files (x86)\\"
+                    }
+                ]
+            },
+            "s_target_executable_type": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".exe"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".dll"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".sys"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".cpl"
+                    }
+                ]
+            }
+        },
+        "condition": "s_filesystem_action_relevant and s_target_critical_system_path and s_target_executable_type"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 중요한 시스템 파일의 무단 수정 또는 생성을 탐지할 수 있습니다. 이는 공격자가 합법적인 코드 서명을 모방하거나 기존 서명을 무효화하여 방어 시스템을 우회하려는 시도를 나타낼 수 있습니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련된 파일의 무결성 검증 및 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 업데이트, 소프트웨어 설치 또는 패치 작업, 그리고 특정 관리 도구가 시스템 파일을 수정하거나 생성하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 파일 경로에 대한 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

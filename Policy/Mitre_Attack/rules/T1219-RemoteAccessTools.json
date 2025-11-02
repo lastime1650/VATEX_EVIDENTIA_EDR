@@ -1,0 +1,287 @@
+{
+    "id": "T1219-RemoteAccessTools",
+    "name": "Remote Access Tools",
+    "description": "Detects the use of legitimate remote access tools (e.g., TeamViewer, AnyDesk, RDP, SSH, VNC, PsExec, Netcat, PowerShell Remoting, WinRM) by monitoring process creation and network connections. Adversaries abuse these tools to establish interactive command and control channels, maintain persistence, or facilitate lateral movement within a compromised network, often to evade security tools by leveraging legitimate software.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0011",
+        "technique_id": "T1219",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "NetworkTraffic:NetworkTrafficFlow",
+            "NetworkTraffic:NetworkTrafficContent",
+            "NetworkTraffic:NetworkConnectionCreation"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_exe_teamviewer": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "TeamViewer"
+                    }
+                ]
+            },
+            "s3_exe_anydesk": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "AnyDesk"
+                    }
+                ]
+            },
+            "s4_exe_chromeremotedesktop": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "remoting_host.exe"
+                    }
+                ]
+            },
+            "s5_exe_mstsc": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "mstsc.exe"
+                    }
+                ]
+            },
+            "s6_exe_vnc": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "vnc"
+                    }
+                ]
+            },
+            "s7_exe_psexec": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "psexec.exe"
+                    }
+                ]
+            },
+            "s8_exe_netcat": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "nc.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "netcat.exe"
+                    }
+                ]
+            },
+            "s9_exe_ssh": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "ssh.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "sshd.exe"
+                    }
+                ]
+            },
+            "s10_exe_dameware": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "dwrcs.exe"
+                    }
+                ]
+            },
+            "s11_exe_ammyy": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "ammyy.exe"
+                    }
+                ]
+            },
+            "s12_exe_aeroadmin": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "aeroadmin.exe"
+                    }
+                ]
+            },
+            "s13_cmdline_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s14_cmdline_ps_remoting_keywords": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Enter-PSSession"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-Command"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-PSSession"
+                    }
+                ]
+            },
+            "s15_cmdline_winrm": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "winrm"
+                    }
+                ]
+            },
+            "s16_network_event_base": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "gt",
+                        "value": 0
+                    }
+                ]
+            },
+            "s17_network_port_rdp": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 3389
+                    }
+                ]
+            },
+            "s18_network_port_ssh": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 22
+                    }
+                ]
+            },
+            "s19_network_port_vnc": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 5900
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 5901
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 5800
+                    }
+                ]
+            },
+            "s20_network_port_teamviewer": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 5938
+                    }
+                ]
+            },
+            "s21_network_port_anydesk": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 6568
+                    }
+                ]
+            },
+            "s22_network_port_winrm_http": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 5985
+                    }
+                ]
+            },
+            "s23_network_port_winrm_https": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 5986
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and (s2_exe_teamviewer or s3_exe_anydesk or s4_exe_chromeremotedesktop or s5_exe_mstsc or s6_exe_vnc or s7_exe_psexec or s8_exe_netcat or s9_exe_ssh or s10_exe_dameware or s11_exe_ammyy or s12_exe_aeroadmin or (s13_cmdline_powershell_exe and s14_cmdline_ps_remoting_keywords) or s15_cmdline_winrm) or (s16_network_event_base and (s17_network_port_rdp or s18_network_port_ssh or s19_network_port_vnc or s20_network_port_teamviewer or s21_network_port_anydesk or s22_network_port_winrm_http or s23_network_port_winrm_https))"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 원격 접근 도구의 사용을 탐지할 수 있습니다. TeamViewer, AnyDesk, RDP 클라이언트, VNC, PsExec, Netcat, SSH 클라이언트와 같은 알려진 원격 접근 도구의 프로세스 생성 이벤트를 모니터링합니다. 또한, PowerShell을 이용한 원격 세션 생성 시도나 WinRM 명령 실행을 탐지합니다. 네트워크 이벤트에서는 RDP(3389), SSH(22), VNC(5900-5901, 5800), TeamViewer(5938), AnyDesk(6568), WinRM(5985, 5986) 등 원격 접근에 사용되는 일반적인 포트의 네트워크 연결을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스 및 네트워크 활동에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 다른 명령 및 제어 또는 방어 회피 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 관리자, IT 지원팀, 또는 합법적인 소프트웨어(예: 백신, 시스템 관리 도구)가 원격 접근 기능을 사용하는 경우 오탐이 발생할 수 있습니다. 개발 환경에서 SSH나 원격 PowerShell을 사용하는 경우, 또는 기업 정책에 따라 원격 데스크톱이 허용되는 경우에도 발생할 수 있습니다. 알려진 정상 프로세스나 특정 IP 주소/네트워크 세그먼트에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

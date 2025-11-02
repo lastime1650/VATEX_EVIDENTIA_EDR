@@ -1,0 +1,117 @@
+{
+    "id": "T1489-ServiceStop",
+    "name": "Service Stop",
+    "description": "Adversaries may stop or disable services on a system to render those services unavailable to legitimate users. Stopping critical services or processes can inhibit or stop response to an incident or aid in the adversary's overall objectives to cause damage to the environment. This can be achieved through command-line utilities like 'sc.exe' or 'net.exe', direct registry modifications to service configurations, or API calls such as 'ChangeServiceConfigW' or 'ControlService'.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1489",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Impact:Service Stop",
+            "Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Persistence:Create or Modify System Process:Windows Service",
+            "Execution:Native API"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_sc_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "sc.exe"
+                    }
+                ]
+            },
+            "s3_net_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "net.exe"
+                    }
+                ]
+            },
+            "s4_cmdline_stop_keyword": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": " stop "
+                    }
+                ]
+            },
+            "s5_registry_set_value_key_action": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreSetValueKey"
+                    }
+                ]
+            },
+            "s6_registry_service_start_path": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "endswith",
+                        "value": "\\Start"
+                    }
+                ]
+            },
+            "s7_apicall_changeserviceconfigw": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "ChangeServiceConfigW"
+                    }
+                ]
+            },
+            "s8_apicall_controlservice": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "ControlService"
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s2_sc_exe_path and s4_cmdline_stop_keyword) or (s1_process_create_action and s3_net_exe_path and s4_cmdline_stop_keyword) or (s5_registry_set_value_key_action and s6_registry_service_start_path) or s7_apicall_changeserviceconfigw or s8_apicall_controlservice"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템 서비스 중지 또는 비활성화 시도를 탐지할 수 있습니다. 'sc.exe stop' 또는 'net.exe stop'과 같은 명령줄 유틸리티를 통한 서비스 제어 시도, 서비스 시작 유형을 비활성화하는 레지스트리 키('HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\<Service>\\Start') 변경, 또는 'ChangeServiceConfigW', 'ControlService'와 같은 Windows API 호출을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스 및 관련 시스템 변경 사항에 대한 추가적인 포렌식 조사를 시작하여 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 작업, 소프트웨어 설치/제거 프로그램, 시스템 업데이트, 또는 합법적인 진단 도구가 서비스를 중지하거나 비활성화하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스, 특정 서비스 이름, 또는 관리 스크립트에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

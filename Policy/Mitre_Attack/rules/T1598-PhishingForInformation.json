@@ -1,0 +1,146 @@
+{
+    "id": "T1598-PhishingForInformation",
+    "name": "Phishing for Information",
+    "description": "Adversaries may send phishing messages to elicit sensitive information that can be used during targeting. Phishing for information is an attempt to trick targets into divulging information, frequently credentials or other actionable information. Phishing for information is different from [Phishing](https://attack.mitre.org/techniques/T1566) in that the objective is gathering data from the victim rather than executing malicious code.\n\nAll forms of phishing are electronically delivered social engineering. Phishing can be targeted, known as spearphishing. In spearphishing, a specific individual, company, or industry will be targeted by the adversary. More generally, adversaries can conduct non-targeted phishing, such as in mass credential harvesting campaigns.\n\nAdversaries may also try to obtain information directly through the exchange of emails, instant messages, or other electronic conversation means.(Citation: ThreatPost Social Media Phishing)(Citation: TrendMictro Phishing)(Citation: PCMag FakeLogin)(Citation: Sophos Attachment)(Citation: GitHub Phishery) Victims may also receive phishing messages that direct them to call a phone number where the adversary attempts to collect confidential information.(Citation: Avertium callback phishing)\n\nPhishing for information frequently involves social engineering techniques, such as posing as a source with a reason to collect information (ex: [Establish Accounts](https://attack.mitre.org/techniques/T1585) or [Compromise Accounts](https://attack.mitre.org/techniques/T1586)) and/or sending multiple, seemingly urgent messages. Another way to accomplish this is by [Email Spoofing](https://attack.mitre.org/techniques/T1672)(Citation: Proofpoint-spoof) the identity of the sender, which can be used to fool both the human recipient as well as automated security tools.(Citation: cyberproof-double-bounce) \n\nPhishing for information may also involve evasive techniques, such as removing or manipulating emails or metadata/headers from compromised accounts being abused to send messages (e.g., [Email Hiding Rules](https://attack.mitre.org/techniques/T1564/008)).(Citation: Microsoft OAuth Spam 2022)(Citation: Palo Alto Unit 42 VBA Infostealer 2014)",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0007",
+        "technique_id": "T1598",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Network Traffic:Network Traffic Content",
+            "Application Log:Application Log Content",
+            "Network Traffic:Network Traffic Flow"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_network_outbound_connection": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    }
+                ]
+            },
+            "s3_cmdline_web_request_tool": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "curl.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wget.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-WebRequest"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "iwr"
+                    }
+                ]
+            },
+            "s4_cmdline_suspicious_url_pattern": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "login"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "auth"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "credential"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "verify"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "account"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".xyz"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".top"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".loan"
+                    }
+                ]
+            },
+            "s5_network_suspicious_destination": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationip",
+                        "operator": "equals",
+                        "value": "192.0.2.1"
+                    },
+                    {
+                        "field": "body.network.destinationip",
+                        "operator": "equals",
+                        "value": "203.0.113.1"
+                    },
+                    {
+                        "field": "body.network.destinationip",
+                        "operator": "equals",
+                        "value": "198.51.100.1"
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 8080
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 8443
+                    }
+                ]
+            }
+        },
+        "condition": "(s1_process_create_action and s3_cmdline_web_request_tool and s4_cmdline_suspicious_url_pattern) or (s2_network_outbound_connection and s5_network_suspicious_destination)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 사용자 또는 시스템이 피싱 공격에 노출되어 정보를 유출하려는 시도를 탐지할 수 있습니다. 특히, `curl`, `wget`, PowerShell의 `Invoke-WebRequest`와 같은 웹 요청 도구가 'login', 'auth', 'credential' 등과 같은 민감한 키워드를 포함하는 URL에 접근하거나, 알려진 피싱 IP 주소 또는 비표준 포트(8080, 8443 등)로 네트워크 연결을 시도하는 경우를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스 및 네트워크 활동에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 이는 초기 접근 단계에서 정보 유출을 방지하는 데 중요합니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 개발 스크립트, 또는 합법적인 애플리케이션이 웹 요청을 수행하거나 비표준 포트를 사용하는 경우 오탐이 발생할 수 있습니다. 특히, 내부 개발 환경이나 특정 웹 서비스 테스트 과정에서 `curl`이나 `Invoke-WebRequest`가 사용될 수 있습니다. 알려진 정상 프로세스, IP 주소, 또는 URL 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

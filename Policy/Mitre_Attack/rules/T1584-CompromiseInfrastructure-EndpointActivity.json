@@ -1,0 +1,142 @@
+{
+    "id": "T1584-CompromiseInfrastructure-EndpointActivity",
+    "name": "Compromise Infrastructure (via Endpoint Activity)",
+    "description": "Detects local endpoint activities indicative of an adversary attempting to compromise infrastructure (e.g., setting up malicious network services, proxy tools, or modifying network configurations) to use the host as part of their attack infrastructure or to facilitate further compromise. This includes the execution of scripting interpreters to host web servers, network utility commands for port forwarding, or known tunneling/proxy tools.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1584",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Resource Development:Compromise Infrastructure:Server",
+            "Enterprise:Resource Development:Compromise Infrastructure:Web Services",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Command and Scripting Interpreter:PowerShell"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_python_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "python.exe"
+                    }
+                ]
+            },
+            "s3_python_web_server_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-m http.server"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-m SimpleHTTPServer"
+                    }
+                ]
+            },
+            "s4_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s5_powershell_listener_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-WebService"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "System.Net.HttpListener"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Start-Webserver"
+                    }
+                ]
+            },
+            "s6_netsh_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "netsh.exe"
+                    }
+                ]
+            },
+            "s7_netsh_portproxy_cmd": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "interface portproxy"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "advfirewall firewall add rule"
+                    }
+                ]
+            },
+            "s8_tunneling_tool_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "chisel.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "frp.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "socat.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "ngrok.exe"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create and ((s2_python_exe and s3_python_web_server_cmd) or (s4_powershell_exe and s5_powershell_listener_cmd) or (s6_netsh_exe and s7_netsh_portproxy_cmd) or s8_tunneling_tool_exe)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 엔드포인트가 악의적인 인프라의 일부로 사용되거나 다른 인프라를 손상시키는 데 활용될 수 있는 활동을 탐지할 수 있습니다. Python 또는 PowerShell을 이용한 웹 서버 실행, netsh를 통한 포트 프록시 또는 방화벽 규칙 변경, 알려진 터널링/프록시 도구의 실행 등을 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스, 사용자 및 네트워크 활동에 대한 심층적인 조사를 시작하여 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 개발 활동(예: Python을 이용한 로컬 웹 서버 테스트), 시스템 관리 스크립트(예: PowerShell을 이용한 네트워크 구성 변경), 또는 합법적인 터널링/프록시 소프트웨어의 사용으로 인해 오탐이 발생할 수 있습니다. 알려진 정상 프로세스, 특정 명령줄 패턴, 또는 특정 사용자 계정에 대한 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

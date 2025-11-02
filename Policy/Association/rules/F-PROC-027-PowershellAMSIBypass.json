@@ -1,0 +1,39 @@
+{
+    "id": "F-PROC-027-PowershellAMSIBypass",
+    "name": "Feature: PowerShell AMSI Bypass Attempt",
+    "description": "Identifies PowerShell command lines containing strings commonly used to bypass the Antimalware Scan Interface (AMSI). This is a clear indicator of malicious script execution.",
+    "severity": "high",
+    "mitre_attack": [
+        {
+            "tactic": "TA0005",
+            "technique_id": "T1562",
+            "subtechnique_id": "T1562.001"
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "powershell_amsi_bypass_pattern",
+                "selections": {
+                    "selection_ps_amsi": {
+                        "event_type": "process",
+                        "condition_method": "and",
+                        "conditions": [
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "powershell.exe"},
+                            {
+                                "field": "body.process.commandline",
+                                "operator": "regex",
+                                "value": "(System\\.Management\\.Automation\\.AmsiUtils|amsiInitFailed|Bypass|amsi\\.dll)"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "Feature Captured: PowerShell execution with potential AMSI bypass."
+                }
+            }
+        ]
+    }
+}

@@ -1,0 +1,92 @@
+{
+    "id": "T1556.007-HybridIdentityProcessAccess",
+    "name": "Hybrid Identity Process Access for Injection",
+    "description": "Detects attempts to gain privileged access to critical hybrid identity synchronization processes (e.g., Azure AD Connect, AD FS service) by opening or duplicating handles with intentions to inject malicious code or manipulate process memory. This often precedes DLL injection or other forms of process tampering to bypass authentication or harvest credentials.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0006",
+        "technique_id": "T1556",
+        "subtechnique_id": "T1556.007",
+        "data_sources": [
+            "Enterprise:Execution:Native API",
+            "Enterprise:Defense Evasion:Process Injection:Dynamic-link Library Injection",
+            "Enterprise:Privilege Escalation:Process Injection:Dynamic-link Library Injection",
+            "Enterprise:Credential Access:OS Credential Dumping:LSASS Memory"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_processaccess_event_type": {
+                "event_type": "processaccess",
+                "conditions": [
+                    {
+                        "field": "body.processaccess.handletype",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.processaccess.handletype",
+                        "operator": "equals",
+                        "value": "duplicate"
+                    }
+                ]
+            },
+            "s2_target_aadconnect_or_adfs_process": {
+                "event_type": "processaccess",
+                "conditions": [
+                    {
+                        "field": "body.processaccess.filepath",
+                        "operator": "contains",
+                        "value": "AzureADConnect.exe"
+                    },
+                    {
+                        "field": "body.processaccess.filepath",
+                        "operator": "contains",
+                        "value": "Microsoft.IdentityServer.Servicehost.exe"
+                    },
+                    {
+                        "field": "body.processaccess.filepath",
+                        "operator": "contains",
+                        "value": "AzureADConnectAuthenticationAgentService.exe"
+                    }
+                ]
+            },
+            "s3_desired_access_for_injection": {
+                "event_type": "processaccess",
+                "conditions": [
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_ALL_ACCESS"
+                    },
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_VM_OPERATION"
+                    },
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_VM_READ"
+                    },
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_VM_WRITE"
+                    },
+                    {
+                        "field": "body.processaccess.desiredaccesses",
+                        "operator": "contains",
+                        "value": "PROCESS_CREATE_THREAD"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_processaccess_event_type and s2_target_aadconnect_or_adfs_process and s3_desired_access_for_injection"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 하이브리드 ID 동기화 및 페더레이션 서비스 프로세스(예: Azure AD Connect, AD FS 서비스)에 대한 악의적인 접근 시도를 탐지할 수 있습니다. 이 규칙은 해당 프로세스에 대해 DLL 주입이나 메모리 조작을 목적으로 하는 핸들 생성 또는 복제 시도를 모니터링합니다. 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 해당 프로세스에 접근하려는 주체에 대한 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 이는 자격 증명 접근 및 방어 회피 전술의 초기 단계로 간주될 수 있습니다.",
+    "false_positive": "정상적인 시스템 관리 도구, 진단 유틸리티, 또는 보안 소프트웨어가 합법적인 목적으로 Azure AD Connect 또는 AD FS 서비스 프로세스에 접근하는 경우 오탐이 발생할 수 있습니다. 이러한 경우, 해당 프로세스 또는 특정 접근 패턴을 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

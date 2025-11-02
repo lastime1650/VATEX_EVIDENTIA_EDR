@@ -1,0 +1,187 @@
+{
+    "id": "T1047-WindowsManagementInstrumentation",
+    "name": "Windows Management Instrumentation Abuse",
+    "description": "Detects attempts by adversaries to abuse Windows Management Instrumentation (WMI) for execution of commands, payloads, or remote interaction. This includes detecting 'wmic.exe' execution with suspicious arguments, PowerShell WMI cmdlet usage, and network connections to WMI ports.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0002",
+        "technique_id": "T1047",
+        "subtechnique_id": "",
+        "data_sources": [
+            "NetworkTraffic:NetworkConnectionCreation",
+            "Process:ProcessCreation",
+            "WMI:WMICreation",
+            "Command:CommandExecution"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "wmic_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "wmic.exe"
+                    }
+                ]
+            },
+            "wmic_suspicious_args": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/node:"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/user:"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "/password:"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "delete"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "call"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "exec"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "process"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "service"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-EncodedCommand"
+                    }
+                ]
+            },
+            "powershell_process_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "powershell_wmi_cmdlets": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-WmiObject"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Invoke-WmiMethod"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Set-WmiInstance"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Remove-WmiObject"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Register-WmiEvent"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-EncodedCommand"
+                    }
+                ]
+            },
+            "wmi_network_activity": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 135
+                    },
+                    {
+                        "field": "body.network.sourceport",
+                        "operator": "equals",
+                        "value": 135
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 5985
+                    },
+                    {
+                        "field": "body.network.sourceport",
+                        "operator": "equals",
+                        "value": 5985
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 5986
+                    },
+                    {
+                        "field": "body.network.sourceport",
+                        "operator": "equals",
+                        "value": 5986
+                    }
+                ]
+            }
+        },
+        "condition": "(wmic_process_create and wmic_suspicious_args) or (powershell_process_create and powershell_wmi_cmdlets) or wmi_network_activity"
+    },
+    "operational_usage": "SOC에서는 이 룰을 사용하여 WMI를 통한 악성 명령 실행, 페이로드 배포, 또는 원격 시스템과의 상호작용 시도를 탐지할 수 있습니다. 탐지된 이벤트는 실시간 알람을 생성하고, 관련 프로세스 및 네트워크 연결 로그를 분석하여 침해사고의 초기 단계 또는 Lateral Movement 단계를 식별하는 데 활용됩니다.",
+    "false_positive": "합법적인 시스템 관리 도구, 스크립트, 또는 소프트웨어 업데이트 프로세스에서 WMI를 사용할 수 있습니다. 특히 네트워크 포트 135는 DCOM 외 다른 서비스에서도 사용될 수 있어, 오탐을 줄이기 위해 추가적인 컨텍스트 분석이 필요할 수 있습니다. 정상적인 PowerShell 스크립트도 WMI cmdlet을 사용할 수 있습니다."
+}

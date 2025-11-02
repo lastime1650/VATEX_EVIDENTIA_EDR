@@ -1,0 +1,140 @@
+{
+    "id": "T1653-PowerSettingsModification",
+    "name": "Power Settings Modification",
+    "description": "Adversaries may impair a system's ability to hibernate, reboot, or shut down in order to extend access to infected machines. When a computer enters a dormant state, some or all software and hardware may cease to operate which can disrupt malicious activity. Adversaries may abuse system utilities and configuration settings to maintain access by preventing machines from entering a state, such as standby, that can terminate malicious activity. For example, 'powercfg' controls all configurable power system settings on a Windows system and can be abused to prevent an infected host from locking or shutting down. Adversaries may also extend system lock screen timeout settings. Other relevant settings, such as disk and hibernate timeout, can be similarly abused to keep the infected machine running even if no user is active. Aware that some malware cannot survive system reboots, adversaries may entirely delete files used to invoke system shut down or reboot.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0003",
+        "technique_id": "T1653",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Command:CommandExecution",
+            "WindowsRegistry:WindowsRegistryKeyModification"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_powercfg_exe_path": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powercfg.exe"
+                    }
+                ]
+            },
+            "s3_powercfg_cmd_disable_hibernate": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "hibernate off"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "h off"
+                    }
+                ]
+            },
+            "s4_powercfg_cmd_modify_timeout": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "monitor-timeout"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "disk-timeout"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "standby-timeout"
+                    }
+                ]
+            },
+            "s5_powercfg_cmd_setactive": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "setactive"
+                    }
+                ]
+            },
+            "s6_registry_modify_keyclass": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreSetValueKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtSetInformationKey"
+                    },
+                    {
+                        "field": "body.registry.keyclass",
+                        "operator": "equals",
+                        "value": "RegNtPreSetInformationKey"
+                    }
+                ]
+            },
+            "s7_registry_power_paths": {
+                "event_type": "registry",
+                "conditions": [
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Power"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_CURRENT_USER\\Control Panel\\Desktop"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Power"
+                    },
+                    {
+                        "field": "body.registry.name",
+                        "operator": "startswith",
+                        "value": "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Power"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and s2_powercfg_exe_path and (s3_powercfg_cmd_disable_hibernate or s4_powercfg_cmd_modify_timeout or s5_powercfg_cmd_setactive) or (s6_registry_modify_keyclass and s7_registry_power_paths)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템 전원 설정 변경 시도를 탐지할 수 있습니다. 'powercfg.exe' 명령줄 도구를 사용하여 최대 절전 모드를 비활성화하거나, 화면/디스크/대기 모드 시간 초과 설정을 변경하거나, 전원 계획을 활성화하는 시도를 모니터링합니다. 또한, 전원 관리와 관련된 주요 레지스트리 키에 대한 쓰기 또는 설정 변경 시도를 탐지합니다. 탐지된 이벤트는 시스템의 지속적인 접근을 유지하려는 공격 시도로 간주되어 높은 심각도로 분류되며, 즉각적인 알람을 트리거하고 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다. 특히, 다른 지속성 또는 방어 회피 전술과 결합될 때 중요도가 더욱 높아집니다.",
+    "false_positive": "정상적인 시스템 관리자나 합법적인 소프트웨어(예: 전원 관리 유틸리티, 게임 최적화 도구)가 시스템 전원 설정을 변경하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 powercfg.exe 호출 패턴이나 특정 프로세스에 대해 화이트리스트를 추가하여 오탐을 줄일 수 있습니다."
+}

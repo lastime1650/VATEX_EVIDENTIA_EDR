@@ -1,0 +1,82 @@
+{
+    "id": "T1001.001-JunkDataCommandAndControl",
+    "name": "Junk Data in Command and Control Traffic",
+    "description": "Detects attempts by adversaries to add random or meaningless data (junk data) to network protocols used for command and control. This technique aims to obfuscate malicious traffic and make detection more difficult, often resulting in unusually large packet sizes for specific protocols or communication patterns.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0011",
+        "technique_id": "T1001",
+        "subtechnique_id": "T1001.001",
+        "data_sources": [
+            "NetworkTraffic:NetworkTrafficContent"
+        ]
+    },
+    "platform": [
+        "linux",
+        "macos",
+        "windows",
+        "esxi"
+    ],
+    "detection": {
+        "selections": {
+            "s1_outbound_network_traffic": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.direction",
+                        "operator": "equals",
+                        "value": "out"
+                    }
+                ]
+            },
+            "s2_unusually_large_packet": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.packetsize",
+                        "operator": "gt",
+                        "value": 65535
+                    }
+                ]
+            },
+            "s3_large_dns_udp_packet": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "UDP"
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 53
+                    },
+                    {
+                        "field": "body.network.packetsize",
+                        "operator": "gt",
+                        "value": 512
+                    }
+                ]
+            },
+            "s4_large_icmp_packet": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.protocol",
+                        "operator": "equals",
+                        "value": "ICMP"
+                    },
+                    {
+                        "field": "body.network.packetsize",
+                        "operator": "gt",
+                        "value": 1024
+                    }
+                ]
+            }
+        },
+        "condition": "s1_outbound_network_traffic and (s2_unusually_large_packet or s3_large_dns_udp_packet or s4_large_icmp_packet)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 C2 통신에서 정크 데이터 삽입을 통한 방어 회피 시도를 탐지할 수 있습니다. 특히, 비정상적으로 큰 아웃바운드 네트워크 패킷, 또는 DNS(UDP 53) 및 ICMP와 같이 일반적으로 작은 패킷을 사용하는 프로토콜에서 예상치 못한 대용량 패킷이 탐지될 때 즉각적인 알람을 트리거합니다. 탐지된 이벤트는 C2 채널의 난독화 가능성을 시사하므로, 해당 프로세스 및 네트워크 흐름에 대한 심층 분석을 통해 악성 활동을 식별하고 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 네트워크 활동 중에도 대용량 파일 전송, VPN 터널링, 특정 애플리케이션의 비표준 통신, DNSSEC를 사용하는 DNS 응답, 또는 네트워크 진단 도구 사용 등으로 인해 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 IP 주소/포트를 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}

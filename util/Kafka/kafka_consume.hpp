@@ -99,8 +99,9 @@ namespace EDR
                                     }
                                     catch (json::parse_error &e)
                                     {
-                                        std::cout << message << std::endl;
-                                        std::cout << "[Kafka] Json parse failed: " << e.what() << std::endl;
+                                        //std::cout << message << std::endl;
+                                        //std::cout << "[Offset]: " << offset << std::endl;
+                                        //std::cout << "[Kafka] Json parse failed: " << e.what() << std::endl;
                                         continue;
                                     }
 

@@ -1,0 +1,107 @@
+{
+    "id": "T1027.004-CompileAfterDelivery",
+    "name": "Compile After Delivery",
+    "description": "Adversaries may attempt to make payloads difficult to discover and analyze by delivering files to victims as uncompiled code. Text-based source code files may subvert analysis and scrutiny from protections targeting executables/binaries. These payloads will need to be compiled before execution; typically via native utilities such as ilasm.exe, csc.exe, or GCC/MinGW. Source code payloads may also be encrypted, encoded, and/or embedded within other files, such as those delivered as a Phishing. Payloads may also be delivered in formats unrecognizable and inherently benign to the native OS (ex: EXEs on macOS/Linux) before later being (re)compiled into a proper executable binary with a bundled compiler and execution framework.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1027",
+        "subtechnique_id": "T1027.004",
+        "data_sources": [
+            "Command:CommandExecution",
+            "File:FileCreation",
+            "Process:ProcessCreation",
+            "File:FileMetadata"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s1_process_create_action": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s2_compiler_csc": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "csc.exe"
+                    }
+                ]
+            },
+            "s3_compiler_ilasm": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "ilasm.exe"
+                    }
+                ]
+            },
+            "s4_compiler_cl": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "cl.exe"
+                    }
+                ]
+            },
+            "s5_compiler_mono": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "mono.exe"
+                    }
+                ]
+            },
+            "s6_compiler_gcc_family_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "gcc.exe"
+                    }
+                ]
+            },
+            "s7_compiler_gpp_family_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "g++.exe"
+                    }
+                ]
+            },
+            "s8_compiler_mingw_family_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "contains",
+                        "value": "mingw32"
+                    }
+                ]
+            }
+        },
+        "condition": "s1_process_create_action and (s2_compiler_csc or s3_compiler_ilasm or s4_compiler_cl or s5_compiler_mono or s6_compiler_gcc_family_exe or s7_compiler_gpp_family_exe or s8_compiler_mingw_family_exe)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 컴파일러가 실행되는 행위를 탐지할 수 있습니다. 특히 ilasm.exe, csc.exe, cl.exe, mono.exe, GCC/MinGW와 같은 컴파일러 실행은 공격자가 전달된 컴파일되지 않은 코드를 실행 가능한 페이로드로 변환하려는 시도를 나타낼 수 있습니다. 이 탐지는 방어 회피 전술의 일환으로 사용될 수 있으며, 탐지된 이벤트는 높은 심각도로 분류되어 즉각적인 알람을 트리거하고, 관련 프로세스 및 생성된 파일에 대한 추가적인 포렌식 조사를 시작하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 소프트웨어 개발 환경, 빌드 시스템, 또는 개발 도구가 시스템에서 컴파일러를 실행하는 경우 오탐이 발생할 수 있습니다. 특히 개발 서버나 개발자 워크스테이션에서는 이러한 활동이 흔하므로, 알려진 정상적인 컴파일러 사용 패턴, 특정 사용자 또는 프로세스에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

@@ -1,0 +1,82 @@
+{
+    "id": "T1564.011-IgnoreProcessInterrupts",
+    "name": "Ignore Process Interrupts",
+    "description": "Adversaries may evade defensive mechanisms by executing commands that hide from process interrupt signals. Many operating systems use signals to deliver messages to control process behavior. Command interpreters often include specific commands/flags that ignore errors and other hangups, such as when the user of the active session logs off. These interrupt signals may also be used by defensive tools and/or analysts to pause or terminate specified running processes. Adversaries may invoke processes using 'nohup', PowerShell '-ErrorAction SilentlyContinue', or similar commands that may be immune to hangups. This may enable malicious commands and malware to continue execution through system events that would otherwise terminate its execution, such as users logging off or the termination of its C2 network connection. Hiding from process interrupt signals may allow malware to continue execution, but unlike Trap this does not establish Persistence since the process will not be re-invoked once actually terminated.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0005",
+        "technique_id": "T1564",
+        "subtechnique_id": "T1564.011",
+        "data_sources": [
+            "Process:ProcessCreation",
+            "Command:CommandExecution"
+        ]
+    },
+    "platform": [
+        "windows",
+        "linux",
+        "macos"
+    ],
+    "detection": {
+        "selections": {
+            "s_process_creation_event": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s_powershell_executable": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    },
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "pwsh.exe"
+                    }
+                ]
+            },
+            "s_silentlycontinue_argument": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "-ErrorAction SilentlyContinue"
+                    }
+                ]
+            },
+            "s_nohup_command_in_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "nohup"
+                    }
+                ]
+            },
+            "s_windows_start_b_in_cmdline": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "start /b"
+                    }
+                ]
+            }
+        },
+        "condition": "s_process_creation_event and ((s_powershell_executable and s_silentlycontinue_argument) or s_nohup_command_in_cmdline or s_windows_start_b_in_cmdline)"
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 프로세스 중단 신호를 무시하려는 악의적인 시도를 탐지할 수 있습니다. 특히 PowerShell에서 '-ErrorAction SilentlyContinue' 플래그를 사용하거나, 'nohup' 명령을 통해 백그라운드에서 프로세스를 실행하거나, Windows에서 'start /b'를 사용하여 터미널 세션 종료에 영향을 받지 않도록 하는 행위를 모니터링합니다. 탐지된 이벤트는 방어 회피 전술로 간주되어 높은 심각도로 분류되며, 즉각적인 알람을 트리거하고 추가적인 조사 및 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다. 이는 특히 C2 통신 단절이나 사용자 로그오프와 같은 시스템 이벤트 중에도 악성 코드가 계속 실행되도록 하는 데 활용될 수 있습니다.",
+    "false_positive": "합법적인 시스템 관리 스크립트, 개발 도구 또는 백그라운드 서비스가 오류 처리를 위해 '-ErrorAction SilentlyContinue'를 사용하거나, 'nohup', 'start /b'와 같은 명령을 사용하여 의도적으로 프로세스를 터미널에서 분리하여 실행하는 경우 오탐이 발생할 수 있습니다. 알려진 정상적인 프로세스나 명령줄 패턴에 대해 화이트리스트를 적용하여 오탐을 줄일 수 있습니다."
+}

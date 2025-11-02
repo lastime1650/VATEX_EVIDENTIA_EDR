@@ -1,0 +1,242 @@
+{
+    "id": "T1114-EmailCollection",
+    "name": "Email Collection",
+    "description": "Detects attempts by adversaries to collect sensitive information from user emails by accessing local email client files, executing command-line tools or PowerShell scripts to export mailbox data, or making unusual network connections to mail servers. This technique aims to acquire valuable data such as trade secrets, personal information, or incident response details.",
+    "severity": "high",
+    "mitre_attack": {
+        "tactic": "TA0009",
+        "technique_id": "T1114",
+        "subtechnique_id": "",
+        "data_sources": [
+            "Enterprise:Command and Control:Application Layer Protocol:Mail Protocols",
+            "Enterprise:Collection:Data from Local System",
+            "Enterprise:Execution:Command and Scripting Interpreter:Windows Command Shell",
+            "Enterprise:Execution:Native API"
+        ]
+    },
+    "platform": [
+        "windows"
+    ],
+    "detection": {
+        "selections": {
+            "s_proc_create": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.action",
+                        "operator": "equals",
+                        "value": "create"
+                    }
+                ]
+            },
+            "s_proc_powershell_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "powershell.exe"
+                    }
+                ]
+            },
+            "s_proc_powershell_email_cmds": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Get-Mailbox"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Export-Mailbox"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "New-MailboxExportRequest"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "Export-RecipientDataProperty"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "outlook.application"
+                    }
+                ]
+            },
+            "s_proc_cmd_exe": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.exe_path",
+                        "operator": "endswith",
+                        "value": "cmd.exe"
+                    }
+                ]
+            },
+            "s_proc_cmd_copy_cmds": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "copy"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": "xcopy"
+                    }
+                ]
+            },
+            "s_proc_cmd_email_exts": {
+                "event_type": "process",
+                "conditions": [
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".pst"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".ost"
+                    },
+                    {
+                        "field": "body.process.commandline",
+                        "operator": "contains",
+                        "value": ".mbox"
+                    }
+                ]
+            },
+            "s_fs_action_read_open_write": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "read"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "open"
+                    },
+                    {
+                        "field": "body.filesystem.action",
+                        "operator": "equals",
+                        "value": "write"
+                    }
+                ]
+            },
+            "s_fs_email_paths_exts": {
+                "event_type": "filesystem",
+                "conditions": [
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".pst"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".ost"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "endswith",
+                        "value": ".mbox"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\\\Outlook\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\\\Thunderbird\\\\"
+                    },
+                    {
+                        "field": "body.filesystem.filepath",
+                        "operator": "contains",
+                        "value": "\\\\Microsoft\\\\Exchange\\\\"
+                    }
+                ]
+            },
+            "s_net_mail_ports": {
+                "event_type": "network",
+                "conditions": [
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 25
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 110
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 143
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 465
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 587
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 993
+                    },
+                    {
+                        "field": "body.network.destinationport",
+                        "operator": "equals",
+                        "value": 995
+                    }
+                ]
+            },
+            "s_api_mapi_related": {
+                "event_type": "apicall",
+                "conditions": [
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "MAPIInitialize"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "MAPILogonEx"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "equals",
+                        "value": "HrQueryAllRows"
+                    },
+                    {
+                        "field": "body.apicall.function",
+                        "operator": "contains",
+                        "value": "MAPI"
+                    }
+                ]
+            }
+        },
+        "condition": " (s_proc_create and s_proc_powershell_exe and s_proc_powershell_email_cmds) or (s_proc_create and s_proc_cmd_exe and s_proc_cmd_copy_cmds and s_proc_cmd_email_exts) or (s_fs_action_read_open_write and s_fs_email_paths_exts) or s_net_mail_ports or s_api_mapi_related "
+    },
+    "operational_usage": "SOC 팀은 이 규칙을 활용하여 시스템에서 이메일 정보 수집 시도를 탐지할 수 있습니다. PowerShell 또는 명령 프롬프트에서 이메일 데이터 파일에 접근하거나 사서함을 내보내려는 시도, 이메일 클라이언트가 아닌 프로세스에서 메일 서버 포트(SMTP, POP3, IMAP)로의 비정상적인 네트워크 연결, 또는 MAPI 관련 API 호출 등을 모니터링합니다. 탐지된 이벤트는 자동 알람을 트리거하고, 관련 프로세스, 파일 접근 기록, 네트워크 흐름에 대한 추가 조사를 시작하여 침해사고 대응의 우선순위를 지정하는 데 사용될 수 있습니다.",
+    "false_positive": "정상적인 이메일 클라이언트(예: Outlook, Thunderbird)의 동작, 백업 소프트웨어, 아카이빙 도구, IT 관리 스크립트, 또는 합법적인 애플리케이션이 이메일 데이터에 접근하거나 메일 서버와 통신하는 과정에서 오탐이 발생할 수 있습니다. 알려진 정상 프로세스나 특정 파일 경로를 화이트리스트에 추가하여 오탐을 줄일 수 있습니다."
+}
