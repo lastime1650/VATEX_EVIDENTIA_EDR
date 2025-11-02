@@ -24,10 +24,6 @@ Single Windows kernel driver open source code
 
 ![initial](https://github.com/lastime1650/VATEX_EVIDENTIA_EDR/blob/Windows/WIN_PROCESSACCESS.png)
 
-### MiniFilter Event
-
-![initial](https://github.com/lastime1650/VATEX_EVIDENTIA_EDR/blob/Windows/WIN_FILESYSTEM.png)
-
 ### Registry Event
 
 ![initial](https://github.com/lastime1650/VATEX_EVIDENTIA_EDR/blob/Windows/WIN_REGISTRY.png)
