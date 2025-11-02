@@ -29,7 +29,7 @@ namespace EDR
 			typedef struct _HASH_WORK_ITEM_CONTEXT_DETAILS
 			{
 				PFLT_INSTANCE Instance;             // 파일 작업을 위한 인스턴스
-				PFILE_OBJECT FileObject;            // 해싱할 파일 객체
+				//PFILE_OBJECT FileObject;            // 이 객체를 사용하면 MUP FILE BSOD발생함.
 				HANDLE ProcessId;                    // 요청 프로세스 ID
 				ULONG64 timestamp;            // 이벤트 타임스탬프
 				EDR::EventLog::Enum::FileSystem::Filesystem_enum Action; // 작업 종류 (open/create)

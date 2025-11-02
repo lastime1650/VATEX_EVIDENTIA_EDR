@@ -108,37 +108,92 @@ namespace EDR
 
                     EDR::MiniFilter::resource::PHASH_WORK_ITEM_CONTEXT_DETAILS FltWorkItem_CTX = (EDR::MiniFilter::resource::PHASH_WORK_ITEM_CONTEXT_DETAILS)Context;
 
-                    CHAR SHA256[SHA256_String_Byte_Length] = { 0 };
-                    ULONG64 FileSize = 0;
-                    // [핵심] 오래 걸리는 해싱 작업을 여기서 안전하게 수행
-                    if (helper::Get_FileSHA256(
-                        FltWorkItem_CTX->Instance,
-                        FltWorkItem_CTX->FileObject,
-                        SHA256,
-                        &FileSize
-                    ))
+                    /*
+                        Network FIle System 도 읽기 위해선....(실제 LOCAL에 존재하지 않은 파일에 대한 해싱 지원)
+                    */
+
+                    HANDLE fileHandle = NULL;
+                    PFILE_OBJECT fileObject = NULL;
+                    NTSTATUS status;
+
+                    UNICODE_STRING filePathUnicode;
+                    RtlInitUnicodeString(&filePathUnicode, FltWorkItem_CTX->NormalizedFilePath);
+                    debug_log("filePathUnicode: %wZ\n", &filePathUnicode);
+                    OBJECT_ATTRIBUTES objAttr;
+                    InitializeObjectAttributes(&objAttr, &filePathUnicode, OBJ_KERNEL_HANDLE | OBJ_CASE_INSENSITIVE, NULL, NULL);
+
+                    IO_STATUS_BLOCK ioStatusBlock;
+
+                    // FltCreateFile을 사용하여 파일을 연다.
+                    /*
+                        <In MSDN> -> https://learn.microsoft.com/ko-kr/windows-hardware/drivers/ddi/fltkernel/nf-fltkernel-fltcreatefileex2
+                        FltCreateFileEx2 가져온 FileHandle 결국 FltClose호출하여 해제해야 합니다. 
+                        또한 ObDereferenceObject호출하여 더 이상 필요하지 않은 경우 반환된 FileObject 포인터를 역참조해야 합니다.
+                    
+                    */
+                    status = FltCreateFileEx2(
+                        resource::gFilterHandle,            // Filter
+                        FltWorkItem_CTX->Instance,          // Instance
+                        &fileHandle,                        // FileHandle (출력)
+                        &fileObject,                        // FileObject (출력)
+                        FILE_READ_DATA | SYNCHRONIZE,       // DesiredAccess
+                        &objAttr,                           // ObjectAttributes
+                        &ioStatusBlock,                     // IoStatusBlock
+                        NULL,                               // AllocationSize
+                        FILE_ATTRIBUTE_NORMAL,              // FileAttributes
+                        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, // ShareAccess
+                        FILE_OPEN,                          // CreateDisposition
+                        FILE_SYNCHRONOUS_IO_NONALERT | FILE_NON_DIRECTORY_FILE, // CreateOptions
+                        NULL,                               // EaBuffer
+                        0,                                  // EaLength
+                        IO_IGNORE_SHARE_ACCESS_CHECK,       // Flags
+                        NULL                                // DriverContext
+                    );
+                    if (NT_SUCCESS(status))
                     {
-                        // 해싱 성공 시, 로그 전송 처리
-                        // 파일 경로는 Pre-Op 컨텍스트에서 복사해서 pWorkContext에 담아와야 합니다.
-                        // 이 예시에서는 생략합니다.
+                        if (fileObject)
+                        {
+                            //debug_log("[WorkItem] FileObject obtained successfully.\n");
+                            CHAR SHA256[SHA256_String_Byte_Length] = { 0 };
+                            ULONG64 FileSize = 0;
 
-                        UNICODE_STRING NormalizedFilePath;
-                        RtlInitUnicodeString(&NormalizedFilePath, FltWorkItem_CTX->NormalizedFilePath);
+                            // [핵심] 새로 열린 fileObject를 사용하여 해싱 작업을 안전하게 수행
+                            if (helper::Get_FileSHA256(
+                                FltWorkItem_CTX->Instance,
+                                fileObject,  // *** 중요: FltWorkItem_CTX->FileObject가 아닌, 새로 얻은 fileObject를 사용합니다. ***
+                                SHA256,
+                                &FileSize
+                            ))
+                            {
+								// 해싱 성공 시, 로그 전송 처리
+                                //if (FileSize > 0)
+                                    //debug_log("[WorkItem] File SHA256: %s\n", SHA256);
+                                PCHAR Sha256 = (FileSize > 0) ? SHA256 : NULL;
+
+                                EDR::LogSender::function::FilesystemLog(
+                                    FltWorkItem_CTX->ProcessId,
+                                    FltWorkItem_CTX->timestamp,
+                                    FltWorkItem_CTX->Action,
+                                    &filePathUnicode, // 이전에 초기화한 filePathUnicode를 재사용
+                                    NULL,
+                                    Sha256
+                                );
+                            }
+
+                             // fileObject 참조 해제
+                            ObDereferenceObject(fileObject);
+                        }
+                        else
+                        {
+                            debug_log("[WorkItem] Failed to obtain FileObject from handle. Status: 0x%X\n", status);
+                            // fileObject 포인터를 못얻은 경우 실패 (아직 이 실패 목격은 안함)
+                        }
 
 
-                        PCHAR Sha256 = NULL;
-                        if (FileSize > 0)
-                            Sha256 = SHA256;
+                       
 
-                        EDR::LogSender::function::FilesystemLog(
-                            FltWorkItem_CTX->ProcessId,
-                            FltWorkItem_CTX->timestamp,
-                            FltWorkItem_CTX->Action,
-                            &NormalizedFilePath,
-                            NULL,
-                            Sha256
-                        );
-                        
+                        // *** FltCreateFile로 연 핸들 닫기. ***
+                        FltClose(fileHandle);
                     }
 
                     if (FltWorkItem_CTX ->NormalizedFilePath)
@@ -147,7 +202,7 @@ namespace EDR
 
                     // [매우 중요] 사용 완료된 리소스 해제
                     FltObjectDereference(FltWorkItem_CTX->Instance);   // Post-Op에서 증가시킨 참조 카운트 감소
-                    ObDereferenceObject(FltWorkItem_CTX->FileObject); // Post-Op에서 증가시킨 참조 카운트 감소
+                    //ObDereferenceObject(FltWorkItem_CTX->FileObject); // MUP FILE BSOD 발생함. -> 이전, 워크아이템실행전에만 유효
 
 
                     ExFreePoolWithTag(FltWorkItem_CTX, FLT_WORKITEM_CTX_ALLOC_TAG); // Details 해제
@@ -223,29 +278,6 @@ namespace EDR
                                 
                                 이 POST-LEVEL에서도 해싱이 실패하는 경우 ( 비안전 레벨 )가 있었으므로, 지연된 Flt 전용 WorkItem을 사용하여
                                 << 데드락 >> 없이 진행.ㅇㅇ
-                            
-                            ULONG64 FileSize = 0;
-                            CHAR SHA256[SHA256_String_Byte_Length] = { 0 };
-                            if (helper::Get_FileSHA256(
-                                FltObjects->Instance,
-                                FltObjects->FileObject,
-                                SHA256,
-                                &FileSize
-                            ))
-                            {
-                                // 해싱 성공 시,
-                                UNICODE_STRING NormalizedFilePath;
-                                RtlInitUnicodeString(&NormalizedFilePath, CompletionContext->NormalizedFilePath);
-
-                                // 로그 전송 처리 ( 지연된 Create ) 
-                                EDR::LogSender::function::FilesystemLog(
-                                    CompletionContext->ProcessId,
-                                    CompletionContext->timestamp,
-                                    Action,
-                                    &NormalizedFilePath,
-                                    NULL,
-                                    SHA256
-                                );
                             }*/
 
                             PFLT_GENERIC_WORKITEM FltWorkItem = (PFLT_GENERIC_WORKITEM)FltAllocateGenericWorkItem();
@@ -258,12 +290,12 @@ namespace EDR
                                     FltWorkItem_CTX->timestamp = CompletionContext->timestamp;
                                     FltWorkItem_CTX->Action = Action; // switch 문에서 결정된 Action
                                     FltWorkItem_CTX->Instance = FltObjects->Instance;
-                                    FltWorkItem_CTX->FileObject = FltObjects->FileObject;
+                                    //FltWorkItem_CTX->FileObject = FltObjects->FileObject; (BSOD occured)
                                     FltWorkItem_CTX->NormalizedFilePath = CompletionContext->NormalizedFilePath;
 
                                     // Instance 참조카운트 증가하여 WorkItem에서 사용할 수 있도록 함.
                                     FltObjectReference(FltWorkItem_CTX->Instance);
-                                    ObReferenceObject(FltWorkItem_CTX->FileObject);
+                                    //ObReferenceObject(FltWorkItem_CTX->FileObject);
 
                                     if (NT_SUCCESS(FltQueueGenericWorkItem(
                                         FltWorkItem,               // 전달할 item 객체
@@ -322,6 +354,9 @@ namespace EDR
                 if (CompletionContext)
                     *CompletionContext = NULL;
 
+				if (Data->RequestorMode != UserMode) // 유저모드 환경에서 요청한 로그만 처리
+					return FLT_PREOP_SUCCESS_NO_CALLBACK;
+
                 UNREFERENCED_PARAMETER(FltObjects);
 
                 HANDLE ProcessId = (HANDLE)FltGetRequestorProcessId(Data);
@@ -357,16 +392,6 @@ namespace EDR
                 // 파일 액션
                 EDR::EventLog::Enum::FileSystem::Filesystem_enum Action = (EDR::EventLog::Enum::FileSystem::Filesystem_enum)0;
 
-                /*
-                * 
-                * 
-                * [ WARNING ]
-                * if >= APC ? MUP FILE BSOD !!!@!#!#@!$@#%#
-                * 
-                ULONG64 FileSize = 0;
-                if( !helper::Get_FileSize(FltObjects->Instance, FltObjects->FileObject, &FileSize) )
-                    return FLT_PREOP_SUCCESS_NO_CALLBACK;
-                */
                 
                 FLT_PREOP_CALLBACK_STATUS ReturnStatus = FLT_PREOP_SUCCESS_NO_CALLBACK;
 
@@ -382,17 +407,9 @@ namespace EDR
                 *  [ WARNING !!!!!!!! ]
                 *   VERY POOR PERFORMANCE to hash sha256 here ( in every LEVEL )
                 *  안해!!! 파일 삭제 전략으로 진행해야함
-                * PRE단에서 아무리 파일 해시가 가능한들, 성능 저하가 급격함.
+                * PRE단에선 무조건 파일 해싱 금지
                 * 
-                * 
-                // SHA256
-                CHAR SHA256[SHA256_String_Byte_Length] = { 0 };
-                ULONG64 FILESIZE = 0;
-                if( !helper::Get_FileSHA256(FltObjects->Instance, FltObjects->FileObject, (PCHAR)SHA256, &FILESIZE )  )
-                    return FLT_PREOP_SUCCESS_NO_CALLBACK;
-                    */
-                //debug_log("SHA256: %s  +=====+ FILESIZE: %llu \n", SHA256, FILESIZE);
-                
+                */
 
                 switch (Data->Iopb->MajorFunction)
                 {
@@ -403,6 +420,16 @@ namespace EDR
                         IRP_MJ_CREATE시 에는 파일 상호작용을 위한 직전이므로, 이때 파일 해시를 구한다.
                     */
                     {
+                        // 디렉터리 생성요청인가? 
+                        const ULONG createOptions = Data->Iopb->Parameters.Create.Options;
+
+                        // FILE_DIRECTORY_FILE 플래그가 설정되어 있으면 디렉터리 작업임
+                        if (createOptions & FILE_DIRECTORY_FILE) {
+                            // 디렉터리 작업은 해싱 대상이 아니므로 무시하고 통과시킴
+                            debug_log("[Minifilter-PRE] 디렉터리 생성요청 감지\n");
+                            return FLT_PREOP_SUCCESS_NO_CALLBACK;
+                        }
+
                         /*
                             0. Action
                         */
