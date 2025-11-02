@@ -43,7 +43,11 @@ namespace EDR
 					remove,
 					rename,
 					read,
-					write
+					write,
+
+					create_directory,
+					remove_directory,
+					rename_directory
 				};
 			}
 

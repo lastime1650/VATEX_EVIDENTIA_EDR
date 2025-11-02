@@ -118,7 +118,7 @@ namespace EDR
 
                     UNICODE_STRING filePathUnicode;
                     RtlInitUnicodeString(&filePathUnicode, FltWorkItem_CTX->NormalizedFilePath);
-                    debug_log("filePathUnicode: %wZ\n", &filePathUnicode);
+                    //debug_log("filePathUnicode: %wZ\n", &filePathUnicode);
                     OBJECT_ATTRIBUTES objAttr;
                     InitializeObjectAttributes(&objAttr, &filePathUnicode, OBJ_KERNEL_HANDLE | OBJ_CASE_INSENSITIVE, NULL, NULL);
 
@@ -351,6 +351,7 @@ namespace EDR
                     EDR::MiniFilter::resource::PPretoPost_CTX* CompletionContext
                 )
             {
+
                 if (CompletionContext)
                     *CompletionContext = NULL;
 
@@ -371,13 +372,6 @@ namespace EDR
                 if( !EDR::Util::Shared::USER_AGENT::ProcessId || EDR::Util::Shared::USER_AGENT::ProcessId == ProcessId)
                     return FLT_PREOP_SUCCESS_NO_CALLBACK;
 
-                /*
-                if (Data->Iopb->Parameters.Create.Options & FILE_DIRECTORY_FILE) {
-                    // 폴더
-                }
-                else {
-                    // 파일
-                }*/
 
                 ULONG32 VolumeSerialNumber = 0;
                 helper::Get_VolumeSerialNumber(Data, &VolumeSerialNumber); // 패시브 레벨이 아니면 호출안함
@@ -426,8 +420,20 @@ namespace EDR
                         // FILE_DIRECTORY_FILE 플래그가 설정되어 있으면 디렉터리 작업임
                         if (createOptions & FILE_DIRECTORY_FILE) {
                             // 디렉터리 작업은 해싱 대상이 아니므로 무시하고 통과시킴
-                            debug_log("[Minifilter-PRE] 디렉터리 생성요청 감지\n");
-                            return FLT_PREOP_SUCCESS_NO_CALLBACK;
+                            //debug_log("[Minifilter-PRE] 디렉터리 생성요청 감지 %wZ\n", NormalizedFilePath);
+
+
+                            EDR::LogSender::function::FilesystemLog(
+                                ProcessId,
+                                Nano_Timestamp,
+                                EDR::EventLog::Enum::FileSystem::create_directory,
+                                NormalizedFilePath,
+                                NULL,
+                                NULL
+                            );
+
+
+                            goto CleanUp;
                         }
 
                         /*
@@ -489,7 +495,7 @@ namespace EDR
                     if (Data->Iopb->Parameters.SetFileInformation.FileInformationClass == FileRenameInformation ||
                         Data->Iopb->Parameters.SetFileInformation.FileInformationClass == FileRenameInformationEx)
                     {
-                        Action = EDR::EventLog::Enum::FileSystem::rename;
+                        Action = EDR::EventLog::Enum::FileSystem::rename; // 기본값: 파일 이름 변경
                         PFILE_RENAME_INFORMATION renameInfo = (PFILE_RENAME_INFORMATION)Data->Iopb->Parameters.SetFileInformation.InfoBuffer;
                         if (!renameInfo)
                             return ReturnStatus;
@@ -503,26 +509,59 @@ namespace EDR
                         RenameFilePath->Buffer = (PWCH)((PUCHAR)RenameFilePath + sizeof(UNICODE_STRING));
                         RtlCopyMemory(RenameFilePath->Buffer, renameInfo->FileName, renameInfo->FileNameLength);
 
+
+                        // 만약! 디렉터리 삭제인 경우는, "디렉터리"삭제로 변경
+                        if (FltObjects->FileObject && FltObjects->Instance)
+                        {
+                            // 함수 호출이 성공하고, 결과가 isDirectory에 저장됨
+                            BOOLEAN isDirectory = FALSE;
+                            FltIsDirectory(FltObjects->FileObject, FltObjects->Instance, &isDirectory);
+                            if (isDirectory)
+                            {
+                                // 디렉터리 삭제로 변경
+                                Action = EDR::EventLog::Enum::FileSystem::rename_directory; // 디렉터리 이름 변경
+                            }
+                        }
+
                     }
                     // 2. 파일 삭제 확인
                     else if (
                         Data->Iopb->Parameters.SetFileInformation.FileInformationClass == FileDispositionInformation ||
                         Data->Iopb->Parameters.SetFileInformation.FileInformationClass == FileDispositionInformationEx)
                     {
-                        Action = EDR::EventLog::Enum::FileSystem::remove;
+
+                        
+
+
+                        Action = EDR::EventLog::Enum::FileSystem::remove; // 기본값: 파일 삭제
                         PFILE_DISPOSITION_INFORMATION delInfo = (PFILE_DISPOSITION_INFORMATION)Data->Iopb->Parameters.SetFileInformation.InfoBuffer;
                         if (!delInfo && !delInfo->DeleteFile)
-                            return ReturnStatus;
+                            goto CleanUp;
+
+
+                        // 만약! 디렉터리 삭제인 경우는, "디렉터리"삭제로 변경
+                        if (FltObjects->FileObject && FltObjects->Instance)
+                        {
+                            // 함수 호출이 성공하고, 결과가 isDirectory에 저장됨
+                            BOOLEAN isDirectory = FALSE;
+                            FltIsDirectory(FltObjects->FileObject, FltObjects->Instance, &isDirectory);
+                            if(isDirectory)
+							{
+                                // 디렉터리 삭제로 변경
+								Action = EDR::EventLog::Enum::FileSystem::remove_directory;
+							}
+                        }
+
                     }
                     else
                     {
                         // 알수없음
-                        return ReturnStatus;
+                        goto CleanUp;
                     }
                     break;
                 }
                 default:
-                    return ReturnStatus;
+                    goto CleanUp;
                 }
 
                 EDR::LogSender::function::FilesystemLog(
@@ -541,6 +580,9 @@ namespace EDR
                     if (RenameFilePath)
                         ExFreePoolWithTag(RenameFilePath, 'Renm');
 
+                    if (nameInfo) {
+                        FltReleaseFileNameInformation(nameInfo);
+                    }
 
                     return ReturnStatus;
                 }
@@ -576,7 +618,7 @@ namespace EDR
                 // 1차 관문 -- 유저모드에 의한 요청인지 체크
                 if (Input_Data->RequestorMode != UserMode) return FALSE;
 
-                // 2차 관문 -- 파일이라면 아래와 같은 API가 성공함 
+                // 2차 관문 -- 파일이라면 아래와 같은 API가 성공함  ( 디렉터리 생성 등이어도 성공하는 경우가 있음.)
                 if (FltGetFileNameInformation(Input_Data, FLT_FILE_NAME_NORMALIZED | FLT_FILE_NAME_QUERY_DEFAULT, Output_fileNameInfo) != STATUS_SUCCESS)
                     return FALSE;
 

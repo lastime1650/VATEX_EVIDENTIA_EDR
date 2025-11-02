@@ -380,6 +380,15 @@ namespace EDR
 							case EDR::EventLog::Enum::FileSystem::rename:
 								FileAction = "rename";
 								break;
+							case EDR::EventLog::Enum::FileSystem::create_directory:
+								FileAction = "create_directory";
+								break;
+							case EDR::EventLog::Enum::FileSystem::remove_directory:
+								FileAction = "remove_directory";
+								break; 
+							case EDR::EventLog::Enum::FileSystem::rename_directory:
+								FileAction = "rename_directory";
+								break;
 							default:
 							{
 								std::cout << "알 수 없는 파일 액션";
