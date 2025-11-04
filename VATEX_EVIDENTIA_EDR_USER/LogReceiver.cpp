@@ -630,7 +630,7 @@ namespace EDR
 						}
 						case EDR::EventLog::Enum::etw:
 						{
-							std::cout << "===== ETW EVENT LOG =====" << std::endl;
+							/*std::cout << "===== ETW EVENT LOG =====" << std::endl;
 
 							EDR::EventLog::Struct::ETW::ETW_Log_Struct* ETWLog =
 								reinterpret_cast<EDR::EventLog::Struct::ETW::ETW_Log_Struct*>(Log.logData);
@@ -643,25 +643,30 @@ namespace EDR
 							std::cout << "Process ID    : " << ETWLog->header.ProcessId << std::endl;
 							std::cout << "Timestamp(ns) : " << ETWLog->header.NanoTimestamp << std::endl;
 
-							std::cout << "Field Count   : " << ETWLog->field.FieldCount << std::endl;
+							std::cout << "Field Count   : " << ETWLog->field.FieldCount << std::endl;*/
 							
+							EDR::EventLog::Struct::ETW::ETW_Log_Struct* ETWLog =
+								reinterpret_cast<EDR::EventLog::Struct::ETW::ETW_Log_Struct*>(Log.logData);
+
 
 							std::string fieldsJson;
 							for (unsigned long index = 0; index < ETWLog->field.FieldCount; index++)
 							{
 								const auto& field = ETWLog->field.Fields[index];
 
-								std::cout << "  [Field " << index << "]" << std::endl;
-								std::cout << "    Name  : " << field.FieldName << std::endl;
-								std::cout << "    Value : " << field.FieldValue << std::endl;
+								//std::cout << "  [Field " << index << "]" << std::endl;
+								//std::cout << "    Name  : " << field.FieldName << std::endl;
+								//std::cout << "    Value : " << field.FieldValue << std::endl;
 
 								// JSON 문자열에 추가
-								fieldsJson += fmt::format("\"{}\": \"{}\"", escape_json(field.FieldName),escape_json(field.FieldValue));
+								fieldsJson += fmt::format("{{\"{}\": \"{}\"}}", escape_json(field.FieldName), escape_json(field.FieldValue));
 								if (index < ETWLog->field.FieldCount - 1)
 									fieldsJson += ", ";
 							}
 
-							std::cout << "==========================" << std::endl;
+							//std::cout << "==========================" << std::endl;
+
+							std::cout << "Process ID    : " << ETWLog->header.ProcessId << std::endl;
 
 							std::string root_SessionID;
 							std::string SessionID;
@@ -674,6 +679,8 @@ namespace EDR
 							);
 							if (SessionID.empty())
 								break;
+
+
 
 							WindowsLogSender.Send_Log_ETW(
 								SessionID,
