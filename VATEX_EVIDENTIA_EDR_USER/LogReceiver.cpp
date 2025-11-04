@@ -659,7 +659,7 @@ namespace EDR
 								//std::cout << "    Value : " << field.FieldValue << std::endl;
 
 								// JSON 문자열에 추가
-								fieldsJson += fmt::format("{{\"{}\": \"{}\"}}", escape_json(field.FieldName), escape_json(field.FieldValue));
+								fieldsJson += fmt::format("\"{}\": \"{}\"", escape_json(field.FieldName),escape_json(field.FieldValue));
 								if (index < ETWLog->field.FieldCount - 1)
 									fieldsJson += ", ";
 							}
