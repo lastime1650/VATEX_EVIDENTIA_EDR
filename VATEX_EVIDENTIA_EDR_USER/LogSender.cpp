@@ -412,6 +412,59 @@ namespace EDR
                 );
             }
 
+            void LogSender::Send_Log_ETW(
+                std::string SessionID,
+                std::string root_SessionID,
+                std::string parent_SessionID,
+
+                HANDLE pid,
+
+                std::string ProviderName,
+                std::string EventName,
+                unsigned long EventVersion,
+                unsigned long EventId,
+                unsigned long EventFlags,
+                    
+                std::string fieldsJson, // "name":"value", ... , ..." key-value sets
+
+                ULONG64 nano_timestamp
+            )
+            {
+
+
+                Kafka.InsertMessage(
+                    fmt::format(R"(
+                        {{
+                            "header": {{
+                                "agentid": "{}",
+								"root_sessionid": "{}",
+                                "parent_sessionid": "{}",
+								"sessionid": "{}",
+                                "os":{{
+                                    "type": "{}"
+                                }},
+                                "pid": {},
+                                "nano_timestamp": {}
+                            }},
+                            "body": {{
+                                "etw" : {{
+                                    "provider_name" : "{}",
+                                    "event_name" : "{}",
+                                    "event_id": {},
+                                    "event_flags": {},
+                                    "event_version": {},
+                                    "fields" : {{
+                                        {}
+                                    }}
+                                }}
+                            }}
+                            
+                        }}
+                    )", AgentID, root_SessionID, parent_SessionID, SessionID, "Windows", (ULONG64)pid, nano_timestamp,
+                        ProviderName, EventName, EventId, EventFlags, EventVersion, fieldsJson)
+                );
+            }
+
             void LogSender::Send_Log_Registry(
 
                 std::string SessionID,

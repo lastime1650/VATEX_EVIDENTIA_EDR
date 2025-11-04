@@ -21,4 +21,8 @@
 #include "json.hpp"
 using namespace nlohmann;
 
+/*
+	Util.hpp에 절대 로직 작성 금지.
+*/
+
 #endif

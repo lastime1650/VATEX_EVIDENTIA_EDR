@@ -38,6 +38,8 @@
     <ClInclude Include="APC.hpp" />
     <ClInclude Include="DLP.hpp" />
     <ClInclude Include="EDR_C2C.hpp" />
+    <ClInclude Include="ETW_DotNet_Runtime.hpp" />
+    <ClInclude Include="ETW_Management.hpp" />
     <ClInclude Include="EventLog.hpp" />
     <ClInclude Include="Hash.hpp" />
     <ClInclude Include="httplib.hpp" />
@@ -47,6 +49,7 @@
     <ClInclude Include="json.hpp" />
     <ClInclude Include="Kafka.hpp" />
     <ClInclude Include="LogReceiver.hpp" />
+    <ClInclude Include="LogReceiverShareStruct.hpp" />
     <ClInclude Include="LogSender.hpp" />
     <ClInclude Include="NetworkSession.hpp" />
     <ClInclude Include="ProcessSession.hpp" />

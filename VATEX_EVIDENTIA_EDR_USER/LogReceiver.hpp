@@ -9,21 +9,14 @@
 #include "NetworkSession.hpp"
 #include "LogSender.hpp"
 #include "EDR_C2C.hpp"
+#include "ETW_Management.hpp"
+
+#include "LogReceiverShareStruct.hpp" // struct log_s
 
 namespace EDR
 {
 	namespace LogReceiver
 	{
-		/*
-			struct
-		*/
-		struct log_s
-		{
-			EDR::EventLog::Enum::EventLog_Enum Type;
-			unsigned char* logData;
-			ULONG64 logSize;
-		};
-
 		class LogManager
 		{
 			public:
@@ -32,7 +25,8 @@ namespace EDR
 					kafka(kafka), 
 					AGENT_ID(arg_AGENT_ID),
 					WindowsLogSender(kafka, AGENT_ID),
-					EDR_TCP(AGENT_ID, ioctl)
+					EDR_TCP(AGENT_ID, ioctl),
+					ETW_Manager(this->Queue)
 				{}
 				~LogManager() {
 					Stop();
@@ -71,10 +65,12 @@ namespace EDR
 
 				// EDR TCP C2C
 				EDR::C2C::EDRC2C EDR_TCP;
+
+				// ETW MANAGER
+				EDR::ETW::ETWManager ETW_Manager;
 		};
 
 	}
 }
-
 
 #endif

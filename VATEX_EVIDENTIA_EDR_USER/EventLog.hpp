@@ -5,7 +5,7 @@
 
 namespace EDR
 {
-	
+
 	namespace EventLog
 	{
 		namespace Enum
@@ -25,7 +25,9 @@ namespace EDR
 				ImageLoad,
 				ObRegisterCallback,
 
-				apicall
+				apicall,
+
+				etw
 
 			};
 
@@ -305,6 +307,32 @@ namespace EDR
 				};
 			}
 
+			namespace ETW
+			{
+				struct ETW_Field_Struct
+				{
+					CHAR FieldName[256];
+					CHAR FieldValue[4096];
+				};
+
+				struct ETW_Log_Struct
+				{
+					struct EventLog_Header header;
+
+					CHAR ProviderName[256];
+					ULONG32 EventId;
+					CHAR EventName[256];
+					ULONG32 EventFlags;
+					ULONG32 EventVersion;
+
+					struct
+					{
+						ETW_Field_Struct Fields[15];
+						ULONG32 FieldCount = 0;
+					}field;
+
+				};
+			}
 
 			// ProcessAccess
 			// ObRegisterCallback으로 해당 프로세스가 다른 프로세스에 영향이 가는지 확인

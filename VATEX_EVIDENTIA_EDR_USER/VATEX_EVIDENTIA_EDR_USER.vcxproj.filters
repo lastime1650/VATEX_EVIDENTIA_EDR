@@ -55,6 +55,12 @@
     <Filter Include="Util\IAM">
       <UniqueIdentifier>{aae95380-877e-4e17-ac7e-f8de2c4e58d9}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ETW">
+      <UniqueIdentifier>{04331edd-6426-45f3-a33d-952da42429fc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ETW\DotNet_RunTime_Provide">
+      <UniqueIdentifier>{41f57d78-9e20-488e-9871-a98a925b3227}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
@@ -155,6 +161,15 @@
     </ClInclude>
     <ClInclude Include="httplib.hpp">
       <Filter>Util</Filter>
+    </ClInclude>
+    <ClInclude Include="ETW_Management.hpp">
+      <Filter>ETW</Filter>
+    </ClInclude>
+    <ClInclude Include="ETW_DotNet_Runtime.hpp">
+      <Filter>ETW\DotNet_RunTime_Provide</Filter>
+    </ClInclude>
+    <ClInclude Include="LogReceiverShareStruct.hpp">
+      <Filter>LogReceiver</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

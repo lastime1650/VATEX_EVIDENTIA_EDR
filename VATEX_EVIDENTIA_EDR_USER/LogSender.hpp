@@ -186,6 +186,27 @@ namespace EDR
                     ULONG64 nano_timestamp
                 );
 
+                /*
+                    ETW ¿Ã∫•∆Æ
+                */
+                void Send_Log_ETW(
+                    std::string SessionID,
+                    std::string root_SessionID,
+                    std::string parent_SessionID,
+
+                    HANDLE pid,
+
+                    std::string ProviderName,
+                    std::string EventName,
+                    unsigned long EventVersion,
+                    unsigned long EventId,
+                    unsigned long EventFlags,
+
+                    std::string fieldsJson,
+
+                    ULONG64 nano_timestamp
+                );
+
             private:
                 EDR::Util::Kafka::Kafka& Kafka;
                 std::string AgentID;
