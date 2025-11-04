@@ -9,6 +9,22 @@ namespace EDR
 	namespace LogReceiver
 	{
 
+		auto escape_json = [](const std::string& s) {
+			std::string out;
+			out.reserve(s.size());
+			for (char c : s) {
+				switch (c) {
+				case '\\': out += "\\\\"; break;
+				case '"':  out += "\\\""; break;
+				case '\n': out += "\\n"; break;
+				case '\r': out += "\\r"; break;
+				case '\t': out += "\\t"; break;
+				default:   out += c; break;
+				}
+			}
+			return out;
+			};
+
 		bool LogManager::Run(std::string EDR_TCP_SERVER_IP, unsigned int EDR_TCP_SERVER_PORT)
 		{
 			if (is_threading) // 최초 1번 실행
@@ -640,7 +656,7 @@ namespace EDR
 								std::cout << "    Value : " << field.FieldValue << std::endl;
 
 								// JSON 문자열에 추가
-								fieldsJson += fmt::format("\"{}\": \"{}\"", field.FieldName, field.FieldValue);
+								fieldsJson += fmt::format("\"{}\": \"{}\"", escape_json(field.FieldName),escape_json(field.FieldValue));
 								if (index < ETWLog->field.FieldCount - 1)
 									fieldsJson += ", ";
 							}
