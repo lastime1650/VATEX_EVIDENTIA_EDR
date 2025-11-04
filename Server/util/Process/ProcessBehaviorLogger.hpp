@@ -56,6 +56,9 @@ namespace EDR
                                 {
                                     auto message = this->KafkaConsumer.get_message_from_queue();
 
+                                    //if(message.original_message.find("991b7a496ecaa7c4a3642c9243cd54073b4c5ad186dae9c2b88111e3e541a618") != std::string::npos)
+                                        //std::cout << message.message.dump() << std::endl;
+
                                     //std::cout << "offest: " << message.offset << "message: " << message.message.dump() << std::endl;
                                     //std::cout << " ----- " << std::endl;
                                     
@@ -118,12 +121,19 @@ s
                                     {
                                         ev = std::make_shared< EDR::Server::Util::ProcessEvent::windows::RegistryEvent >(message.message, IntelligenceManager);
                                     }
+                                    else if (message.message["body"].contains("etw"))
+                                    {
+                                        ev = std::make_shared< EDR::Server::Util::ProcessEvent::windows::EtwEvent >(message.message, IntelligenceManager);
+                                    }
+                                    else
+                                        // Unknown Event
+                                        continue;
                                     /*
                                         Linux
                                     */
                                     /*...*/
                                     
-                                    if(ev)
+                                    if(ev != nullptr)
                                     {
                                         // Step1. Node 추가
                                         EDR::Server::Util::node::ProcessTreeNode* Mynode = nullptr;
@@ -131,7 +141,8 @@ s
 
                                         if(Mynode)
                                         {
-                                            if(Mynode->session.Root_SessionID == "39828eb898f3db844250870c9e39b1696a5b2821239151583202ffcddc39f158")
+                                            
+                                            if(Mynode->session.Root_SessionID == "991b7a496ecaa7c4a3642c9243cd54073b4c5ad186dae9c2b88111e3e541a618")
                                             {
                                                 std::string X = message.original_message + ",";
                                                 testFileHandle.writeToFile("./test.json", std::vector<uint8_t>(X.begin(), X.end()), true);

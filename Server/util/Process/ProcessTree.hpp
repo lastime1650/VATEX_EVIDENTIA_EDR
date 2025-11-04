@@ -24,8 +24,15 @@ namespace EDR
                             this->session.Root_SessionID = jsonEvent["header"]["root_sessionid"].get<std::string>();
                             this->session.Parent_SessionID = jsonEvent["header"]["parent_sessionid"].get<std::string>();
                             this->timestamp = jsonEvent["header"]["nano_timestamp"].get<unsigned long long>();
-                            this->os.Platform = jsonEvent["header"]["os"]["type"].get<std::string>();
-                            this->os.Version = jsonEvent["header"]["os"]["version"].get<std::string>();
+                            
+                            if( jsonEvent["header"].contains("os") )
+                            {
+                                if( jsonEvent["header"]["os"].contains("type") )
+                                    this->os.Platform = jsonEvent["header"]["os"]["type"].get<std::string>();
+                                 if( jsonEvent["header"]["os"].contains("version") )
+                                    this->os.Version = jsonEvent["header"]["os"]["version"].get<std::string>();
+                            }
+                            
                         }
                         virtual ~Event() = default;
 
@@ -439,6 +446,55 @@ namespace EDR
                                 std::string NewName;
                             };
                             struct NewOld newold;
+                    };
+
+
+                    class EtwEvent : public Event
+                    {
+                        public:
+                            EtwEvent(json event, Solution::Intelligence::Intellina& Intelligence) : Event(event, Intelligence) 
+                            {
+                                provider_name = event["body"]["etw"]["provider_name"].get<std::string>();
+                                event_name = event["body"]["etw"]["event_name"].get<std::string>();
+                                event_id = event["body"]["etw"]["event_id"].get<unsigned int>();
+                                event_flags = event["body"]["etw"]["event_flags"].get<unsigned int>();
+                                event_version = event["body"]["etw"]["event_version"].get<unsigned int>();
+
+                                // fields
+                                for( const auto& [key, value] : event["body"]["etw"]["fields"].items())
+                                {
+                                    fields.push_back(
+                                        ETW_FIELDS{
+                                            .FieldName = key,
+                                            .FieldValue = value
+                                        }
+                                    );
+                                }
+
+                            }
+                            void send_to_intelligence() override
+                            {
+                                throw std::runtime_error("RegistryEvent has no intelligence");
+
+                            }
+
+                        private:
+                            std::string provider_name;
+                            std::string event_name;
+                            unsigned int event_id;
+                            unsigned int event_flags;
+                            unsigned int event_version;
+                            
+
+
+                            struct ETW_FIELDS
+                            {
+                                std::string FieldName;
+                                std::string FieldValue;
+                            };
+                            std::vector<ETW_FIELDS> fields;
+
+                            
                     };
 
 
