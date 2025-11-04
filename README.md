@@ -1,6 +1,6 @@
 # VATEX_EVIDENTIA_EDR
 
-![initial](https://github.com/lastime1650/VATEX_EVIDENTIA_EDR/blob/Windows/EDR-AGENT-A.png)
+![initial](https://github.com/lastime1650/VATEX_EVIDENTIA_EDR/blob/Windows/VATEX_EDR_LOGGING.png)
 
 Created based on the Windows operating system kernel
 
