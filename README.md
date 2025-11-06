@@ -54,14 +54,14 @@ Our core detection engine uses machine learning to analyze and predict threats b
 **Step 1: 3D Process Session Modeling**
 We begin by modeling each process tree session as a 3-dimensional data structure to capture its full context, including parent-child relationships, execution sequence, and call depth over time.
 
-![initial](https://github.com/lastime1650/VATEX_EVIDENTIA_EDR/blob/main/EDR_ML_INTRODUCE_1.PNG)
-`![Step 1: 3D Process Session Modeling](https://github.com/lastime1650/VATEX_EVIDENTIA_EDR/blob/main/EDR_ML_INTRODUCE_1.PNG)`
+![initial](https://github.com/lastime1650/VATEX_EVIDENTIA_EDR/blob/master/EDR_ML_INTRODUCE_1.PNG)
+`![Step 1: 3D Process Session Modeling](https://github.com/lastime1650/VATEX_EVIDENTIA_EDR/blob/master/EDR_ML_INTRODUCE_1.PNG)`
 
 **Step 2: Flattening to a 2D Representation**
 To prepare the data for machine learning, the 3D model is flattened into a 2D representation by ordering all events chronologically, creating a sequential "surface" of the session's activity.
 
-![initial](https://github.com/lastime1650/VATEX_EVIDENTIA_EDR/blob/main/EDR_ML_INTRODUCE_2.PNG)
-`![Step 2: Flattening to 2D Representation](https://github.com/lastime1650/VATEX_EVIDENTIA_EDR/blob/main/EDR_ML_INTRODUCE_2.PNG)`
+![initial](https://github.com/lastime1650/VATEX_EVIDENTIA_EDR/blob/master/EDR_ML_INTRODUCE_2.PNG)
+`![Step 2: Flattening to 2D Representation](https://github.com/lastime1650/VATEX_EVIDENTIA_EDR/blob/master/EDR_ML_INTRODUCE_2.PNG)`
 
 **Step 3: Feature Extraction**
 From the 2D data, we extract key features to build a feature vector (`X` data). This includes:
@@ -69,20 +69,20 @@ From the 2D data, we extract key features to build a feature vector (`X` data). 
 - **Behavioral Analytics (XBA):** Detections from our rule-based engine.
 - **Threat Intelligence:** Enrichment data from our **VateX INTELLINA** platform.
 
-![initial](https://github.com/lastime1650/VATEX_EVIDENTIA_EDR/blob/main/EDR_ML_INTRODUCE_3.PNG)
-`![Step 3: Feature Extraction](https://github.com/lastime1650/VATEX_EVIDENTIA_EDR/blob/main/EDR_ML_INTRODUCE_3.PNG)`
+![initial](https://github.com/lastime1650/VATEX_EVIDENTIA_EDR/blob/master/EDR_ML_INTRODUCE_3.PNG)
+`![Step 3: Feature Extraction](https://github.com/lastime1650/VATEX_EVIDENTIA_EDR/blob/master/EDR_ML_INTRODUCE_3.PNG)`
 
 **Step 4: Creating a Single Data Sample**
 These combined features form a single, comprehensive data sample that numerically represents the entire process session.
 
-![initial](https://github.com/lastime1650/VATEX_EVIDENTIA_EDR/blob/main/EDR_ML_INTRODUCE_4.PNG)
-`![Step 4: A Single X Data Sample](https://github.com/lastime1650/VATEX_EVIDENTIA_EDR/blob/main/EDR_ML_INTRODUCE_4.PNG)`
+![initial](https://github.com/lastime1650/VATEX_EVIDENTIA_EDR/blob/master/EDR_ML_INTRODUCE_4.PNG)
+`![Step 4: A Single X Data Sample](https://github.com/lastime1650/VATEX_EVIDENTIA_EDR/blob/master/EDR_ML_INTRODUCE_4.PNG)`
 
 **Step 5: Building the Dataset**
 By repeating this process for thousands of sessions, we construct a rich dataset of `X` samples ready for model training.
 
-![initial](https://github.com/lastime1650/VATEX_EVIDENTIA_EDR/blob/main/EDR_ML_INTRODUCE_5.PNG)
-`![Step 5: Building the Full Dataset](https://github.com/lastime1650/VATEX_EVIDENTIA_EDR/blob/main/EDR_ML_INTRODUCE_5.PNG)`
+![initial](https://github.com/lastime1650/VATEX_EVIDENTIA_EDR/blob/master/EDR_ML_INTRODUCE_5.PNG)
+`![Step 5: Building the Full Dataset](https://github.com/lastime1650/VATEX_EVIDENTIA_EDR/blob/master/EDR_ML_INTRODUCE_5.PNG)`
 
 **Step 6: Model Application**
 This dataset is fed into various machine learning models for:
@@ -90,14 +90,14 @@ This dataset is fed into various machine learning models for:
 - **Regression:** Assigning a dynamic risk score.
 - **Clustering:** Identifying novel and unknown attack patterns.
 
-![initial](https://github.com/lastime1650/VATEX_EVIDENTIA_EDR/blob/main/EDR_ML_INTRODUCE_6.PNG)
-`![Step 6: Applying ML Models](https://github.com/lastime1650/VATEX_EVIDENTIA_EDR/blob/main/EDR_ML_INTRODUCE_6.PNG)`
+![initial](https://github.com/lastime1650/VATEX_EVIDENTIA_EDR/blob/master/EDR_ML_INTRODUCE_6.PNG)
+`![Step 6: Applying ML Models](https://github.com/lastime1650/VATEX_EVIDENTIA_EDR/blob/master/EDR_ML_INTRODUCE_6.PNG)`
 
 **Step 7: Defining the Target Variable (y)**
 For supervised learning (Classification, Regression), a corresponding target variable (`y` data) is required for each sample. The nature of `y` depends on the model's goal (e.g., a "malicious" label or a risk score). For unsupervised learning like Clustering, `y` is not needed, as the model discovers patterns on its own.
 
-![initial](https://github.com/lastime1650/VATEX_EVIDENTIA_EDR/blob/main/EDR_ML_INTRODUCE_7.PNG)
-`![Step 7: The Role of y Data](https://github.com/lastime1650/VATEX_EVIDENTIA_EDR/blob/main/EDR_ML_INTRODUCE_7.PNG)`
+![initial](https://github.com/lastime1650/VATEX_EVIDENTIA_EDR/blob/master/EDR_ML_INTRODUCE_7.PNG)
+`![Step 7: The Role of y Data](https://github.com/lastime1650/VATEX_EVIDENTIA_EDR/blob/master/EDR_ML_INTRODUCE_7.PNG)`
 
 ### 2. Threat Intelligence & Utilities
 
