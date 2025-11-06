@@ -16,7 +16,7 @@ namespace EDR
                 class Event
                 {
                     public:
-                        Event(json event, Solution::Intelligence::Intellina& Intelligence) : jsonEvent(event), Intelligence(Intelligence)
+                        Event(json event, EDR::Util::Intelligence::VATEX_INTELLINA_INTELLIGENCE& Intelligence) : jsonEvent(event), Intelligence(Intelligence)
                         {
                             // 이벤트 공통 필드 저장
                             this->AGENT_ID = jsonEvent["header"]["agentid"].get<std::string>();
@@ -45,46 +45,41 @@ namespace EDR
                         */
                         virtual void send_to_intelligence() = 0;
 
-                        bool append_intelligence(json& input_result)
+                        // 인텔리전스 쿼리 결과 PUSH
+                        bool append_intelligence( const std::optional< EDR::Util::Intelligence::VATEX_INTELLINA_INTELLIGENCE__RESPONSE >& response)
                         {
-                            if( !input_result.size() )
+                            if(!response.has_value())
+                                return false;
+                            if( !response->is_success )
                                 return false;
 
-                            for (auto& [key, value] : input_result.items())
-                            {
-                                intelligence_response[key] = value;
-                            }
+                            
+                            intelligence_responses.push_back( response.value() );
 
                             return true;
                         }
-                        bool output_intelligence(json& output)
-                        {
-                            /*
-                                {
-                                    "post": [ 
-                                        {
-                                            "intelligence module name A" : { ... }
-                                        },
-                                        {
-                                            "intelligence module name B" : { ... }
-                                        },,,
-                                    ]
-                                }
-                            */
-                            if(!intelligence_response.size())
-                                return false;
-                            
-                            if(!output.contains("post"))
-                                output["post"] = json::array();
 
-                            for( auto& result : intelligence_response )
-                                output["post"].push_back(
-                                    {
-                                        { result.first, result.second }
-                                    }
+                        // 지금까지 PUSHED 인텔리전스 쿼리 결과를 하나의 JSON으로 리턴
+                        json output_intelligence_result()
+                        {
+                            auto Output = json::object();
+                            Output["intelligence"] = json::array(); 
+
+                            for(const auto& response : intelligence_responses)
+                            {
+                                auto data = Intelligence.RESPONSE_to_Json(
+                                    response
                                 );
 
-                            return true;
+                                if(data.has_value())
+                                {
+                                    Output["intelligence"].push_back(
+                                        data.value()
+                                    );
+                                }
+                            }
+
+                            return Output;
                         }
                         
 
@@ -107,8 +102,8 @@ namespace EDR
                         
 
 
-                        Solution::Intelligence::Intellina& Intelligence;
-                        std::map<std::string, json> intelligence_response;
+                        EDR::Util::Intelligence::VATEX_INTELLINA_INTELLIGENCE& Intelligence;
+                        std::vector<EDR::Util::Intelligence::VATEX_INTELLINA_INTELLIGENCE__RESPONSE> intelligence_responses;
 
                     protected:
                         json jsonEvent;
@@ -120,12 +115,22 @@ namespace EDR
                 class ProcessCreateEvent : public Event
                 {
                     public:
-                        ProcessCreateEvent(json event, Solution::Intelligence::Intellina& Intelligence) : Event(event, Intelligence) 
+                        ProcessCreateEvent(json event, EDR::Util::Intelligence::VATEX_INTELLINA_INTELLIGENCE& Intelligence) : Event(event, Intelligence) 
                         {
                             exe_path = event["body"]["process"]["exe_path"].get<std::string>();
+                            if(exe_path.find("2d19.bat") != std::string::npos)
+                            {
+                                std::cout << ".bat 찾음" << std::endl;
+                                std::cout << jsonEvent.dump() << std::endl;
+                            }
                             exe_size = event["body"]["process"]["exe_size"].get<unsigned long long>();
                             exe_sha256 = event["body"]["process"]["exe_sha256"].get<std::string>();
                             commandline = event["body"]["process"]["commandline"].get<std::string>();
+                            if(commandline.find("2d19.bat") != std::string::npos)
+                            {
+                                std::cout << ".bat 찾음" << std::endl;
+                                std::cout << jsonEvent.dump() << std::endl;
+                            }
 
                             ppid = event["body"]["process"]["ppid"].get<unsigned long long>();
                             parent_exe_path = event["body"]["process"]["parent_exe_path"].get<std::string>();
@@ -164,27 +169,19 @@ namespace EDR
 
                         void send_to_intelligence() override
                         {
-                            if( exe_sha256.length() )
+                            if( !exe_sha256.empty() )
                             {
-                                json output = json::object();
-                                // sha256
-                                if( Intelligence.Query_file_sha256(
-                                    exe_sha256,
-                                    output
-                                ) )
-                                    append_intelligence(output);
+                                append_intelligence(
+                                    Intelligence.Query_FILE_SHA256(exe_sha256)
+                                );
+                                    
                             }
 
                             if( parent_exe_sha256.length() )
                             {
-                                json output = json::object();
-                                // sha256
-                                if( Intelligence.Query_file_sha256(
-                                    parent_exe_sha256,
-                                    output
-                                ) )
-                                    append_intelligence(output);
-                                
+                                append_intelligence(
+                                    Intelligence.Query_FILE_SHA256(parent_exe_sha256)
+                                );
                             }
 
                         }
@@ -193,7 +190,7 @@ namespace EDR
                 class ProcessTerminateEvent : public Event
                 {
                     public:
-                        ProcessTerminateEvent(json event, Solution::Intelligence::Intellina& Intelligence) : Event(event, Intelligence) 
+                        ProcessTerminateEvent(json event, EDR::Util::Intelligence::VATEX_INTELLINA_INTELLIGENCE& Intelligence) : Event(event, Intelligence) 
                         {
                             ppid = event["body"]["process"]["ppid"].get<unsigned long long>();
                         }
@@ -208,7 +205,7 @@ namespace EDR
                 class FileSystemEvent : public Event
                 {
                     public:
-                        FileSystemEvent(json event, Solution::Intelligence::Intellina& Intelligence) : Event(event, Intelligence) 
+                        FileSystemEvent(json event, EDR::Util::Intelligence::VATEX_INTELLINA_INTELLIGENCE& Intelligence) : Event(event, Intelligence) 
                         {
                             action = event["body"]["filesystem"]["action"].get<std::string>();
                             filepath = event["body"]["filesystem"]["filepath"].get<std::string>();
@@ -240,7 +237,7 @@ namespace EDR
                 class NetworkEvent : public Event
                 {
                     public:
-                        NetworkEvent(json event, Solution::Intelligence::Intellina& Intelligence) : Event(event, Intelligence) 
+                        NetworkEvent(json event, EDR::Util::Intelligence::VATEX_INTELLINA_INTELLIGENCE& Intelligence) : Event(event, Intelligence) 
                         {
                             interface_index = event["body"]["network"]["interface_index"].get<unsigned int>();
                             protocol = event["body"]["network"]["protocol"].get<std::string>();
@@ -335,7 +332,7 @@ namespace EDR
                 class API_Call_Event : public Event
                 {
                     public:
-                        API_Call_Event(json event, Solution::Intelligence::Intellina& Intelligence) : Event(event, Intelligence) 
+                        API_Call_Event(json event, EDR::Util::Intelligence::VATEX_INTELLINA_INTELLIGENCE& Intelligence) : Event(event, Intelligence) 
                         {
                             APIName = event["body"]["apicall"]["function"].get<std::string>();
 
@@ -365,7 +362,7 @@ namespace EDR
                     class ImageLoadEvent : public Event
                     {
                         public:
-                            ImageLoadEvent(json event, Solution::Intelligence::Intellina& Intelligence) : Event(event, Intelligence) 
+                            ImageLoadEvent(json event, EDR::Util::Intelligence::VATEX_INTELLINA_INTELLIGENCE& Intelligence) : Event(event, Intelligence) 
                             {
                                 filepath = event["body"]["imageload"]["filepath"].get<std::string>();
                                 filesize = event["body"]["imageload"]["filesize"].get<unsigned long long>();
@@ -394,7 +391,7 @@ namespace EDR
                     class ProcessAccessEvent : public Event
                     {
                         public:
-                            ProcessAccessEvent(json event, Solution::Intelligence::Intellina& Intelligence) : Event(event, Intelligence) 
+                            ProcessAccessEvent(json event, EDR::Util::Intelligence::VATEX_INTELLINA_INTELLIGENCE& Intelligence) : Event(event, Intelligence) 
                             {
                                 handletype = event["body"]["processaccess"]["handletype"].get<std::string>();
                                 filepath = event["body"]["processaccess"]["filepath"].get<std::string>();
@@ -418,7 +415,7 @@ namespace EDR
                     class RegistryEvent : public Event
                     {
                         public:
-                            RegistryEvent(json event, Solution::Intelligence::Intellina& Intelligence) : Event(event, Intelligence) 
+                            RegistryEvent(json event, EDR::Util::Intelligence::VATEX_INTELLINA_INTELLIGENCE& Intelligence) : Event(event, Intelligence) 
                             {
                                 KeyClass = event["body"]["registry"]["keyclass"].get<std::string>();
                                 Object_Complete_Name = event["body"]["registry"]["name"].get<std::string>();
@@ -452,7 +449,7 @@ namespace EDR
                     class EtwEvent : public Event
                     {
                         public:
-                            EtwEvent(json event, Solution::Intelligence::Intellina& Intelligence) : Event(event, Intelligence) 
+                            EtwEvent(json event, EDR::Util::Intelligence::VATEX_INTELLINA_INTELLIGENCE& Intelligence) : Event(event, Intelligence) 
                             {
                                 provider_name = event["body"]["etw"]["provider_name"].get<std::string>();
                                 event_name = event["body"]["etw"]["event_name"].get<std::string>();

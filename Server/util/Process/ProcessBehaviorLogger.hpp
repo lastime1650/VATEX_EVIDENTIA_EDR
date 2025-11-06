@@ -34,7 +34,7 @@ namespace EDR
 
                     ~ProcessBehaviorLogManager(){ std::cout << "[ProcessBehaviorLogManager]{Notice} ~ProcessBehaviorLogManager() called " << std::endl; Stop(); }
 
-                    bool Run( EDR::Server::AgentTcpManagement::AgentTcp& AgentTCPManager, Solution::Intelligence::Intellina& IntelligenceManager )
+                    bool Run( EDR::Server::AgentTcpManagement::AgentTcp& AgentTCPManager, EDR::Util::Intelligence::VATEX_INTELLINA_INTELLIGENCE& IntelligenceManager )
                     {
                         is_working = true;
                         std::cout << "[ProcessBehaviorLogManager]{Notice} ProcessBehaviorLogManager.Run() called" << std::endl;
@@ -144,8 +144,8 @@ s
                                             
                                             if(Mynode->session.Root_SessionID == "991b7a496ecaa7c4a3642c9243cd54073b4c5ad186dae9c2b88111e3e541a618")
                                             {
-                                                std::string X = message.original_message + ",";
-                                                testFileHandle.writeToFile("./test.json", std::vector<uint8_t>(X.begin(), X.end()), true);
+                                                //std::string X = message.original_message + ",";
+                                                //testFileHandle.writeToFile("./test.json", std::vector<uint8_t>(X.begin(), X.end()), true);
                                                 //std::cout << message.original_message <<"\n" << std::endl;
                                                 
 

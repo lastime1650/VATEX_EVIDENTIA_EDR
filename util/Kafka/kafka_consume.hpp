@@ -91,6 +91,12 @@ namespace EDR
                                     std::string message = msg.get_payload();
                                     unsigned long long offset = msg.get_offset();
                                     
+                                    if(message.find(".bat") != std::string::npos)
+                                    {
+                                        std::cout << ".bat" << std::endl;
+                                        std::cout << "[MESSAGE]: " << message << std::endl;
+                                    }
+
                                     //std::cout << "[MESSAGE]: " << message << std::endl;
 
                                     json tojson_message;

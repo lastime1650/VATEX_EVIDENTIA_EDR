@@ -98,7 +98,7 @@ namespace EDR
                 Solution::Policy::EDRPolicy PolicyManager;
 
                 // VATEX INTELLINA INTELLIGENCE API 호출 인스턴스
-                Solution::Intelligence::Intellina IntelligenceManager;
+                EDR::Util::Intelligence::VATEX_INTELLINA_INTELLIGENCE IntelligenceManager;
                 
         };
 

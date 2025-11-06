@@ -3,6 +3,8 @@
 
 #include <map>
 
+#include "VATEX_INTELLINA_INTELLIGENCE/intelligence.hpp"
+
 #include "Kafka/kafka_consume.hpp"
 #include "json.hpp"
 #include "Queue/queue.hpp"

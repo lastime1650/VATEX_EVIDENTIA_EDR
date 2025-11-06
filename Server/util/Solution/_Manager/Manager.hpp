@@ -22,8 +22,6 @@
 #include "httplib.h"
 #include "API/_parent.hpp"
 
-// 2. Intelligence
-#include "Intelligence/intelligence.hpp"
 
 // 3. Policy ( EDR )
 #include "Policy/_Child/EDRPolicy.hpp"
