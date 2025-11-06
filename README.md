@@ -108,12 +108,10 @@ For supervised learning (Classification, Regression), a corresponding target var
 
 ### 2. Threat Intelligence & Utilities
 
-To augment our AI capabilities, we enrich event data with leading threat intelligence and analysis tools:
 
--   **Yara:** Pattern matching for malware identification (free).
--   **VirusTotal:** Comprehensive file and URL analysis (requires license).
--   **WindowsCertChecker:** Digital signature and certificate validation (free).
--   And other proprietary and open-source intelligence feeds.
+![initial](https://github.com/lastime1650/VateX/blob/mainv2/images/VATEX_INTELLINA.png)
+
+Combining with [**VATEX INTELINA**](https://github.com/lastime1650/VATEX_INTELLINA_INTELLIGENCE), we collect very rich latest threat intelligence and metadata information.
 
 ---
 
