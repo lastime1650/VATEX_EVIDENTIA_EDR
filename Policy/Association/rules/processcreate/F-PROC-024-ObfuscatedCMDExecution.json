@@ -1,0 +1,38 @@
+{
+    "id": "F-PROC-024-ObfuscatedCMDExecution",
+    "name": "Feature: Obfuscated Command Execution via CMD",
+    "description": "Identifies the execution of cmd.exe with signs of obfuscation, such as excessive use of carets (^) or complex environment variable expansion, used to hide the true command.",
+    "severity": "info",
+    "mitre_attack": [
+        {
+            "tactic": "TA0005",
+            "technique_id": "T1027"
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "cmd_obfuscation_pattern",
+                "selections": {
+                    "selection_cmd_obfuscated": {
+                        "event_type": "process",
+                        "condition_method": "and",
+                        "conditions": [
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "cmd.exe"},
+                            {
+                                "field": "body.process.commandline",
+                                "operator": "regex",
+                                "value": "(\\^\\^|%%|/c.{200,})"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "Feature Captured: Potentially obfuscated command line executed by cmd.exe."
+                }
+            }
+        ]
+    }
+}

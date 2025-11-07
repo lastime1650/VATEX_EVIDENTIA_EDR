@@ -1,0 +1,36 @@
+{
+    "id": "F-PROC-012-FirewallManipulation",
+    "name": "Feature: Windows Firewall Manipulation via netsh.exe",
+    "description": "Identifies the use of netsh.exe to modify firewall settings, such as adding rules or disabling the firewall.",
+    "severity": "info",
+    "mitre_attack": [
+        {
+            "tactic": "TA0005",
+            "technique_id": "T1562",
+            "subtechnique_id": "T1562.004"
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "netsh_firewall_command",
+                "selections": {
+                    "selection_netsh_firewall": {
+                        "event_type": "process",
+                        "condition_method": "and",
+                        "conditions": [
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "netsh.exe"},
+                            {"field": "body.process.commandline", "operator": "contains", "value": "firewall"},
+                            {"field": "body.process.commandline", "operator": "contains", "value": "add"}
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "Feature Captured: Windows Firewall rule modification attempt (netsh.exe)"
+                }
+            }
+        ]
+    }
+}

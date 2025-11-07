@@ -1,0 +1,44 @@
+{
+    "id": "ETW-DOTNET-002-Suspicious-Unsigned-Assembly-Load",
+    "name": "Obfuscated and Unsigned .NET Assembly Loaded",
+    "description": "Detects the .NET runtime loading an assembly that has a name resembling a random string and lacks a Strong Name signature (PublicKeyToken=null). This is not characteristic of a legitimate, compiled library but is a typical hallmark of a malicious .NET payload that is dynamically generated and executed in memory by an attacker.",
+    "severity": "critical",
+    "mitre_attack": [
+        {
+            "tactic": "TA0005",
+            "technique_id": "T1027",
+            "subtechnique_id": null,
+            "data_sources": ["Module: Module load", "Process: OS API execution"]
+        },
+        {
+            "tactic": "TA0002",
+            "technique_id": "T1620",
+            "subtechnique_id": null,
+            "data_sources": ["Module: Module load", "Process: OS API execution"]
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "unsigned_obfuscated_assembly_load",
+                "selections": {
+                    "selection_gp": {
+                        "event_type": "etw",
+                        "condition_method": "and",
+                        "conditions": [
+                            {"field": "body.etw.event_name", "operator": "regex", "value": "^LoaderAssemblyLoad.*"},
+                            {"field": "body.etw.fields.fullyqualifiedassemblyname", "operator": "regex", "value": ".*PublicKeyToken=null$"}
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "An unsigned assembly with a suspicious, random-looking name was loaded."
+                }
+            }
+        ]
+    },
+    "operational_usage": "This detection is a very strong indicator that a memory-based .NET malware is executing. Immediately isolate the affected process and its parent, and perform a memory dump for forensic analysis. Block any associated network connections and hunt across the environment for other systems exhibiting the same assembly name or pattern.",
+    "false_positive": "False positives are highly unlikely. While some in-house development tools or third-party licensing libraries might show similar patterns, the combination of a random-string name and the absence of a signature is extremely rare. Therefore, every alert should be treated as a high-priority incident."
+}

@@ -1,0 +1,35 @@
+{
+    "id": "F-PROC-009-LsassMemoryDumpAttempt",
+    "name": "Feature: Potential LSASS Memory Dump via Procdump",
+    "description": "Identifies the execution of procdump.exe targeting the LSASS process, a common credential dumping technique.",
+    "severity": "info",
+    "mitre_attack": [
+        {
+            "tactic": "TA0006",
+            "technique_id": "T1003",
+            "subtechnique_id": "T1003.001"
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "procdump_on_lsass_started",
+                "selections": {
+                    "selection_procdump_lsass": {
+                        "event_type": "process",
+                        "condition_method": "and",
+                        "conditions": [
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "procdump.exe"},
+                            {"field": "body.process.commandline", "operator": "contains", "value": "lsass"}
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "Feature Captured: Procdump targeting LSASS process"
+                }
+            }
+        ]
+    }
+}

@@ -1,0 +1,42 @@
+{
+    "id": "ETW-DOTNET-001-LoaderModuleLoad-anomaly",
+    "name": ".NET Assembly Memory Load (No Native Path Detected)",
+    "description": "Detects suspicious .NET module loads where the module is loaded directly in memory without a native path. This may indicate reflective or in-memory assembly loading techniques commonly used in fileless attacks or post-exploitation frameworks.",
+    "severity": "critical",
+    "mitre_attack": [
+        {
+            "tactic": "Execution",
+            "technique_id": "T1055.004"
+        },
+        {
+            "tactic": "Defense Evasion",
+            "technique_id": "T1620"
+        },
+        {
+            "tactic": "Defense Evasion",
+            "technique_id": "T1027"
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "no_modulenativepath",
+                "selections": {
+                    "selection_gp": {
+                        "event_type": "etw",
+                        "condition_method": "and",
+                        "conditions": [
+                            {"field": "body.etw.event_name", "operator": "regex", "value": "^loadermoduleload.*"},
+                            {"field": "body.etw.fields.modulenativepath", "operator": "equals", "value": ""}
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "No Module NativePath in LoaderModuleLoad event"
+                }
+            }
+        ]
+    }
+}

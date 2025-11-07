@@ -1,0 +1,33 @@
+{
+    "id": "F-PROC-038-FilterDriverManagement",
+    "name": "Feature: Filter Driver Management via fltMC.exe",
+    "description": "Identifies the use of fltMC.exe to manage file system filter drivers. Loading or unloading drivers is a significant system-level event.",
+    "severity": "info",
+    "mitre_attack": [
+        {
+            "tactic": "TA0003",
+            "technique_id": "T1543"
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "fltmc_execution",
+                "selections": {
+                    "selection_fltmc": {
+                        "event_type": "process",
+                        "condition_method": "and",
+                        "conditions": [
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "fltMC.exe"}
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "Feature Captured: Filter driver management utility (fltMC.exe) was executed."
+                }
+            }
+        ]
+    }
+}

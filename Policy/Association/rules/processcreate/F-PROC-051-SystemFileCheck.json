@@ -1,0 +1,33 @@
+{
+    "id": "F-PROC-051-SystemFileCheck",
+    "name": "Feature: System File Checker Execution",
+    "description": "Identifies the execution of sfc.exe, the System File Checker. This tool scans and verifies the integrity of all protected system files and replaces incorrect versions.",
+    "severity": "info",
+    "mitre_attack": [
+        {
+            "tactic": "TA0005",
+            "technique_id": "T1491"
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "sfc_execution",
+                "selections": {
+                    "selection_sfc": {
+                        "event_type": "process",
+                        "condition_method": "and",
+                        "conditions": [
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "sfc.exe"}
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "Feature Captured: System File Checker (sfc.exe) was executed."
+                }
+            }
+        ]
+    }
+}

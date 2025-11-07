@@ -1,0 +1,34 @@
+{
+    "id": "F-PROC-040-FileDownloadUtility",
+    "name": "Feature: File Download Utility Execution",
+    "description": "Identifies the execution of common command-line file download utilities like curl.exe or wget.exe.",
+    "severity": "info",
+    "mitre_attack": [
+        {
+            "tactic": "TA0011",
+            "technique_id": "T1105"
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "download_tool_execution",
+                "selections": {
+                    "selection_downloader": {
+                        "event_type": "process",
+                        "condition_method": "or",
+                        "conditions": [
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "curl.exe"},
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "wget.exe"}
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "Feature Captured: A command-line file download utility was executed."
+                }
+            }
+        ]
+    }
+}

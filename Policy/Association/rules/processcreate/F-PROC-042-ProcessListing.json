@@ -1,0 +1,33 @@
+{
+    "id": "F-PROC-042-ProcessListing",
+    "name": "Feature: Process Listing via tasklist.exe",
+    "description": "Identifies the execution of tasklist.exe, which is used to display a list of currently running processes. This is a fundamental reconnaissance step.",
+    "severity": "info",
+    "mitre_attack": [
+        {
+            "tactic": "TA0007",
+            "technique_id": "T1057"
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "tasklist_execution",
+                "selections": {
+                    "selection_tasklist": {
+                        "event_type": "process",
+                        "condition_method": "and",
+                        "conditions": [
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "tasklist.exe"}
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "Feature Captured: Process listing was performed (tasklist.exe)."
+                }
+            }
+        ]
+    }
+}

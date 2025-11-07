@@ -4,6 +4,8 @@
 #include <thread>   // std::this_thread::sleep_for
 #include <chrono>   // std::chrono::seconds
 
+
+
 int main()
 {
     //test
@@ -16,6 +18,25 @@ int main()
 
     return 0;*/
 
+    /*EDR::Util::AI::VATEX_NOVE_AI VNA("192.168.1.205");
+
+    json model_json = json::parse(fmt::format(R"(
+{{
+    "id": "MyML-01",
+    "data": {{
+        "X": {{
+            "source": [
+                [10, 15, 20]
+            ]
+        }}
+    }}
+}}
+)"));
+
+    VNA.Predict_ML(model_json);*/
+
+
+    
     EDR::Server::EDRServer Server(
         /*
             Kafka Consume
@@ -57,4 +78,5 @@ int main()
     Server.Stop();
 
     return 0;
+    
 }

@@ -84,7 +84,6 @@ namespace Solution
                     std::string VATEX_INTELLINA_API_ServerIp,
                     unsigned int VATEX_INTELLINA_API_ServerPort = 51034
                 )
-                : VATEX_INTELLINA(VATEX_INTELLINA_API_ServerIp, VATEX_INTELLINA_API_ServerPort)
                 {}
                 virtual ~SolutionManager() = 0;
 
@@ -98,8 +97,6 @@ namespace Solution
                 // 실시간 서버 정보 전체 반환
                 virtual bool Get_Solution_Information( SolutionInfo::SolutionInfo_Parent& output ) = 0;
 
-                // 인텔리전스 멤버 (솔루션 매니저 멤버)
-                Solution::Intelligence::Intellina VATEX_INTELLINA;
             };
         }
 

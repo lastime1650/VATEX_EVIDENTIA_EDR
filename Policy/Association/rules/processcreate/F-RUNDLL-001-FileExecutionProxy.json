@@ -1,0 +1,40 @@
+{
+    "id": "F-RUNDLL-001-FileExecutionProxy",
+    "name": "Feature: Rundll32 Used as Execution Proxy",
+    "description": "Identifies rundll32.exe being used with shell32.dll's ShellExec_RunDLL function to execute another program. This can be a way to bypass certain execution controls.",
+    "severity": "high",
+    "mitre_attack": [
+        {
+            "tactic": "TA0002",
+            "technique_id": "T1218",
+            "subtechnique_id": "T1218.011"
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "rundll32_shellexec_pattern",
+                "selections": {
+                    "selection_rundll32_shellexec": {
+                        "event_type": "process",
+                        "condition_method": "and",
+                        "conditions": [
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "rundll32.exe"},
+                            {"field": "body.process.commandline", "operator": "contains", "value": "shell32.dll,ShellExec_RunDLL"},
+                            {
+                                "field": "body.process.commandline",
+                                "operator": "regex",
+                                "value": "\\.(exe|msi|bat|cmd|vbs|js)"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "Feature Captured: Rundll32 was used as a proxy to execute a file."
+                }
+            }
+        ]
+    }
+}

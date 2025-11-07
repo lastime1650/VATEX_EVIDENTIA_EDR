@@ -10,6 +10,8 @@
 #include "../Solution/_Manager/Policy/_Child/EDRPolicy.hpp" // EDR based Policy
 #include "../Solution/_Manager/Manager.hpp" // Solution logics
 
+#include <future>
+
 namespace EDR
 {
     namespace Server
@@ -136,24 +138,34 @@ s
                                     if(ev != nullptr)
                                     {
                                         // Step1. Node 추가
-                                        EDR::Server::Util::node::ProcessTreeNode* Mynode = nullptr;
-                                        this->TreeManager.add_process_node(ev, Mynode);
+                                        //EDR::Server::Util::node::ProcessTreeNode* Mynode = nullptr;
+                                        this->TreeManager.add_process_node(ev);
+                                        
+                                        //Node_Post_Processing_Asyncs.emplace_back(
+                                        //     std::async(std::launch::async, [Mynode]() {
+//
+                                       //     })
+                                        //);
 
-                                        if(Mynode)
+                                        /*if(Mynode)
                                         {
                                             
-                                            if(Mynode->session.Root_SessionID == "991b7a496ecaa7c4a3642c9243cd54073b4c5ad186dae9c2b88111e3e541a618")
+                                            if(Mynode->session.Root_SessionID == "fa8b1139e95af25962b697c0cd841b0740102c854a3e40d02ec71e5357065993")
                                             {
                                                 //std::string X = message.original_message + ",";
                                                 //testFileHandle.writeToFile("./test.json", std::vector<uint8_t>(X.begin(), X.end()), true);
-                                                //std::cout << message.original_message <<"\n" << std::endl;
+                                                std::cout << message.original_message <<"\n" << std::endl;
                                                 
 
                                             }
                                             // Rule기반 탐지
-                                            //if( Mynode->AssociationRuleCTX )
-                                            //    Mynode->AssociationRuleCTX->Match(ev->get_event()); // Match Postfix 작업은 내부에서 Action 됨 (자동화 Rule기반 보안알림 및 대응가능)
-                                        }
+                                            if( Mynode->AssociationRuleCTX )
+                                                Mynode->AssociationRuleCTX->Match(ev->get_event()); // Match Postfix 작업은 내부에서 Action 됨 (자동화 Rule기반 보안알림 및 대응가능)
+
+                                            // 인텔리전스 요청
+                                            //.. ev에 포함된 메서드
+                                            
+                                        }*/
                                     }
                                         
                                 }

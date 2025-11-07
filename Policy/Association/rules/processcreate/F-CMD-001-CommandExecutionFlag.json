@@ -1,0 +1,39 @@
+{
+    "id": "F-CMD-001-CommandExecutionFlag",
+    "name": "Feature: CMD Executing a Command",
+    "description": "Identifies cmd.exe being launched with the '/c' (carry out and terminate) or '/k' (carry out and remain) flags, indicating it is being used to execute a subsequent command.",
+    "severity": "medium",
+    "mitre_attack": [
+        {
+            "tactic": "TA0002",
+            "technique_id": "T1059",
+            "subtechnique_id": "T1059.003"
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "cmd_exec_flag",
+                "selections": {
+                    "selection_cmd_flag": {
+                        "event_type": "process",
+                        "condition_method": "and",
+                        "conditions": [
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "cmd.exe"},
+                            {
+                                "field": "body.process.commandline",
+                                "operator": "regex",
+                                "value": "\\s(/c|/k)\\s"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "Feature Captured: CMD was used to execute a command via /c or /k flag."
+                }
+            }
+        ]
+    }
+}

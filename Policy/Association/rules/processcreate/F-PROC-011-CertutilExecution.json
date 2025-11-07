@@ -1,0 +1,42 @@
+{
+    "id": "F-PROC-011-CertutilExecution",
+    "name": "Feature: File Download or Decode via certutil.exe",
+    "description": "Identifies the use of certutil.exe with flags that indicate file download (-urlcache) or decoding (-decode), which are common abuse patterns.",
+    "severity": "info",
+    "mitre_attack": [
+        {
+            "tactic": "TA0011",
+            "technique_id": "T1105"
+        },
+        {
+            "tactic": "TA0005",
+            "technique_id": "T1140"
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "certutil_abuse_started",
+                "selections": {
+                    "selection_certutil_abuse": {
+                        "event_type": "process",
+                        "condition_method": "and",
+                        "conditions": [
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "certutil.exe"},
+                            {
+                                "field": "body.process.commandline",
+                                "operator": "regex",
+                                "value": "(-urlcache|-f|-split|-decode)"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "Feature Captured: Potential abuse of certutil.exe for download/decode"
+                }
+            }
+        ]
+    }
+}

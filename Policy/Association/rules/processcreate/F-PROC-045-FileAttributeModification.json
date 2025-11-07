@@ -1,0 +1,34 @@
+{
+    "id": "F-PROC-045-FileAttributeModification",
+    "name": "Feature: File Attribute Modification via attrib.exe",
+    "description": "Identifies the execution of attrib.exe, which is used to change file attributes. It can be used to hide files by setting the 'hidden' or 'system' attribute.",
+    "severity": "info",
+    "mitre_attack": [
+        {
+            "tactic": "TA0005",
+            "technique_id": "T1564",
+            "subtechnique_id": "T1564.001"
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "attrib_execution",
+                "selections": {
+                    "selection_attrib": {
+                        "event_type": "process",
+                        "condition_method": "and",
+                        "conditions": [
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "attrib.exe"}
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "Feature Captured: File attribute modification utility (attrib.exe) was executed."
+                }
+            }
+        ]
+    }
+}

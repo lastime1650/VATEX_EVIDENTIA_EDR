@@ -1,0 +1,39 @@
+{
+    "id": "F-PROC-014-EventLogClearing",
+    "name": "Feature: Windows Event Log Clearing via wevtutil.exe",
+    "description": "Identifies the use of wevtutil.exe to clear event logs, which is a strong indicator of an adversary trying to cover their tracks.",
+    "severity": "info",
+    "mitre_attack": [
+        {
+            "tactic": "TA0005",
+            "technique_id": "T1070",
+            "subtechnique_id": "T1070.001"
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "wevtutil_clear_log_command",
+                "selections": {
+                    "selection_wevtutil_clear": {
+                        "event_type": "process",
+                        "condition_method": "and",
+                        "conditions": [
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "wevtutil.exe"},
+                            {
+                                "field": "body.process.commandline",
+                                "operator": "regex",
+                                "value": "(cl|clear-log)"
+                            }
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "Feature Captured: Windows Event Log clearing attempt (wevtutil.exe)"
+                }
+            }
+        ]
+    }
+}

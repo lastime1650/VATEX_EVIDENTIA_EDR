@@ -1,0 +1,33 @@
+{
+    "id": "F-PROC-041-SymbolicLinkCreation",
+    "name": "Feature: Symbolic Link Creation",
+    "description": "Identifies the execution of mklink.exe, which is used to create symbolic or hard links. This can be used to manipulate file access or for persistence.",
+    "severity": "info",
+    "mitre_attack": [
+        {
+            "tactic": "TA0003",
+            "technique_id": "T1547"
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "mklink_execution",
+                "selections": {
+                    "selection_mklink": {
+                        "event_type": "process",
+                        "condition_method": "and",
+                        "conditions": [
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "mklink.exe"}
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "Feature Captured: Symbolic link creation utility (mklink.exe) was executed."
+                }
+            }
+        ]
+    }
+}

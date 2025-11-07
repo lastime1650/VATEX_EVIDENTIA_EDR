@@ -1,0 +1,35 @@
+{
+    "id": "F-PROC-013-ShadowCopyManipulation",
+    "name": "Feature: Shadow Copy Manipulation via vssadmin.exe",
+    "description": "Identifies the use of vssadmin.exe, often to delete shadow copies to prevent system recovery, a common ransomware tactic.",
+    "severity": "info",
+    "mitre_attack": [
+        {
+            "tactic": "TA0005",
+            "technique_id": "T1490"
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "vssadmin_delete_command",
+                "selections": {
+                    "selection_vssadmin_delete": {
+                        "event_type": "process",
+                        "condition_method": "and",
+                        "conditions": [
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "vssadmin.exe"},
+                            {"field": "body.process.commandline", "operator": "contains", "value": "delete"},
+                            {"field": "body.process.commandline", "operator": "contains", "value": "shadows"}
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "Feature Captured: Shadow Copy deletion attempt (vssadmin.exe)"
+                }
+            }
+        ]
+    }
+}

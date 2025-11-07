@@ -31,7 +31,7 @@ Our Endpoint Detection and Response (EDR) solution provides crystal-clear visibi
 VateX EVIDENTIA EDR consists of two key components that work in tandem to protect your endpoints.
 
 1.  **Kernel Access Agent** `(C/C++)`: A high-performance agent deployed on endpoints to collect deep, kernel-level event data.
-2.  **EDR Server** `(Python)`: A centralized server that ingests, analyzes, and correlates data from all agents to detect threats.
+2.  **EDR Server** `(C/C++)`: A centralized server that ingests, analyzes, and correlates data from all agents to detect threats.
 
 > [!IMPORTANT]
 > **Prerequisite: Apache Kafka**

@@ -1,0 +1,33 @@
+{
+    "id": "F-PROC-035-DiskManagement",
+    "name": "Feature: Disk Partition Utility Execution",
+    "description": "Identifies the execution of the disk management utility (diskpart.exe). Its usage can indicate significant changes to the system's storage configuration.",
+    "severity": "info",
+    "mitre_attack": [
+        {
+            "tactic": "TA0005",
+            "technique_id": "T1563"
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "diskpart_execution",
+                "selections": {
+                    "selection_diskpart": {
+                        "event_type": "process",
+                        "condition_method": "and",
+                        "conditions": [
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "diskpart.exe"}
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "Feature Captured: Disk partition utility (diskpart.exe) was executed."
+                }
+            }
+        ]
+    }
+}

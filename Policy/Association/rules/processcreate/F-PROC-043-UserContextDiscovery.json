@@ -1,0 +1,33 @@
+{
+    "id": "F-PROC-043-UserContextDiscovery",
+    "name": "Feature: User Context Discovery via whoami.exe",
+    "description": "Identifies the execution of whoami.exe, used to find out the current user context, including group memberships and privileges.",
+    "severity": "info",
+    "mitre_attack": [
+        {
+            "tactic": "TA0007",
+            "technique_id": "T1033"
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "whoami_execution",
+                "selections": {
+                    "selection_whoami": {
+                        "event_type": "process",
+                        "condition_method": "and",
+                        "conditions": [
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "whoami.exe"}
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "Feature Captured: User context discovery was performed (whoami.exe)."
+                }
+            }
+        ]
+    }
+}

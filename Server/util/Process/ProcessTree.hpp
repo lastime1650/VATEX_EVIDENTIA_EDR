@@ -4,6 +4,7 @@
 #include "../../../util/util.hpp"
 #include "../Solution/_Manager/Manager.hpp" // Solution logics
 
+
 namespace EDR
 {
     namespace Server
@@ -217,13 +218,9 @@ namespace EDR
                         {
                             if( filesha256.length() >= 64 )
                             {
-                                json output = json::object();
-                                // sha256
-                                if( Intelligence.Query_file_sha256(
-                                    filesha256,
-                                    output
-                                ) )
-                                    append_intelligence(output);
+                                append_intelligence(
+                                    Intelligence.Query_FILE_SHA256(filesha256)
+                                );
                             }
 
                         }
@@ -257,60 +254,52 @@ namespace EDR
 
                         void send_to_intelligence() override
                         {
-                            /*
-                                Source
-                            */
-                            if(sourceip.length())
+
+
+                            if(direction == "out")
                             {
-                                // body/network/sourceip ip조회
-                                json output;
-                                // Only ip
-                                if( Intelligence.Query_network_only_ipv4(
-                                    sourceip,
-                                    output
-                                ) )
-                                    append_intelligence(output);
+                                // target - destination
                                 
-                                if(sourceport)
+                                /*
+                                    destination
+                                */
+                                if(destinationip.length())
                                 {
-                                    // ip with port
-                                    if( Intelligence.Query_network_ipv4_and_port(
-                                        sourceip,
-                                        sourceport,
-                                        output
-                                    ) )
-                                        append_intelligence(output);
+                                    append_intelligence(
+                                        Intelligence.Query_NETWORK_IPV4(destinationip)
+                                    );
+                                    
+                                    if(destinationport)
+                                    {
+                                        append_intelligence(
+                                            Intelligence.Query_NETWORK_IPV4_with_PORT(destinationip, destinationport)
+                                        );
+                                    }
                                 }
                                 
                             }
-
-                             /*
-                                Destination
-                            */
-                            if(destinationip.length())
+                            else if(direction == "in")
                             {
-                                // body/network/destinationip ip조회
-                                json output;
+                                // target - source
 
-                                // Only ip
-                                if( Intelligence.Query_network_only_ipv4(
-                                    destinationip,
-                                    output
-                                ) )
-                                    append_intelligence(output);
-
-                                if(destinationport)
+                                /*
+                                    Source
+                                */
+                                if(sourceip.length())
                                 {
-                                    // ip with port
-                                    if( Intelligence.Query_network_ipv4_and_port(
-                                        destinationip,
-                                        destinationport,
-                                        output
-                                    ) )
-                                        append_intelligence(output);
+                                    append_intelligence(
+                                        Intelligence.Query_NETWORK_IPV4(sourceip)
+                                    );
+                                    
+                                    if(sourceport)
+                                    {
+                                        append_intelligence(
+                                            Intelligence.Query_NETWORK_IPV4_with_PORT(sourceip, sourceport)
+                                        );
+                                    }
                                 }
-
                             }
+                            
 
                         }
 
@@ -372,13 +361,9 @@ namespace EDR
                             {
                                 if( filesha256.length() >= 64 )
                                 {
-                                    json output = json::object();
-                                    // sha256
-                                    if( Intelligence.Query_file_sha256(
-                                        filesha256,
-                                        output
-                                    ) )
-                                        append_intelligence(output);
+                                    append_intelligence(
+                                        Intelligence.Query_FILE_SHA256(filesha256)
+                                    );
                                 }
 
                             }
@@ -457,6 +442,9 @@ namespace EDR
                                 event_flags = event["body"]["etw"]["event_flags"].get<unsigned int>();
                                 event_version = event["body"]["etw"]["event_version"].get<unsigned int>();
 
+                                if( event_name == "LoaderModuleLoad_V2" )
+                                    std::cout << jsonEvent.dump()  << std::endl;
+
                                 // fields
                                 for( const auto& [key, value] : event["body"]["etw"]["fields"].items())
                                 {
@@ -471,7 +459,7 @@ namespace EDR
                             }
                             void send_to_intelligence() override
                             {
-                                throw std::runtime_error("RegistryEvent has no intelligence");
+                                throw std::runtime_error("ETW has no intelligence");
 
                             }
 
@@ -505,515 +493,430 @@ namespace EDR
 
             namespace node
             {
+                // 노드가 종료된 이유를 나타내는 열거형
+                enum class TerminateReason
+                {
+                    NONE,                       // 아직 종료되지 않음
+                    BY_EVENT,                   // 정상적인 종료 이벤트 수신
+                    BY_MAX_EVENTS_LIMIT,        // 노드 내 최대 이벤트 수 초과
+                    BY_MAX_NODES_LIMIT,         // 트리 내 최대 자식 노드 수 초과 (루트 노드에만 설정됨)
+                    BY_TIMEOUT                  // 장시간 활동이 없어 타임아웃 처리
+                };
 
-                // node struct
+                // 루트 노드에 의해 공유될 타임스탬프 구조체
+                struct ProcessTreeTimestamp
+                {
+                    std::atomic<unsigned long long> first_seen{0};
+                    std::atomic<unsigned long long> last_seen{0};
+                };
+
+                // 프로세스 트리의 각 노드를 나타내는 구조체
                 struct ProcessTreeNode
                 {
-                    std::shared_ptr<Solution::Policy::Resource::Association::ASSOCIATION_RULE_MANAGER> AssociationRuleCTX = nullptr; // 최상위 부모에서만 유효함
-                    unsigned long long nodeDepthIndex = 0;
-
+                    // --- 고유 정보 ---
                     std::string AGENT_ID;
-                    bool is_alive = true; // 노드 만료여부 
-                    struct
-                    {
+                    struct {
                         std::string SessionID;
                         std::string Root_SessionID;
                         std::string Parent_SessionID;
-                    }session;
-                    bool is_placeholder = true; // 자리 표시자 노드인지 여부 ( 속된 말로 땜빵 )
-                    std::vector<std::shared_ptr<ProcessEvent::Event>> events; // 다양한 유형 이벤트와 헤더(에이전트, os등)
+                    } session;
+                    unsigned long long nodeDepthIndex = 0;
 
-                    struct
+                    // --- 상태 정보 ---
+                    std::atomic<bool> is_alive{true};
+                    std::atomic<bool> is_placeholder{true};
+                    TerminateReason termination_reason = TerminateReason::NONE;
+                    
+                    // --- 이벤트 및 자식 노드 ---
+                    std::vector<std::shared_ptr<ProcessEvent::Event>> events;
+                    std::vector<std::shared_ptr<ProcessTreeNode>> Child;
+
+                    // --- 타임스탬프 ---
+                    // 이 노드 자체의 이벤트 기반 타임스탬프
+                    struct {
+                        unsigned long long first_seen = 0;
+                        unsigned long long last_seen = 0;
+                    } seen_by_event;
+                    
+                    // 트리 전체의 활동을 추적하기 위해 루트 노드에서 생성되고 공유되는 타임스탬프
+                    std::shared_ptr<ProcessTreeTimestamp> shared_tree_timestamp;
+
+                    // --- 분석 및 정책 관련 ---
+                    std::shared_ptr<Solution::Policy::Resource::Association::ASSOCIATION_RULE_MANAGER> AssociationRuleCTX = nullptr;
+                    std::atomic<float> threat_score{0.0f};
+                    std::atomic<bool> analysis_submitted{false};
+                    
+                    // --- 헬퍼 함수들 (포인터 기반으로 수정됨) ---
+
+                    // 모든 하위 자식들이 종료되었는지 재귀적으로 확인
+                    bool are_all_children_terminated() const
                     {
-                        // 이 seen 타임스탬프 값은 EDR서버 자체적으로 매기는 것
-                        // 로그에서 ["header"]["nano_timestamp"] 값으로 Update
-                        unsigned long long first_seen = 0; // first
-                        unsigned long long last_seen = 0;  // recent -> (응용): 업데이트가 오래되면 만료처리 가능 ( 단, 프로세스 종료시에는 바로 만료 )
-                    }seen;
-
-                    std::vector<struct ProcessTreeNode> Child;
-
-
-                    // 루트 노드 찾기 ( root SessionID 기반)
-                    ProcessTreeNode* get_root_node(std::vector<ProcessTreeNode>& tree_roots)
-                    {
-                        // tree_roots: 에이전트 루트 노드 벡터
-                        for (auto& node : tree_roots)
+                        for (const auto& child_ptr : Child)
                         {
-                            if (node.session.SessionID == session.Root_SessionID)
-                                return &node;
-                        }
-                        return nullptr; // 루트 노드 못 찾음
-                    }
-
-                    // 자기 노드의 직계 부모를 찾는 함수
-                    ProcessTreeNode* get_parent_node(
-                        const std::vector<ProcessTreeNode>& tree_roots,
-                        const std::string& parent_session_id = ""
-                    )
-                    {
-                        // 부모 SessionID가 비어있으면 자기 노드의 Parent_SessionID 사용
-                        std::string target_parent_id = parent_session_id.empty() ? session.Parent_SessionID : parent_session_id;
-                        if (target_parent_id.empty())
-                            return nullptr; // 루트 노드이므로 부모 없음 취급
-
-                        for (auto& node : tree_roots)
-                        {
-                            if (node.session.SessionID == target_parent_id)
-                                return const_cast<ProcessTreeNode*>(&node); // 부모 발견
-
-                            // 자식 순회 재귀
-                            if (!node.Child.empty())
+                            if (child_ptr->is_alive || !child_ptr->are_all_children_terminated())
                             {
-                                if (auto parent = get_parent_node(node.Child, target_parent_id))
-                                    return parent;
+                                return false;
                             }
                         }
-                        return nullptr; // 부모 못 찾음
+                        return true;
                     }
 
-                    // 노드 살아있는 것들 개수
-                    unsigned int count_alive_nodes()
+                    // 모든 자식 노드의 개수를 재귀적으로 계산
+                    unsigned int get_all_child_count()
                     {
-                        unsigned int count = is_alive ? 1 : 0;
-                        for (auto& child : Child)
-                            count += child.count_alive_nodes();
+                        unsigned int count = 0;
+                        for (const auto& child_ptr : Child)
+                        {
+                            count += 1 + child_ptr->get_all_child_count();
+                        }
                         return count;
                     }
 
-                    // 노드 깊이 최대값
-                    unsigned int get_max_depth()
+                    // 현재 노드부터 모든 하위 노드의 이벤트를 시간순으로 정렬하여 반환
+                    std::vector<json> get_all_events_sorted_by_time()
                     {
-                        unsigned int max_depth = nodeDepthIndex;
-                        for (auto& child : Child)
-                            max_depth = std::max(max_depth, child.get_max_depth());
-                        return max_depth;
-                    }
+                        std::vector<std::shared_ptr<ProcessEvent::Event>> all_events;
+                        std::function<void(const ProcessTreeNode&)> collect_events =
+                            [&](const ProcessTreeNode& node) {
+                                all_events.insert(all_events.end(), node.events.begin(), node.events.end());
+                                for (const auto& child : node.Child) {
+                                    collect_events(*child);
+                                }
+                            };
+                        collect_events(*this);
 
-                    // 현 노드를 기준으로 자식의 자식,, 모든 자식 노드 개수를 반환 
-                    unsigned int get_all_child_count( )
-                    {
-                        unsigned int output_count = 0; 
-                        for (auto& child : Child)
-                        {
-                            output_count += 1; // 자식 노드
-                            output_count += child.get_all_child_count(); // 재귀
+                        std::sort(all_events.begin(), all_events.end(),
+                            [](const auto& a, const auto& b) {
+                                return a->timestamp < b->timestamp;
+                            });
+
+                        std::vector<json> sorted_json_events;
+                        for (const auto& ev_ptr : all_events) {
+                            if(ev_ptr) sorted_json_events.push_back(ev_ptr->get_event());
                         }
-                        return output_count;
+                        return sorted_json_events;
                     }
 
-
-                    // 현 노드를 기준으로 자식 뿌리를 하나의 JSON으로 변환
+                    // 현재 노드와 하위 트리를 JSON으로 변환
                     bool to_jsonTree(json& output)
                     {
-                        /*
-                        [ Example ]
-                            {
-                                "AGENT_ID": "agent-001",
-                                "is_alive": true,
-                                "is_placeholder": false,
-                                "nodeDepthIndex": 0,
-                                "session": {
-                                    "SessionID": "1000",
-                                    "Root_SessionID": "1000",
-                                    "Parent_SessionID": ""
-                                },
-                                "seen": {
-                                    "first_seen": 1690000000,
-                                    "last_seen": 1690005000
-                                },
-                                "events": [
-                                    { "header": { ... }, "body": { ... } }
-                                ],
-                                "Child": [
-                                    {
-                                    "AGENT_ID": "agent-001",
-                                    "is_alive": true,
-                                    "is_placeholder": false,
-                                    "nodeDepthIndex": 1,
-                                    "session": {
-                                        "SessionID": "1001",
-                                        "Root_SessionID": "1000",
-                                        "Parent_SessionID": "1000"
-                                    },
-                                    "seen": { "first_seen": 1690000100, "last_seen": 1690000200 },
-                                    "events": [ { "header": { ... }, "body": { ... } } ],
-                                    "Child": []
-                                    }
-                                ]
-                            }
-                        */
-                        try
-                        {
-                            // 현재 노드 기본 정보 직렬화
+                        try {
+                            // --- 1. 기본 노드 정보 직렬화 (기존과 동일) ---
                             output = {
                                 {"AGENT_ID", AGENT_ID},
-                                {"is_alive", is_alive},
-                                {"is_placeholder", is_placeholder},
+                                {"is_alive", is_alive.load()},
+                                {"is_placeholder", is_placeholder.load()},
                                 {"nodeDepthIndex", nodeDepthIndex},
+                                {"child_count", get_all_child_count()},
                                 {"session", {
                                     {"SessionID", session.SessionID},
                                     {"Root_SessionID", session.Root_SessionID},
                                     {"Parent_SessionID", session.Parent_SessionID}
-                                }},
-                                {"seen", {
-                                    {"first_seen", seen.first_seen},
-                                    {"last_seen", seen.last_seen}
                                 }}
                             };
-
-                            // 이벤트 목록 직렬화
-                            json event_array = json::array();
-                            for (auto& ev : events)
-                            {
-                                if (ev)
-                                    event_array.push_back(ev->get_event());
+                            // 타임스탬프 정보도 추가하면 유용합니다.
+                            if (shared_tree_timestamp) {
+                                output["shared_tree_timestamp"] = {
+                                    {"first_seen", shared_tree_timestamp->first_seen.load()},
+                                    {"last_seen", shared_tree_timestamp->last_seen.load()}
+                                };
                             }
-                            output["events"] = event_array;
 
-                            // 자식 노드 재귀 직렬화
-                            json child_array = json::array();
-                            for (auto& child : Child)
-                            {
-                                json child_json;
-                                if (child.to_jsonTree(child_json))
-                                {
-                                    child_array.push_back(child_json);
-                                }
-                            }
-                            output["Child"] = child_array;
+                            // --- 2. 'events' 필드 채우기 (수정된 부분) ---
+                            output["events"] = get_all_events_sorted_by_time();
 
                             return true;
-                        }
-                        catch ( std::exception& e)
-                        {
+                        } catch (const std::exception& e) {
+                            std::cerr << "to_jsonTree failed for SessionID " << session.SessionID << ": " << e.what() << std::endl;
                             return false;
                         }
                     }
-
-                    // 자신의 노드를 기준으로, 하위 자식들에 대한 모든 events 를 하나로 old->new 순으로 정렬
-                    std::vector<json> get_all_events_sorted_by_time()
-                    {
-                        // 1. 자신과 모든 자식 노드의 이벤트를 한 곳에 모읍니다.
-                        std::vector<std::shared_ptr<ProcessEvent::Event>> all_events;
-                        
-                        // 재귀적으로 이벤트를 수집하는 람다 함수
-                        std::function<void(ProcessTreeNode&)> collect_events =
-                            [&](ProcessTreeNode& node) {
-                            // 현재 노드의 이벤트를 all_events 벡터에 추가
-                            all_events.insert(all_events.end(), node.events.begin(), node.events.end());
-
-                            // 모든 자식 노드에 대해 재귀적으로 호출
-                            for (auto& child : node.Child)
-                            {
-                                collect_events(child);
-                            }
-                        };
-
-                        // 현재 노드(this)부터 시작하여 이벤트 수집
-                        collect_events(*this);
-
-
-                        // 2. 타임스탬프(old -> new)를 기준으로 이벤트를 정렬합니다.
-                        std::sort(all_events.begin(), all_events.end(), 
-                            [](const std::shared_ptr<ProcessEvent::Event>& a, const std::shared_ptr<ProcessEvent::Event>& b) {
-                            // a의 타임스탬프가 b보다 작으면 true를 반환 (오름차순 정렬)
-                            return a->timestamp < b->timestamp;
-                        });
-
-
-                        // 3. 정렬된 이벤트 포인터 목록을 JSON 객체 벡터로 변환하여 반환합니다.
-                        std::vector<json> sorted_json_events;
-                        for (const auto& ev : all_events)
-                        {
-                            if (ev) // 유효한 이벤트인지 확인
-                            {
-                                sorted_json_events.push_back(ev->get_event());
-                            }
-                        }
-
-                        return sorted_json_events;
-                    }
-
-                    json Summary()
-                    {
-                        return {
-                            
-                            {"depth", get_max_depth()},
-                            {"child_count", get_all_child_count()},
-                            {"alive_count", count_alive_nodes()}
-
-                        };
-                    }
-
                 };
-            }
+            } // namespace node
 
-            namespace map
+            // 에이전트별 프로세스 트리를 관리하는 구조체 (세분화된 잠금을 위함)
+            struct AgentProcessTree
             {
-                // map : key
-                std::string AGENT_ID;
+                std::mutex mtx;
+                std::vector<std::shared_ptr<node::ProcessTreeNode>> root_nodes;
 
-                // map : data
-                std::vector< std::shared_ptr<EDR::Server::Util::ProcessEvent::Event> > EventNodes;
-            }
+                AgentProcessTree() = default;
+                AgentProcessTree(const AgentProcessTree&) = delete;
+                AgentProcessTree& operator=(const AgentProcessTree&) = delete;
+                AgentProcessTree(AgentProcessTree&&) = default;
+                AgentProcessTree& operator=(AgentProcessTree&&) = default;
+            };
 
+            // --- 메인 트리 관리 클래스 ---
             class ProcessTreeManager
             {
-                public:
-                    ProcessTreeManager(Solution::Policy::EDRPolicy& EDRPolicyManager):EDRPolicyManager(EDRPolicyManager){}
-                    ~ProcessTreeManager() = default;
+            public:
+                ProcessTreeManager(
+                    Solution::Policy::EDRPolicy& EDRPolicyManager,
+                    size_t max_events_per_node = 5000,
+                    size_t max_nodes_per_tree = 1000,
+                    unsigned long long tree_timeout_ms = 30000000 // 5분
+                ) : EDRPolicyManager(EDRPolicyManager),
+                    MAX_EVENTS_PER_NODE(max_events_per_node),
+                    MAX_NODES_PER_TREE(max_nodes_per_tree),
+                    TREE_TIMEOUT_MS(tree_timeout_ms)
+                {
+                    is_TreeManager_Running = true;
+                    TreeCleanUpLoopThread = std::thread(&ProcessTreeManager::TreeCleanUpLoopThread_Function, this);
+                }
 
-                    bool add_process_node( std::shared_ptr<ProcessEvent::Event> eventNode, node::ProcessTreeNode*& node_output )
+                ~ProcessTreeManager()
+                {
+                    is_TreeManager_Running = false;
+                    if (TreeCleanUpLoopThread.joinable())
                     {
-                        // 1. Agent ID로 해당 에이전트의 트리(루트 노드 벡터)를 가져옵니다. 없으면 새로 생성됩니다.
-                        auto& agent_tree = tree_map[eventNode->AGENT_ID];
+                        TreeCleanUpLoopThread.join();
+                    }
+                }
 
-                        // 2. 이벤트의 SessionID로 노드가 이미 존재하는지 찾습니다.
-                        auto* target_node = _find_node_by_session_id(agent_tree, eventNode->session.SessionID);
-
-                        // --- 시나리오 1: 노드가 아직 존재하지 않음 ---
-                        if (!target_node)
-                        {
-                            // 새 노드를 생성하고 이벤트 정보로 기본값을 채웁니다.
-                            node::ProcessTreeNode new_node;
-                            new_node.AGENT_ID = eventNode->AGENT_ID;
-                            new_node.session.SessionID = eventNode->session.SessionID;
-                            new_node.session.Parent_SessionID = eventNode->session.Parent_SessionID;
-                            new_node.session.Root_SessionID = eventNode->session.Root_SessionID;
-                            new_node.seen.first_seen = eventNode->timestamp;
-                            new_node.seen.last_seen = eventNode->timestamp;
-                            new_node.events.push_back(eventNode);
-
-                            if(eventNode->session.Parent_SessionID == eventNode->session.Root_SessionID)
-                                new_node.AssociationRuleCTX = EDRPolicyManager.Get_Cloned_AssociationRuleCTX();
-                            else
-                            {
-                                // 최상위 노드의 자식들은 항상 최상위 노드에 저장된 "복사된 AssociationRuleCTX" 와 같은 shared_ptr를 갖는다
-
-                                auto* root_node = new_node.get_root_node(agent_tree);
-                                if(root_node)
-                                    new_node.AssociationRuleCTX = root_node->AssociationRuleCTX;
-                            }
-                            
-
-                            // 이벤트 타입에 따라 is_alive 와 is_placeholder 상태를 결정합니다.
-                            if (dynamic_cast<ProcessEvent::ProcessCreateEvent*>(eventNode.get()))
-                            {
-                                new_node.is_placeholder = false; // 생성 이벤트가 왔으므로 실제 노드임
-                            }
-                            if (dynamic_cast<ProcessEvent::ProcessTerminateEvent*>(eventNode.get()))
-                            {
-                                new_node.is_alive = false; // 생성되자마자 종료 이벤트가 온 경우
-                            }
-
-                            // 노드를 트리의 올바른 위치에 배치합니다.
-                            _place_new_node(agent_tree, std::move(new_node));
-
-                            // output
-                            node_output = _find_node_by_session_id(agent_tree, eventNode->session.SessionID);
+                bool add_process_node(std::shared_ptr<ProcessEvent::Event> eventNode)
+                {
+                    // 1. AgentProcessTree 포인터 가져오기 (없으면 생성)
+                    std::shared_ptr<AgentProcessTree> agent_tree_ptr;
+                    {
+                        std::lock_guard<std::mutex> map_lock(map_mutex);
+                        auto it = tree_map.find(eventNode->AGENT_ID);
+                        if (it == tree_map.end()) {
+                            it = tree_map.emplace(eventNode->AGENT_ID, std::make_shared<AgentProcessTree>()).first;
                         }
-                        // --- 시나리오 2: 노드가 이미 존재함 ---
-                        else
-                        {
-                            // 기존 노드에 이벤트를 추가하고 last_seen을 업데이트합니다.
-                            target_node->events.push_back(eventNode);
-                            target_node->seen.last_seen = std::max(target_node->seen.last_seen, eventNode->timestamp);
-
-                            // 만약 기존 노드가 자리 표시자(placeholder)였고, 지금 ProcessCreate 이벤트가 도착했다면,
-                            // 실제 노드로 전환하고 정보를 업데이트합니다.
-                            if (target_node->is_placeholder && dynamic_cast<ProcessEvent::ProcessCreateEvent*>(eventNode.get()))
-                            {
-                                target_node->is_placeholder = false;
-                                // ProcessCreate 이벤트를 이벤트 목록의 맨 앞으로 이동시켜 가독성을 높일 수 있습니다.
-                                std::rotate(target_node->events.rbegin(), target_node->events.rbegin() + 1, target_node->events.rend());
-                            }
-
-                            // ProcessTerminate 이벤트인 경우 is_alive 상태를 false로 변경합니다.
-                            if (dynamic_cast<ProcessEvent::ProcessTerminateEvent*>(eventNode.get()))
-                            {
-                                target_node->is_alive = false;
-                            }
-
-                            // output
-                            node_output = target_node;
-                        }
-                        
-                        return true;
+                        agent_tree_ptr = it->second;
                     }
 
-                    /**
-                     * @brief 특정 Agent ID를 가진 전체 프로세스 트리를 조회합니다.
-                     * @param agent_id 조회할 에이전트 ID
-                     * @param out_tree [out] 트리의 루트 노드 벡터에 대한 포인터
-                     * @return 트리 존재 여부
-                     */
-                    bool get_tree_by_agentid(const std::string& agent_id, std::vector<node::ProcessTreeNode>** out_tree)
-                    {
-                        auto it = tree_map.find(agent_id);
-                        if (it == tree_map.end())
-                            return false;   
+                    // 2. 해당 에이전트의 트리만 잠그고 작업 수행
+                    std::lock_guard<std::mutex> lock(agent_tree_ptr->mtx);
+                    auto& agent_root_nodes = agent_tree_ptr->root_nodes;
 
-                        *out_tree = &it->second; 
-                        return true;
+                    auto target_node_ptr = _find_node_by_session_id(agent_root_nodes, eventNode->session.SessionID);
+
+                    // --- 시나리오 1: 노드가 아직 존재하지 않음 ---
+                    if (!target_node_ptr)
+                    {
+                        auto root_node_ptr = _find_node_by_session_id(agent_root_nodes, eventNode->session.Root_SessionID);
+                        if (root_node_ptr && root_node_ptr->get_all_child_count() >= MAX_NODES_PER_TREE)
+                        {
+                            if (root_node_ptr->is_alive) {
+                                root_node_ptr->is_alive = false;
+                                root_node_ptr->termination_reason = node::TerminateReason::BY_MAX_NODES_LIMIT;
+                            }
+                            //node_output = nullptr;
+                            return false; // 자식 생성 거부
+                        }
+
+                        auto new_node_ptr = std::make_shared<node::ProcessTreeNode>();
+                        new_node_ptr->AGENT_ID = eventNode->AGENT_ID;
+                        new_node_ptr->session.Root_SessionID = eventNode->session.Root_SessionID;
+                        new_node_ptr->session.Parent_SessionID = eventNode->session.Parent_SessionID;
+                        new_node_ptr->session.SessionID = eventNode->session.SessionID;
+                        new_node_ptr->seen_by_event.first_seen = eventNode->timestamp;
+                        new_node_ptr->seen_by_event.last_seen = eventNode->timestamp;
+                        new_node_ptr->events.push_back(eventNode);
+
+                        if (new_node_ptr->session.SessionID == new_node_ptr->session.Root_SessionID) { // 루트 노드인 경우
+                            new_node_ptr->AssociationRuleCTX = EDRPolicyManager.Get_Cloned_AssociationRuleCTX();
+                            new_node_ptr->shared_tree_timestamp = std::make_shared<node::ProcessTreeTimestamp>();
+                            unsigned long long now = EDR::Util::timestamp::Get_Real_Timestamp();
+                            new_node_ptr->shared_tree_timestamp->first_seen = now;
+                            new_node_ptr->shared_tree_timestamp->last_seen = now;
+                        } else {
+                            if (root_node_ptr) {
+                                new_node_ptr->AssociationRuleCTX = root_node_ptr->AssociationRuleCTX;
+                                new_node_ptr->shared_tree_timestamp = root_node_ptr->shared_tree_timestamp;
+                            }
+                        }
+
+                        if (new_node_ptr->shared_tree_timestamp) {
+                            new_node_ptr->shared_tree_timestamp->last_seen = EDR::Util::timestamp::Get_Real_Timestamp();
+                        }
+
+                        if (dynamic_cast<ProcessEvent::ProcessCreateEvent*>(eventNode.get())) {
+                            new_node_ptr->is_placeholder = false;
+                        }
+                        if (dynamic_cast<ProcessEvent::ProcessTerminateEvent*>(eventNode.get())) {
+                            new_node_ptr->is_alive = false;
+                            new_node_ptr->termination_reason = node::TerminateReason::BY_EVENT;
+                        }
+
+                        _place_new_node(agent_root_nodes, new_node_ptr);
+                        //node_output = new_node_ptr;
                     }
-
-                    // 특정 노드 와 그 자식 모두 제거 (clear)
-                    bool Remove_Node( const std::string& agent_id, const std::string& session_id )
+                    // --- 시나리오 2: 노드가 이미 존재함 ---
+                    else
                     {
-                        std::vector<node::ProcessTreeNode>* RootNode = nullptr;
-                        if( !get_tree_by_agentid(agent_id, &RootNode) || !RootNode )
+                        if (!target_node_ptr->is_alive) { // 이미 종료된 노드에는 이벤트 추가 안 함
+                            //node_output = target_node_ptr;
                             return false;
+                        }
                         
-                        /* 특정 에이전트의 TreeNode 루트 가져옴 */
-
-                        // Session_id 자신노드와 자신노드의 모든 자식을 clear() 함
-                        return _remove_tree_nodes(*RootNode, session_id);
-                    }
-
-                private:
-
-                    Solution::Policy::EDRPolicy& EDRPolicyManager;
-
-                    /**
-                     * @brief 새로 생성된 노드를 트리의 올바른 위치에 배치합니다.
-                     * @param agent_tree 해당 에이전트의 전체 트리(루트 벡터)
-                     * @param new_node 배치할 새로운 노드
-                     */
-                    void _place_new_node(std::vector<node::ProcessTreeNode>& agent_tree, node::ProcessTreeNode&& new_node)
-                    {
-                        // case 1: 이 노드가 루트 노드인 경우 (SessionID == Root_SessionID)
-                        if (new_node.session.SessionID == new_node.session.Root_SessionID)
-                        {
-                            new_node.nodeDepthIndex = 0;
-                            agent_tree.push_back(std::move(new_node));
-                            return;
+                        if (target_node_ptr->events.size() >= MAX_EVENTS_PER_NODE) {
+                            target_node_ptr->is_alive = false;
+                            target_node_ptr->termination_reason = node::TerminateReason::BY_MAX_EVENTS_LIMIT;
+                            //node_output = target_node_ptr;
+                            return false; // 새 이벤트 추가 거부
                         }
 
-                        // case 2: 부모 노드를 찾아 자식으로 추가
-                        auto* parent_node = _find_node_by_session_id(agent_tree, new_node.session.Parent_SessionID);
-                        if (parent_node)
-                        {
-                            new_node.nodeDepthIndex = parent_node->nodeDepthIndex + 1;
-                            parent_node->Child.push_back(std::move(new_node));
-                            // 부모의 last_seen도 자식 이벤트 시간에 맞춰 업데이트
-                            parent_node->seen.last_seen = std::max(parent_node->seen.last_seen, new_node.seen.last_seen);
-                            return;
-                        }
-
-                        // case 3: 부모 노드를 찾지 못한 경우 (이벤트 순서 꼬임)
-                        // 부모에 대한 자리 표시자(placeholder) 노드를 생성하고, 그 노드를 새로운 루트로 추가한 뒤,
-                        // 현재 노드를 그 자식으로 연결합니다.
-                        node::ProcessTreeNode placeholder_parent;
-                        placeholder_parent.AGENT_ID = new_node.AGENT_ID;
-                        placeholder_parent.session.SessionID = new_node.session.Parent_SessionID;
-                        placeholder_parent.session.Root_SessionID = new_node.session.Root_SessionID;
-                        // placeholder의 부모는 아직 모르므로 비워둡니다. 나중에 부모의 create 이벤트가 오면 채워질 수 있습니다.
-                        placeholder_parent.seen.first_seen = new_node.seen.first_seen; // 자식의 타임스탬프를 따라감
-                        placeholder_parent.seen.last_seen = new_node.seen.last_seen;
-                        placeholder_parent.is_placeholder = true;
-                        placeholder_parent.is_alive = true; // 부모는 일단 살아있다고 가정
+                        target_node_ptr->events.push_back(eventNode);
+                        target_node_ptr->seen_by_event.last_seen = std::max(target_node_ptr->seen_by_event.last_seen, eventNode->timestamp);
                         
-                        placeholder_parent.nodeDepthIndex = 0; // 임시로 루트가 됨
-                        new_node.nodeDepthIndex = 1; // 자식이 됨
+                        if (target_node_ptr->shared_tree_timestamp) {
+                            target_node_ptr->shared_tree_timestamp->last_seen = EDR::Util::timestamp::Get_Real_Timestamp();
+                        }
+
+                        if (target_node_ptr->is_placeholder && dynamic_cast<ProcessEvent::ProcessCreateEvent*>(eventNode.get())) {
+                            target_node_ptr->is_placeholder = false;
+                            std::rotate(target_node_ptr->events.rbegin(), target_node_ptr->events.rbegin() + 1, target_node_ptr->events.rend());
+                        }
+
+                        if (dynamic_cast<ProcessEvent::ProcessTerminateEvent*>(eventNode.get())) {
+                            target_node_ptr->is_alive = false;
+                            target_node_ptr->termination_reason = node::TerminateReason::BY_EVENT;
+                        }
+                        //node_output = target_node_ptr;
+
+
+                        auto root_node_ptr = _find_node_by_session_id(agent_root_nodes, eventNode->session.Root_SessionID);
+                        if(root_node_ptr && !root_node_ptr->is_placeholder && root_node_ptr->get_all_child_count() >= 1)
+                        {
+                            json tree;
+                            if( root_node_ptr->to_jsonTree(tree) )
+                                std::cout << tree.dump() << std::endl;
+                        }
+                    }
+                    return true;
+                }
+
+                // 완료된 트리 데이터를 가져갈 수 있는 큐 인터페이스
+                //std::optional<json> get_completed_tree_from_queue() {
+                //    return CompleteProcessNodeTreeQueue.pop();
+               // }
+
+            private:
+                Solution::Policy::EDRPolicy& EDRPolicyManager;
+                const size_t MAX_EVENTS_PER_NODE;
+                const size_t MAX_NODES_PER_TREE;
+                const unsigned long long TREE_TIMEOUT_MS;
+
+                using TreeMap = std::map<std::string, std::shared_ptr<AgentProcessTree>>;
+                TreeMap tree_map;
+                std::mutex map_mutex; // TreeMap 자체를 보호하기 위한 뮤텍스
+
+                EDR::Util::Queue::Queue<json> CompleteProcessNodeTreeQueue;
+
+                // --- 백그라운드 스레드 관련 ---
+                std::atomic<bool> is_TreeManager_Running{false};
+                std::thread TreeCleanUpLoopThread;
+
+                // --- 내부 헬퍼 함수 (모두 포인터 기반) ---
+
+                std::shared_ptr<node::ProcessTreeNode> _find_node_by_session_id(std::vector<std::shared_ptr<node::ProcessTreeNode>>& nodes, const std::string& session_id)
+                {
+                    for (auto& node_ptr : nodes) {
+                        if (node_ptr->session.SessionID == session_id) return node_ptr;
+                        if (auto found = _find_node_by_session_id(node_ptr->Child, session_id)) return found;
+                    }
+                    return nullptr;
+                }
+
+                void _place_new_node(std::vector<std::shared_ptr<node::ProcessTreeNode>>& agent_tree, std::shared_ptr<node::ProcessTreeNode> new_node_ptr)
+                {
+                    if (new_node_ptr->session.SessionID == new_node_ptr->session.Root_SessionID) {
+                        new_node_ptr->nodeDepthIndex = 0;
+                        agent_tree.push_back(new_node_ptr);
+                        return;
+                    }
+                    auto parent_node_ptr = _find_node_by_session_id(agent_tree, new_node_ptr->session.Parent_SessionID);
+                    if (parent_node_ptr) {
+                        new_node_ptr->nodeDepthIndex = parent_node_ptr->nodeDepthIndex + 1;
+                        parent_node_ptr->Child.push_back(new_node_ptr);
+                    } else { // 부모를 못 찾으면 임시 플레이스홀더 부모 생성
+                        auto placeholder_parent_ptr = std::make_shared<node::ProcessTreeNode>();
+                        placeholder_parent_ptr->AGENT_ID = new_node_ptr->AGENT_ID;
+                        placeholder_parent_ptr->session.SessionID = new_node_ptr->session.Parent_SessionID;
+                        placeholder_parent_ptr->session.Root_SessionID = new_node_ptr->session.Root_SessionID;
+                        placeholder_parent_ptr->shared_tree_timestamp = new_node_ptr->shared_tree_timestamp;
+                        placeholder_parent_ptr->nodeDepthIndex = 0;
+                        new_node_ptr->nodeDepthIndex = 1;
+
+                        if (!new_node_ptr->shared_tree_timestamp) { // 실제 루트가 아직 안 온 경우
+                             placeholder_parent_ptr->shared_tree_timestamp = std::make_shared<node::ProcessTreeTimestamp>();
+                             unsigned long long now = EDR::Util::timestamp::Get_Real_Timestamp();
+                             placeholder_parent_ptr->shared_tree_timestamp->first_seen = now;
+                             placeholder_parent_ptr->shared_tree_timestamp->last_seen = now;
+                             new_node_ptr->shared_tree_timestamp = placeholder_parent_ptr->shared_tree_timestamp;
+                        } else {
+                             placeholder_parent_ptr->shared_tree_timestamp = new_node_ptr->shared_tree_timestamp;
+                        }
+
+                        placeholder_parent_ptr->Child.push_back(new_node_ptr);
+                        agent_tree.push_back(placeholder_parent_ptr);
+                    }
+                }
+
+                void _mark_all_nodes_as_terminated(node::ProcessTreeNode& node, node::TerminateReason reason)
+                {
+                    if (node.is_alive) {
+                        node.is_alive = false;
+                        node.termination_reason = reason;
+                    }
+                    for (auto& child : node.Child) {
+                        _mark_all_nodes_as_terminated(*child, reason);
+                    }
+                }
+
+                void TreeCleanUpLoopThread_Function()
+                {
+                    while (is_TreeManager_Running)
+                    {
+                        std::this_thread::sleep_for(std::chrono::seconds(60));
+                        if (!is_TreeManager_Running) break;
+
+                        unsigned long long now = EDR::Util::timestamp::Get_Real_Timestamp();
                         
-                        placeholder_parent.Child.push_back(std::move(new_node));
-                        agent_tree.push_back(std::move(placeholder_parent));
-                    }
-
-                    /**
-                     * @brief 재귀적으로 Session ID와 일치하는 노드를 찾습니다.
-                     * @param nodes 탐색할 노드 벡터
-                     * @param session_id 찾을 세션 ID
-                     * @return 찾은 노드의 포인터. 없으면 nullptr.
-                     */
-                    node::ProcessTreeNode* _find_node_by_session_id(std::vector<node::ProcessTreeNode>& nodes, const std::string& session_id)
-                    {
-                        for (auto& node : nodes)
+                        std::vector<std::pair<std::string, std::shared_ptr<AgentProcessTree>>> tree_map_snapshot;
                         {
-                            if (node.session.SessionID == session_id)
-                                return &node;
-                            
-                            if (auto found = _find_node_by_session_id(node.Child, session_id))
-                                return found;
-                        }
-                        return nullptr;
-                    }
-
-                    bool _add_node_by_process_create(std::vector<node::ProcessTreeNode>& agent_tree,
-                                                std::shared_ptr<ProcessEvent::ProcessCreateEvent> createEvent)
-                    {
-                        node::ProcessTreeNode new_node;
-                        new_node.AGENT_ID = createEvent->AGENT_ID;
-                        new_node.session.Parent_SessionID = createEvent->session.Parent_SessionID;
-                        new_node.session.Root_SessionID = createEvent->session.Root_SessionID;
-                        new_node.session.SessionID = createEvent->session.SessionID;
-
-                        new_node.events.push_back(createEvent);
-                        new_node.seen.first_seen = createEvent->timestamp;
-                        new_node.seen.last_seen = createEvent->timestamp;
-
-                        if (createEvent->session.Root_SessionID == createEvent->session.SessionID)
-                        {
-                            // 최상위 노드인 경우 
-                            new_node.nodeDepthIndex = 0;
-                            agent_tree.push_back(new_node);
-                            return true;
+                            std::lock_guard<std::mutex> map_lock(map_mutex);
+                            tree_map_snapshot.assign(tree_map.begin(), tree_map.end());
                         }
 
-                        if (auto parent_node = _find_node_by_session_id(agent_tree, createEvent->session.Parent_SessionID))
+                        for (const auto& [agent_id, agent_tree_ptr] : tree_map_snapshot)
                         {
-                            new_node.nodeDepthIndex = parent_node->nodeDepthIndex + 1;
-                            parent_node->Child.push_back(new_node);
-                            parent_node->seen.last_seen = createEvent->timestamp;
-                            return true;
-                        }
+                            std::lock_guard<std::mutex> lock(agent_tree_ptr->mtx);
+                            auto& root_nodes = agent_tree_ptr->root_nodes;
 
-                        // 이도 저도 아닐 때 최상위 취급
-                        new_node.nodeDepthIndex = 0;
-                        agent_tree.push_back(new_node);
-                        return true;
-                    }
+                            // 뒤에서부터 순회하며 제거 (erase 안전)
+                            for (auto it = root_nodes.rbegin(); it != root_nodes.rend(); )
+                            {
+                                auto& root_node_ptr = *it;
+                                bool should_remove = false;
 
-                    bool _mark_node_as_terminated(std::vector<node::ProcessTreeNode>& agent_tree,
-                                                std::shared_ptr<ProcessEvent::ProcessTerminateEvent> termEvent)
-                    {
-                        if (auto target = _find_node_by_session_id(agent_tree, termEvent->session.SessionID))
-                        {
-                            target->is_alive = false;
-                            target->seen.last_seen = termEvent->timestamp;
-                            return true;
-                        }
-                        return false;
-                    }
-
-                    // 특정 노드 트리 삭제 ( 자식 포함 됨 ) - targeting -> SessionID
-                    bool _remove_tree_nodes(std::vector<node::ProcessTreeNode>& nodes, std::string SessionID) {
-                        
-                        for (auto it = nodes.begin(); it != nodes.end(); /* nothing */) {
-                            if (it->session.SessionID == SessionID) {
-                                // 자식 노드 전체 삭제
-                                it->Child.clear();
-
-                                // 자신 제거
-                                it = nodes.erase(it);
-
-                                return true; // 삭제 완료 후 종료
-                            } else {
-                                // 자식 노드 재귀 탐색
-                                if (_remove_tree_nodes(it->Child, SessionID)) {
-                                    return true; // 삭제 완료 후 종료
+                                // 조건 1: 루트가 종료되었고 모든 자식도 종료된 경우
+                                if (!root_node_ptr->is_alive && root_node_ptr->are_all_children_terminated()) {
+                                    should_remove = true;
                                 }
-                                ++it;
+                                // 조건 2: 타임아웃
+                                else if (root_node_ptr->shared_tree_timestamp && (now - root_node_ptr->shared_tree_timestamp->last_seen > TREE_TIMEOUT_MS)) {
+                                    _mark_all_nodes_as_terminated(*root_node_ptr, node::TerminateReason::BY_TIMEOUT);
+                                    should_remove = true;
+                                }
+
+                                if (should_remove) {
+                                    json completed_tree;
+                                    if (root_node_ptr->to_jsonTree(completed_tree)) {
+                                        CompleteProcessNodeTreeQueue.put(completed_tree);
+                                    }
+                                    it = decltype(it)(root_nodes.erase(std::next(it).base()));
+                                } else {
+                                    ++it;
+                                }
                             }
                         }
-                        return false; // 찾지 못함
                     }
-
-                    using TreeMap = std::map<std::string, std::vector<node::ProcessTreeNode>>;
-                    TreeMap tree_map;
-                    EDR::Util::Queue::Queue<json> CompleteProcessNodeTreeQueue; // 다양하게 뻗어있는 "std::shared_ptr<EDR::Server::Util::ProcessEvent::Event>"에서 추적 타임아웃 되었거나, 모두 관련 프로세스 노드가 종료된 경우 하나의 JSON으로 모으는 것
-            };
+                }
+            }; // class ProcessTreeManager
         }
     }
 }

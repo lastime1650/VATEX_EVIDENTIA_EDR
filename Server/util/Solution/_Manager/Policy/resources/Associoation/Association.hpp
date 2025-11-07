@@ -260,89 +260,89 @@ namespace Solution
                     }
 
                     bool Match(const json& event, std::vector<Global::Action>& action_output, bool is_string_forced_lower = true) const {
-    // event_type이 없으면 매칭 불가
-    if (!event.contains("body") || !event["body"].is_object()) return false;
-    
-    // 이벤트의 실제 타입을 확인 (예: body 객체 안에 첫 번째 키)
-    std::string event_type;
-    if(event["body"].begin() != event["body"].end()){
-        event_type = event["body"].begin().key();
-    } else {
-        return false;
-    }
+                        // event_type이 없으면 매칭 불가
+                        if (!event.contains("body") || !event["body"].is_object()) return false;
+                        
+                        // 이벤트의 실제 타입을 확인 (예: body 객체 안에 첫 번째 키)
+                        std::string event_type;
+                        if(event["body"].begin() != event["body"].end()){
+                            event_type = event["body"].begin().key();
+                        } else {
+                            return false;
+                        }
 
-    bool final_action_triggered = false;
+                        bool final_action_triggered = false;
 
-    // 모든 inclusion 규칙을 순회
-    for (auto& inclusion : RuleStruct.body.inclusions) {
-        
-        // [추가] 현재 이벤트가 이 inclusion 내의 selection 중 하나라도 매칭되었는지 추적하는 플래그
-        bool current_event_matched_a_selection = false;
+                        // 모든 inclusion 규칙을 순회
+                        for (auto& inclusion : RuleStruct.body.inclusions) {
+                            
+                            // [추가] 현재 이벤트가 이 inclusion 내의 selection 중 하나라도 매칭되었는지 추적하는 플래그
+                            bool current_event_matched_a_selection = false;
 
-        // inclusion 내의 모든 selection을 순회
-        for (auto& [sel_id, selection] : inclusion.selections) {
-            // 1. 이벤트 타입이 일치하는지 확인
-            if (selection.event_type != event_type) {
-                continue;
-            }
+                            // inclusion 내의 모든 selection을 순회
+                            for (auto& [sel_id, selection] : inclusion.selections) {
+                                // 1. 이벤트 타입이 일치하는지 확인
+                                if (selection.event_type != event_type) {
+                                    continue;
+                                }
 
-            // 2. 조건들을 평가
-            bool selection_match = false;
-            if (selection.condition_method == "or") {
-                for (const auto& cond : selection.conditions) {
-                    const json* event_val = get_json_value(event, cond.field);
-                    if (compare_values(event_val, cond, is_string_forced_lower)) {
-                        selection_match = true;
-                        break; // or 조건이므로 하나만 맞아도 성공
+                                // 2. 조건들을 평가
+                                bool selection_match = false;
+                                if (selection.condition_method == "or") {
+                                    for (const auto& cond : selection.conditions) {
+                                        const json* event_val = get_json_value(event, cond.field);
+                                        if (compare_values(event_val, cond, is_string_forced_lower)) {
+                                            selection_match = true;
+                                            break; // or 조건이므로 하나만 맞아도 성공
+                                        }
+                                    }
+                                } else { // "and"
+                                    selection_match = true;
+                                    for (const auto& cond : selection.conditions) {
+                                        const json* event_val = get_json_value(event, cond.field);
+                                        if (!compare_values(event_val, cond, is_string_forced_lower)) {
+                                            selection_match = false;
+                                            break; // and 조건이므로 하나만 틀려도 실패
+                                        }
+                                    }
+                                }
+
+                                // 3. selection이 매칭되면 count 증가 및 플래그 설정
+                                if (selection_match) {
+                                    selection.count++;
+                                    current_event_matched_a_selection = true; // [추가] 현재 이벤트가 기여했음을 표시
+                                }
+                            }
+
+                            // 4. [수정] "현재 이벤트가 기여했을 때만" inclusion의 모든 selection이 충족되었는지 확인
+                            if (current_event_matched_a_selection) {
+                                bool all_selections_met = true;
+                                for (const auto& [sel_id, selection] : inclusion.selections) {
+                                    if (selection.count == 0) {
+                                        all_selections_met = false;
+                                        break;
+                                    }
+                                }
+                                
+                                // 5. 모든 selection이 충족되면 action 트리거
+                                if (all_selections_met) {
+                                    std::cout << event.dump(4) << std::endl; // 가독성을 위해 dump(4) 사용
+                                    std::cout << "  RULE MATCHED: " << RuleStruct.header.rule_name << std::endl;
+                                    std::cout << "  Inclusion ID: " << inclusion.id << std::endl;
+                                    std::cout << "  Action: " << inclusion.action.description << std::endl;
+                                    
+                                    action_output.push_back(inclusion.action); // 외부로 action 전달
+                                    final_action_triggered = true;
+                                    
+                                    // [추가] 매우 중요: Action이 트리거되었으므로, 이 inclusion의 상태를 초기화하여 중복 탐지를 방지
+                                    for (auto& [sel_id, sel_to_reset] : inclusion.selections) {
+                                        sel_to_reset.count = 0;
+                                    }
+                                }
+                            }
+                        }
+                        return final_action_triggered;
                     }
-                }
-            } else { // "and"
-                selection_match = true;
-                for (const auto& cond : selection.conditions) {
-                    const json* event_val = get_json_value(event, cond.field);
-                    if (!compare_values(event_val, cond, is_string_forced_lower)) {
-                        selection_match = false;
-                        break; // and 조건이므로 하나만 틀려도 실패
-                    }
-                }
-            }
-
-            // 3. selection이 매칭되면 count 증가 및 플래그 설정
-            if (selection_match) {
-                selection.count++;
-                current_event_matched_a_selection = true; // [추가] 현재 이벤트가 기여했음을 표시
-            }
-        }
-
-        // 4. [수정] "현재 이벤트가 기여했을 때만" inclusion의 모든 selection이 충족되었는지 확인
-        if (current_event_matched_a_selection) {
-            bool all_selections_met = true;
-            for (const auto& [sel_id, selection] : inclusion.selections) {
-                if (selection.count == 0) {
-                    all_selections_met = false;
-                    break;
-                }
-            }
-            
-            // 5. 모든 selection이 충족되면 action 트리거
-            if (all_selections_met) {
-                std::cout << event.dump(4) << std::endl; // 가독성을 위해 dump(4) 사용
-                std::cout << "  RULE MATCHED: " << RuleStruct.header.rule_name << std::endl;
-                std::cout << "  Inclusion ID: " << inclusion.id << std::endl;
-                std::cout << "  Action: " << inclusion.action.description << std::endl;
-                
-                action_output.push_back(inclusion.action); // 외부로 action 전달
-                final_action_triggered = true;
-                
-                // [추가] 매우 중요: Action이 트리거되었으므로, 이 inclusion의 상태를 초기화하여 중복 탐지를 방지
-                for (auto& [sel_id, sel_to_reset] : inclusion.selections) {
-                    sel_to_reset.count = 0;
-                }
-            }
-        }
-    }
-    return final_action_triggered;
-}
                 };
 
 
@@ -369,7 +369,7 @@ namespace Solution
                                 std::vector<Global::Action> action;
                                 if( (it->second).Match(AgentEvent, action, true) ) // AssociationRuleMatcher.Match() Method call
                                 {
-                                    
+                                    std::cout << "\n\n[RuleMatched]: " << AgentEvent.dump() << "\n\n" <<std::endl;
                                 }
                             }
 

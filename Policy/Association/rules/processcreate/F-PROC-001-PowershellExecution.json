@@ -1,0 +1,34 @@
+{
+    "id": "F-PROC-001-PowershellExecution",
+    "name": "Feature: PowerShell Execution",
+    "description": "Identifies the execution of the PowerShell utility (powershell.exe). This is a foundational feature for tracking command-line activity.",
+    "severity": "info",
+    "mitre_attack": [
+        {
+            "tactic": "TA0002",
+            "technique_id": "T1059",
+            "subtechnique_id": "T1059.001"
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "powershell_process_started",
+                "selections": {
+                    "selection_powershell_path": {
+                        "event_type": "process",
+                        "condition_method": "and",
+                        "conditions": [
+                            {"field": "body.process.exe_path", "operator": "endswith", "value": "powershell.exe"}
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "Feature Captured: PowerShell Execution"
+                }
+            }
+        ]
+    }
+}

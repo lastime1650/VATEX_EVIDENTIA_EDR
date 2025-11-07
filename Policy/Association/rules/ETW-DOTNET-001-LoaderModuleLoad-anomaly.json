@@ -1,0 +1,38 @@
+{
+    "id": "ETW-DOTNET-001-Suspicious-InMemory-Assembly-Load",
+    "name": "Suspicious .NET In-Memory Assembly Load",
+    "description": "Detects the loading of a .NET assembly directly from memory without a corresponding file path on disk. This rule identifies this behavior by monitoring the ETW 'LoaderModuleLoad' event where the 'ModuleNativePath' field is empty. This is a strong indicator of a fileless attack technique used to execute code while bypassing traditional file-based antivirus solutions.",
+    "severity": "critical",
+    "mitre_attack": [
+        {
+            "tactic": "TA0005",
+            "technique_id": "T1620",
+            "subtechnique_id": null,
+            "data_sources": ["Module: Module load", "Process: OS API execution"]
+        }
+    ],
+    "platform": ["windows"],
+    "detection": {
+        "inclusion": [
+            {
+                "id": "no_modulenativepath",
+                "selections": {
+                    "selection_gp": {
+                        "event_type": "etw",
+                        "condition_method": "and",
+                        "conditions": [
+                            {"field": "body.etw.event_name", "operator": "regex", "value": "^loadermoduleload.*"},
+                            {"field": "body.etw.fields.modulenativepath", "operator": "equals", "value": ""}
+                        ]
+                    }
+                },
+                "action": {
+                    "type": "notice",
+                    "description": "No Module NativePath in LoaderModuleLoad event"
+                }
+            }
+        ]
+    },
+    "operational_usage": "This detection is highly indicative of post-exploitation activity, such as the execution of a .NET payload via an attack framework's 'execute-assembly' command (e.g., Cobalt Strike). Upon alert, an analyst must immediately investigate: 1) The full process tree, including the parent of the logged process (pid). 2) The origin and reputation of the file specified in 'moduleilpath'. 3) Any subsequent suspicious network connections, file modifications, or process creation originating from this process. This event often signifies the execution of a malicious payload for lateral movement or privilege escalation and requires top-priority incident response.",
+    "false_positive": "While rare, some legitimate software packers, obfuscators, or Digital Rights Management (DRM) solutions may use this technique as part of their normal operation. If alerts are repeatedly triggered by a specific, known commercial application, consider creating a narrowly scoped exception after verifying its legitimacy. Establishing a baseline of standard software behavior within the organization is crucial for reducing false positives."
+}
