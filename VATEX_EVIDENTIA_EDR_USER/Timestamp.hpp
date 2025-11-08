@@ -16,7 +16,7 @@ namespace EDR
         {
             // Chrono -> __u64 기반 타임스탬프
             bool Get_Real_Timestamp(ULONG64* output);
-            std::string Timestamp_From_Nano(ULONG64 nano_since_epoch);
+            std::string To_Nano_Iso8601(ULONG64 nano_since_epoch);
             // __u64 기반 타임스탬프 -> timespec 
             bool Get_timespec_by_Timestamp(ULONG64 input_timestamp, struct timespec* output);
         }

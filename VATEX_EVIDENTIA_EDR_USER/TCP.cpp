@@ -38,6 +38,15 @@ namespace EDR
 				}
 				return true;
 			}
+			bool TcpManager::Disconnect()
+			{
+				if (sock != INVALID_SOCKET) {
+					closesocket(sock);
+					sock = INVALID_SOCKET; // 재사용 방지
+				}
+				WSACleanup();
+				return true;
+			}
 
 			bool TcpManager::Send(const std::vector<unsigned char>& data)
 			{

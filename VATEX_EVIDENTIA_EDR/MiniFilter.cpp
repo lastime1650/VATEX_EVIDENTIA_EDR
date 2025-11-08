@@ -166,18 +166,28 @@ namespace EDR
                             ))
                             {
 								// 해싱 성공 시, 로그 전송 처리
-                                //if (FileSize > 0)
-                                    //debug_log("[WorkItem] File SHA256: %s\n", SHA256);
-                                PCHAR Sha256 = (FileSize > 0) ? SHA256 : NULL;
-
-                                EDR::LogSender::function::FilesystemLog(
-                                    FltWorkItem_CTX->ProcessId,
-                                    FltWorkItem_CTX->timestamp,
-                                    FltWorkItem_CTX->Action,
-                                    &filePathUnicode, // 이전에 초기화한 filePathUnicode를 재사용
-                                    NULL,
-                                    Sha256
-                                );
+                                if (FileSize > 0)
+                                {
+                                    EDR::LogSender::function::FilesystemLog(
+                                        FltWorkItem_CTX->ProcessId,
+                                        FltWorkItem_CTX->timestamp,
+                                        FltWorkItem_CTX->Action,
+                                        &filePathUnicode, // 이전에 초기화한 filePathUnicode를 재사용
+                                        NULL,
+                                        SHA256
+                                    );
+                                }
+                                else
+                                {
+                                    EDR::LogSender::function::FilesystemLog(
+                                        FltWorkItem_CTX->ProcessId,
+                                        FltWorkItem_CTX->timestamp,
+                                        FltWorkItem_CTX->Action,
+                                        &filePathUnicode, // 이전에 초기화한 filePathUnicode를 재사용
+                                        NULL,
+                                        NULL
+                                    );
+                                }
                             }
 
                              // fileObject 참조 해제

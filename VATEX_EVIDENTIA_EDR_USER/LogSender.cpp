@@ -75,7 +75,8 @@ namespace EDR
                                         "type": "{}"
                                     }},
                                     "pid": {},
-                                    "nano_timestamp": {}
+                                    "nano_timestamp": {},
+                                    "timestamp_nano_iso8601": "{}"
                                 }},
                                 "body": {{
                                     "process" : {{
@@ -83,7 +84,7 @@ namespace EDR
                                     }}
                                 }}
                             }}
-                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp,
+                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp, EDR::Util::timestamp::To_Nano_Iso8601(nano_timestamp),
                         "remove"
                     )
                 );
@@ -129,7 +130,8 @@ namespace EDR
                                         "type": "{}"
                                     }},
                                     "pid": {},
-									"nano_timestamp": {}
+									"nano_timestamp": {},
+                                    "timestamp_nano_iso8601": "{}"
                                 }},
                                 "body": {{
 
@@ -153,7 +155,7 @@ namespace EDR
                                     }}
                                 }}
                             }}
-                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp,
+                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp, EDR::Util::timestamp::To_Nano_Iso8601(nano_timestamp),
                         double_slash(SID), double_slash(Username),
                         "create", double_slash(self_exe_path), self_exe_file_size, self_exe_bin_sha256, std::regex_replace(double_slash(CommandLine), std::regex("\""), "\\\""),
                         (ULONG64)ppid, double_slash(parent_exe_path), parent_exe_file_size, parent_exe_bin_sha256
@@ -198,7 +200,8 @@ namespace EDR
                                     "type": "{}"
                                 }},
                                 "pid": {},
-                                "nano_timestamp": {}
+                                "nano_timestamp": {},
+                                "timestamp_nano_iso8601": "{}"
                             }},
                             "body": {{
                                 "network" : {{
@@ -222,7 +225,7 @@ namespace EDR
                             }}
                             
                         }}
-                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp,
+                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp, EDR::Util::timestamp::To_Nano_Iso8601(nano_timestamp),
                         interface_index, protocol, packetSize, macSrc, macDest, ipSrc, portSrc, ipDest, portDest, is_INGRESS ? "in" : "out",
                         PacketSessionID, first_seen_nano_timestamp, last_seen_nano_timestamp)
                 );
@@ -256,7 +259,8 @@ namespace EDR
                                     "type": "{}"
                                 }},
                                 "pid": {},
-                                "nano_timestamp": {}
+                                "nano_timestamp": {},
+                                "timestamp_nano_iso8601": "{}"
                             }},
                             "body": {{
                                 "filesystem" : {{
@@ -268,7 +272,7 @@ namespace EDR
                             }}
                             
                         }}
-                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp,
+                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp, EDR::Util::timestamp::To_Nano_Iso8601(nano_timestamp),
                         Action, double_slash(FilePath), filesize, FileSHA256)
                 );
             }
@@ -300,7 +304,8 @@ namespace EDR
                                     "type": "{}"
                                 }},
                                 "pid": {},
-                                "nano_timestamp": {}
+                                "nano_timestamp": {},
+                                "timestamp_nano_iso8601": "{}"
                             }},
                             "body": {{
                                 "imageload" : {{
@@ -311,7 +316,7 @@ namespace EDR
                             }}
                             
                         }}
-                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp,
+                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp, EDR::Util::timestamp::To_Nano_Iso8601(nano_timestamp),
                         double_slash(FilePath), filesize, file_sha256)
                 );
             }
@@ -353,7 +358,8 @@ namespace EDR
                                     "type": "{}"
                                 }},
                                 "pid": {},
-                                "nano_timestamp": {}
+                                "nano_timestamp": {},
+                                "timestamp_nano_iso8601": "{}"
                             }},
                             "body": {{
                                 "processaccess" : {{
@@ -365,7 +371,7 @@ namespace EDR
                             }}
                             
                         }}
-                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp,
+                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp, EDR::Util::timestamp::To_Nano_Iso8601(nano_timestamp),
                         CreateHandle, (ULONG64)Target_ProcessId, double_slash(TargetProcess_Path), DesiredAccessJsonArrayString)
                 );
             }
@@ -400,14 +406,15 @@ namespace EDR
                                     "type": "{}"
                                 }},
                                 "pid": {},
-                                "nano_timestamp": {}
+                                "nano_timestamp": {},
+                                "timestamp_nano_iso8601": "{}"
                             }},
                             "body": {{
                                 "apicall" : "{}"
                             }}
                             
                         }}
-                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp,
+                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp, EDR::Util::timestamp::To_Nano_Iso8601(nano_timestamp),
                         API_Json)
                 );
             }
@@ -444,7 +451,8 @@ namespace EDR
                                     "type": "{}"
                                 }},
                                 "pid": {},
-                                "nano_timestamp": {}
+                                "nano_timestamp": {},
+                                "timestamp_nano_iso8601": "{}"
                             }},
                             "body": {{
                                 "etw" : {{
@@ -460,7 +468,7 @@ namespace EDR
                             }}
                             
                         }}
-                    )", AgentID, root_SessionID, parent_SessionID, SessionID, "Windows", (ULONG64)pid, nano_timestamp,
+                    )", AgentID, root_SessionID, parent_SessionID, SessionID, "Windows", (ULONG64)pid, nano_timestamp, EDR::Util::timestamp::To_Nano_Iso8601(nano_timestamp),
                         ProviderName, EventName, EventId, EventFlags, EventVersion, fieldsJson)
                 );
             }
@@ -493,7 +501,8 @@ namespace EDR
                                     "type": "{}"
                                 }},
                                 "pid": {},
-                                "nano_timestamp": {}
+                                "nano_timestamp": {},
+                                "timestamp_nano_iso8601": "{}"
                             }},
                             "body": {{
                                 "registry" : {{
@@ -503,7 +512,7 @@ namespace EDR
                             }}
                             
                         }}
-                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp,
+                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp, EDR::Util::timestamp::To_Nano_Iso8601(nano_timestamp),
                         double_slash(RegistryKeyClass), double_slash(FilterValidBytes(Target_Name)))
                 );
                 /*
@@ -625,7 +634,8 @@ namespace EDR
                                     "type": "{}"
                                 }},
                                 "pid": {},
-                                "nano_timestamp": {}
+                                "nano_timestamp": {},
+                                "timestamp_nano_iso8601": "{}"
                             }},
                             "body": {{
                                 "registry" : {{
@@ -639,7 +649,7 @@ namespace EDR
                             }}
                             
                         }}
-                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp,
+                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp, EDR::Util::timestamp::To_Nano_Iso8601(nano_timestamp),
                         RegistryKeyClass, double_slash(Target_Name), double_slash(OldName), double_slash(NewName) )
                 );
             }

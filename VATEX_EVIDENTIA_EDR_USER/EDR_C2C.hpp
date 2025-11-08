@@ -42,140 +42,170 @@ namespace EDR
 				EDR_TCP_SERVER_PORT = arg_EDR_TCP_SERVER_PORT;
 
 				is_running = true;
-				running_thread = std::thread(
-					[this, is_run = &this->is_running, agentid = this->AGENT_ID, arg_EDR_TCP_SERVER_IP, arg_EDR_TCP_SERVER_PORT, retry_count]()
-					{
-						std::cout << "[EDRC2C] Runing TCP Thread" << std::endl;
-						unsigned int tmp_retry_count = 0;
+                running_thread = std::thread(
+                    [this, is_run = &this->is_running, agentid = this->AGENT_ID, arg_EDR_TCP_SERVER_IP, arg_EDR_TCP_SERVER_PORT, retry_count]()
+                    {
+                        std::cout << "[EDRC2C] Running TCP Thread" << std::endl;
 
-						EDR::Util::Tcp::TcpManager TM(arg_EDR_TCP_SERVER_IP, arg_EDR_TCP_SERVER_PORT);
+                        unsigned int tmp_retry_count = 0;
 
-						std::vector<unsigned char> TcpReceiveBuffer;
-						while (*is_run)
-						{
-							if (TM.Connect())
-							{
-								std::cout << "EDR TCP SERVER Connected" << std::endl; 
-								std::cout << "Sending to AGENT INITIALIZE Information to EDR ..." << std::endl;
-								// initialize send to EDR
-								std::string msg = json(
-									{
-										{"agentid", agentid},
-										{"os", "Windows"}
-									}
-								).dump();
-								if (!TM.Send(std::vector<uint8_t>(msg.begin(), msg.end())))
-								{
-									std::cout << "send failed the INITIALIZE information to EDR" << std::endl;
-									continue;
-								}
-								std::cout << "complete" << std::endl;
-								std::string JSON_str_Command;
-								json Command;
-								std::string send_result;
-								while (*is_run)
-								{
-									// loop receive
-									TM.Receive(TcpReceiveBuffer);
-									if (TcpReceiveBuffer.empty())
-									{
-										std::cout << "[EDRC2C] TcpReceiveBuffer.empty()" << std::endl;
-										goto FAILED;
-									}
-									
-									JSON_str_Command = std::string(TcpReceiveBuffer.begin(), TcpReceiveBuffer.end());
-									if (JSON_str_Command.empty())
-									{
-										std::cout << "[EDRC2C] JSON_Command.empty()" << std::endl;
-										goto FAILED;
-									}
+                        while (*is_run)
+                        {
+                            EDR::Util::Tcp::TcpManager TM(arg_EDR_TCP_SERVER_IP, arg_EDR_TCP_SERVER_PORT);
 
-									Command = json::parse(JSON_str_Command);
-									if (Command.empty())
-									{
-										std::cout << "[EDRC2C] Command.empty()" << std::endl;
-										goto FAILED;
-									}
+                            if (!TM.Connect())
+                            {
+                                std::cout << "EDR TCP SERVER Connect failed" << std::endl;
 
-									// json key 검증
-									if (!Command.contains("agentid") || !Command.contains("cmd") || !Command.contains("parameter"))
-									{
-										std::cout << "[EDRC2C] Command.contains() failed" << std::endl;
-										goto FAILED;
-									}
-									
-									// agentid 매치
-									if ( Command["agentid"].get<std::string>() != agentid)
-									{
-										std::cout << "[EDRC2C] Command[agentid] failed" << std::endl;
-										goto FAILED;
-									}
+                                if (tmp_retry_count < retry_count)
+                                {
+                                    ++tmp_retry_count;
+                                    std::this_thread::sleep_for(std::chrono::seconds(10));
+                                    continue; // 재시도
+                                }
+                                else
+                                {
+                                    break; // 재시도 횟수 초과
+                                }
+                            }
 
-									switch ((Enum::EDRC2C_ENUM)Command["cmd"].get<int>())
-									{
-									case  Enum::RequestResponse_PROCESS:
-										{
-											// parameter key:value 검증
-											if (!Command["parameter"].contains("pid") || !Command["parameter"].contains("exe_path"))
-											{
-												std::cout << "[EDRC2C] Command[RequestResponse_PROCESS] Parameter failed" << std::endl;
-												goto FAILED;
-											}
-											unsigned long long pid = Command["parameter"]["pid"].get<unsigned long long>();
-											std::string exe_path = Command["parameter"]["exe_path"].get<std::string>();
+                            std::cout << "EDR TCP SERVER Connected" << std::endl;
 
-											std::cout << "[EDRC2C] PROESS -> pid: " << pid << " exe_path: " << exe_path << std::endl;
+                            // 초기화 메시지 전송
+                            std::string msg = json({
+                                {"agentid", agentid},
+                                {"os", "Windows"}
+                                }).dump();
 
-											break;
-										}
-									default:
-										{
-											std::cout << "[EDRC2C] Command[agentid] failed" << std::endl;
-											goto FAILED;
-										}
-									}
+                            if (!TM.Send(std::vector<uint8_t>(msg.begin(), msg.end())))
+                            {
+                                std::cout << "Send INITIALIZE failed, reconnecting..." << std::endl;
+                                continue; // 재연결 시도
+                            }
 
+                            std::vector<unsigned char> TcpReceiveBuffer;
+                            bool connection_alive = true;
 
-								SUCCESS:
-									{
-										send_result = json(
-											{
-												{"result", true}
-											}
-										).dump();
+                            while (*is_run && connection_alive)
+                            {
+                                if (!TM.Receive(TcpReceiveBuffer) || TcpReceiveBuffer.empty())
+                                {
+                                    std::cout << "[EDRC2C] Receive failed or buffer empty, reconnecting..." << std::endl;
+                                    connection_alive = false;
+                                    break;
+                                }
 
-										TM.Send(std::vector<uint8_t>(send_result.begin(), send_result.end()));
-										continue;
-									}
-								FAILED:
-									{
-										send_result = json(
-											{
-												{"result", false}
-											}
-										).dump();
+                                std::string JSON_str_Command(TcpReceiveBuffer.begin(), TcpReceiveBuffer.end());
+                                TcpReceiveBuffer.clear();
 
-										TM.Send( std::vector<uint8_t>(send_result.begin(), send_result.end()) );
-										continue;
-									}
-								}
-							}
-							else
-							{
-								if (tmp_retry_count < retry_count)
-								{
-									++tmp_retry_count;
-									std::this_thread::sleep_for(std::chrono::seconds(10));
-								}
-								else {
-									break;
-								}
-								
-							}
-						}
-						*is_run = false;
-					}
-				);
+                                json Command;
+                                try
+                                {
+                                    Command = json::parse(JSON_str_Command);
+                                }
+                                catch (const std::exception& e)
+                                {
+                                    std::cout << "[EDRC2C] JSON parse failed: " << e.what() << ", reconnecting..." << std::endl;
+                                    connection_alive = false;
+                                    break;
+                                }
+
+                                // 필수 key 확인
+                                /*
+                                    {
+                                        "agentid": "...",
+                                        "cmd": int값,
+                                        "parameter": {...}
+                                    }
+                                */
+                                if (!Command.contains("agentid") || !Command.contains("cmd") || !Command.contains("parameter") ||
+                                    Command["agentid"].get<std::string>() != agentid)
+                                {
+                                    std::cout << "[EDRC2C] Command validation failed, reconnecting..." << std::endl;
+                                    connection_alive = false;
+                                    break;
+                                }
+
+                                switch ((Enum::EDRC2C_ENUM)Command["cmd"].get<int>())
+                                {
+                                case Enum::RequestResponse_PROCESS:
+                                {
+                                    // 실시간 프로세스 차단
+
+                                    /*
+                                        1. 프로세스 실행중인 경우, 강제종료
+                                        2. 프로세스 파일 삭제.
+                                    */
+                                    /*
+                                        {
+                                            "parameter" : {
+                                                "pid": int,
+                                                "exe_path": "...." NT PATH 
+                                            }
+                                        }
+                                    */
+                                    if (!Command["parameter"].contains("pid") || !Command["parameter"].contains("exe_path"))
+                                    {
+                                        std::cout << "[EDRC2C] Parameter validation failed, reconnecting..." << std::endl;
+                                        connection_alive = false;
+                                        break;
+                                    }
+
+                                    unsigned long long pid = Command["parameter"]["pid"].get<unsigned long long>();
+                                    std::string exe_path = Command["parameter"]["exe_path"].get<std::string>();
+
+                                    std::cout << "[EDRC2C] PROCESS -> pid: " << pid << " exe_path: " << exe_path << std::endl;
+
+                                    // TO EDR
+                                    std::string send_result = json({ {"result", true} }).dump();
+                                    TM.Send(std::vector<uint8_t>(send_result.begin(), send_result.end()));
+                                    break;
+                                }
+                                case Enum::RequestResponse_FILE:
+                                {
+                                    // 실시간 파일 차단
+
+                                    /*
+                                        1. 파일 삭제.
+                                    */
+                                    /*
+                                        {
+                                            "parameter" : {
+                                                "file_path": "..." NT PATH
+                                            }
+                                        }
+                                    */
+                                    if (!Command["parameter"].contains("file_path"))
+                                    {
+                                        std::cout << "[EDRC2C] Parameter validation failed, reconnecting..." << std::endl;
+                                        connection_alive = false;
+                                        break;
+                                    }
+
+                                    std::string file_path = Command["parameter"]["file_path"].get<std::string>();
+
+                                    // TO EDR
+                                    std::string send_result = json({ {"result", true} }).dump();
+                                    TM.Send(std::vector<uint8_t>(send_result.begin(), send_result.end()));
+
+                                    break;
+                                }
+                                default:
+                                    std::cout << "[EDRC2C] Unknown cmd, reconnecting..." << std::endl;
+                                    connection_alive = false;
+                                    break;
+                                }
+                            }
+
+                            // 연결 종료 처리
+                            TM.Disconnect();
+                            std::this_thread::sleep_for(std::chrono::seconds(2)); // 재연결 전 약간 대기
+                        }
+
+                        *is_run = false;
+                    }
+                );
+
 
 				return true;
 			}

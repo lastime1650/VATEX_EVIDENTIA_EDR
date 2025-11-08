@@ -19,25 +19,21 @@ namespace EDR
 
                 return true;
             }
-            std::string Timestamp_From_Nano(unsigned long long nano_since_epoch)
+            std::string To_Nano_Iso8601(unsigned long long nano_since_epoch)
             {
                 using namespace std::chrono;
 
-                // 초 단위, 나노초 분리
-                auto sec = duration_cast<seconds>(nanoseconds(nano_since_epoch));
-                auto ms = duration_cast<milliseconds>(nanoseconds(nano_since_epoch)).count() % 1000;
+                // system_clock의 duration 단위로 변환
+                auto tp = system_clock::time_point(duration_cast<system_clock::duration>(nanoseconds(nano_since_epoch)));
 
-                // time_t 변환
-                std::time_t t = sec.count();
-                std::tm tm{};
-                #if defined(_WIN32)
-                                gmtime_s(&tm, &t);  // Windows 안전 함수
-                #else
-                                gmtime_r(&t, &tm);  // POSIX
-                #endif
+                // 초 단위까지만 자른 기준 시각
+                auto tp_sec = time_point_cast<seconds>(tp);
 
-                // fmt를 이용해 출력
-                return fmt::format("{:%Y-%m-%dT%H:%M:%S}.{:03}Z", tm, ms);
+                // 나노초 잔여 부분 계산
+                auto nanos = nano_since_epoch % 1'000'000'000ULL;
+
+                // ISO 8601 문자열 생성
+                return fmt::format("{:%Y-%m-%dT%H:%M:%S}.{:09}Z", tp_sec, nanos);
             }
 
             // __u64 기반 타임스탬프 -> timespec 

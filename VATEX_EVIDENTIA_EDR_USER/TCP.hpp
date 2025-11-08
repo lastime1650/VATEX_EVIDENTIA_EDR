@@ -23,6 +23,7 @@ namespace EDR
 				~TcpManager();
 
 				bool Connect();
+				bool Disconnect();
 				bool Send(const std::vector<unsigned char>& inputdata);
 				bool Receive(std::vector<unsigned char>& outbuffer);
 

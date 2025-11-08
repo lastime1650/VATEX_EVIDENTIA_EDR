@@ -89,8 +89,8 @@ namespace EDR
 				// 타임스탬프를 기반으로 고유한 세션 ID 생성
 				uint64_t timestamp = 0;
 				EDR::Util::timestamp::Get_Real_Timestamp(&timestamp);
-				std::string timestamp_str = EDR::Util::timestamp::Timestamp_From_Nano(timestamp);
-				std::string sessionId = EDR::Util::hash::sha256FromString(timestamp_str);
+				std::string NanoIso = EDR::Util::timestamp::To_Nano_Iso8601(timestamp);
+				std::string sessionId = EDR::Util::hash::sha256FromString(NanoIso);
 
 				out_processSession = sessionId;
 
