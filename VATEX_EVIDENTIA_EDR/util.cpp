@@ -81,7 +81,7 @@ namespace EDR
 
 		namespace Timestamp
 		{
-			ULONG64 Get_LocalTimestamp_Nano()
+			/*ULONG64 Get_LocalTimestamp_Nano()
 			{
 				LARGE_INTEGER systemtime;
 				LARGE_INTEGER localtime;
@@ -93,6 +93,30 @@ namespace EDR
 
 
 				return ((ULONG64)localtime.QuadPart * 100ULL) ;
+			}*/
+
+			// 1601년 1월 1일(Windows기준) 과 1970년 1월 1일(Unix기준) 사이의 시간 차이 (100나노초 단위)
+			constexpr ULONG64 EPOCH_AS_FILETIME = 116444736000000000ULL;
+
+			// Unix를 따른다.
+			ULONG64 Get_LocalTimestamp_Nano()
+			{
+				LARGE_INTEGER systemtime;
+				//LARGE_INTEGER localtime;
+
+				// 1. 시스템 시간(UTC)을 100나노초 단위로 얻기
+				KeQuerySystemTimePrecise(&systemtime);
+
+				// 2. 시스템 시간을 로컬 시간으로 변환
+				//ExSystemTimeToLocalTime(&systemtime, &localtime);
+
+				// 3. 1601년 기준 시간을 1970년 유닉스 시간 기준으로 변환
+				//    (오버플로우 방지를 위해 먼저 뺄셈 수행)
+				ULONG64 unix_time_100nano = systemtime.QuadPart - EPOCH_AS_FILETIME;
+
+				// 4. 100나노초 단위를 나노초 단위로 변환
+				//    이 값은 ULONG64 범위 내에 안전하게 들어감
+				return unix_time_100nano * 100;
 			}
 		}
 
