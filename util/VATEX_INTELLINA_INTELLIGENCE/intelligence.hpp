@@ -51,6 +51,10 @@ namespace EDR
                         auto response = Requester.Get(
                             Path
                         );
+                        if (!response) {
+                            // 서버 접속 실패
+                            throw std::runtime_error("Failed to connect to server or server is down.");
+                        }
 
                         if ( response->status != 200 )
                             return std::nullopt;
@@ -65,6 +69,10 @@ namespace EDR
                         auto response = Requester.Get(
                             Path
                         );
+                        if (!response) {
+                            // 서버 접속 실패
+                            throw std::runtime_error("Failed to connect to server or server is down.");
+                        }
 
                         if ( response->status != 200 )
                             return std::nullopt;
@@ -79,6 +87,10 @@ namespace EDR
                         auto response = Requester.Get(
                             Path
                         );
+                        if (!response) {
+                            // 서버 접속 실패
+                            throw std::runtime_error("Failed to connect to server or server is down.");
+                        }
 
                         std::cout << response->status << std::endl;
 

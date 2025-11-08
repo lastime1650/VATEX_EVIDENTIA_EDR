@@ -369,7 +369,7 @@ namespace Solution
                                 std::vector<Global::Action> action;
                                 if( (it->second).Match(AgentEvent, action, true) ) // AssociationRuleMatcher.Match() Method call
                                 {
-                                    std::cout << "\n\n[RuleMatched]: " << AgentEvent.dump() << "\n\n" <<std::endl;
+                                    //std::cout << "\n\n[RuleMatched]: " << AgentEvent.dump() << "\n\n" <<std::endl;
                                 }
                             }
 

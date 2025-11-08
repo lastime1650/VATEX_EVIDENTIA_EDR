@@ -7,7 +7,6 @@
         {
             "tactic": "TA0005",
             "technique_id": "T1620",
-            "subtechnique_id": null,
             "data_sources": ["Module: Module load", "Process: OS API execution"]
         }
     ],
