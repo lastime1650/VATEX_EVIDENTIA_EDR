@@ -689,9 +689,27 @@ namespace EDR
                     {
                         // 전체 정보를 위해서는 "Root 노드에서 실행하라."
 
+                        auto sorted_all_events = get_all_events_sorted_by_time();
+                        
+                        
+                        std::string root_process_sha256 = "";
+                        if( session.SessionID == session.Root_SessionID )
+                        {
+                            try{
+                                root_process_sha256 = sorted_all_events[0]["body"]["process"]["exe_sha256"].get<std::string>(); // 보장된 값 (순서정렬된 events 이고, 현재 루트노드이면, [0]인덱스는 무조건 process->create여야만함.)
+                            }catch (std::exception& e)
+                            {
+                                std::cerr << e.what() << std::endl;
+                                throw std::runtime_error(e.what());
+                            }
+                        }
+
+                        std::cout << "root_process_sha256: " << root_process_sha256 << std::endl;
+
                         try {
                             // --- 1. 기본 노드 정보 직렬화 (기존과 동일) ---
                             output = {
+                                {"root_process_sha256", root_process_sha256 },
                                 {"AGENT_ID", AGENT_ID},
                                 {"is_alive", is_alive.load()},
                                 {"is_placeholder", is_placeholder.load()},
@@ -713,8 +731,54 @@ namespace EDR
                             }
 
                             // --- 2. 'events' 필드 채우기 (수정된 부분) ---
-                            output["events"] = get_all_events_sorted_by_time();
+                            output["events"] = sorted_all_events;
                             output["events_count"] = output["events"].size();
+
+                            // --- 3. 'rule' 필드
+                            output["rules"] = json::array();
+                            for( const auto& matched_rule : *MatchedRules )
+                            {
+                                // 1. MITRE_ATTACK
+                                auto MitreAttack_ARRAY = json::array();
+                                for (const auto mitreattack : matched_rule.mitre_attacks)
+                                {
+                                    MitreAttack_ARRAY.push_back(
+                                        {
+                                            { "tactic_id", mitreattack.tactic_id },
+                                            { "technique_id", mitreattack.technique_id },
+                                            { "subtechnique_id", mitreattack.subtechnique_id },
+                                            { "data_sources", mitreattack.data_sources }
+                                        }
+                                    );
+                                }
+                                
+                                // 2. PUSH
+                                output["rules"].push_back(
+                                    {
+                                        {"id", matched_rule.rule_id},
+                                        {"name", matched_rule.rule_name},
+                                        {"description", matched_rule.rule_description},
+                                        {"severity", matched_rule.rule_severity},
+                                        {"mitreattacks", MitreAttack_ARRAY},
+                                        {"platforms", matched_rule.platforms},
+                                        {"operational_usage", matched_rule.operational_usage},
+                                        {"false_positive", matched_rule.false_positive},
+                                        
+                                    }
+                                );
+                            }
+
+                            // --- 4. 'intelligence' 필드
+                            output["intelligences"] = json::array();
+                            for(const auto& [intelligence_category, v] : *Intelligences)
+                            {
+                                if( !output["intelligences"].contains(intelligence_category) )
+                                    output["intelligences"][intelligence_category] = json::array();
+
+                                
+                                output["intelligences"][intelligence_category].push_back(v);
+                                
+                            }
 
                             return true;
                         } catch (const std::exception& e) {
@@ -1232,7 +1296,7 @@ namespace EDR
                 {
                     while (is_TreeManager_Running)
                     {
-                        std::this_thread::sleep_for(std::chrono::seconds(60));
+                        std::this_thread::sleep_for(std::chrono::seconds(25));
                         if (!is_TreeManager_Running) break;
 
 
@@ -1299,297 +1363,17 @@ namespace EDR
                     }
                 }
 
-                /*void TreeCompletedProcessingThreadRoutine()
-                {
-                    while (is_TreeManager_Running)
-                    {
-                        // 1. 큐에서 완료된 프로세스 트리 JSON을 가져옵니다. (블로킹 동작)
-                        auto CompleteProcessNodeTree = CompleteProcessNodeTreeQueue.get();
-                        if (CompleteProcessNodeTree.is_null()) continue;
-
-                        try
-                        {
-                            
-                                [MachineLearning] X 샘플 제작
-                                - 하나의 vector<double> 또는 vector<unsigned long long>을 생성합니다.
-                                - 이 벡터의 각 요소는 프로세스 트리의 특정 행위를 나타내는 '피처(feature)'입니다.
-                            
-                            std::vector<double> feature_vector;
-
-                            //======================================================================
-                            // [A] --- 세션/트리 전체 정보 (Global Features) ---
-                            //======================================================================
-
-                            // A-1. 총 이벤트 수: 세션의 전체 활동량을 나타내는 가장 기본적인 피처.
-                            unsigned long long total_event_count = CompleteProcessNodeTree.value("events_count", 0);
-                            feature_vector.push_back(static_cast<double>(total_event_count));
-
-                            // A-2. 총 자식 노드 수: 얼마나 많은 자식 프로세스가 생성되었는지를 나타냅니다.
-                            unsigned long long child_node_count = CompleteProcessNodeTree.value("child_count", 0);
-                            feature_vector.push_back(static_cast<double>(child_node_count));
-
-                            // A-3. 세션 총 지속 시간 (밀리초): 세션이 얼마나 오래 활성 상태였는지를 나타냅니다.
-                            unsigned long long first_seen_ts = 0;
-                            unsigned long long last_seen_ts = 0;
-                            if (CompleteProcessNodeTree.contains("shared_tree_timestamp")) {
-                                first_seen_ts = CompleteProcessNodeTree["shared_tree_timestamp"].value("first_seen", 0);
-                                last_seen_ts = CompleteProcessNodeTree["shared_tree_timestamp"].value("last_seen", 0);
-                            }
-                            unsigned long long session_duration_ms = (last_seen_ts > first_seen_ts) ? (last_seen_ts - first_seen_ts) : 0;
-                            feature_vector.push_back(static_cast<double>(session_duration_ms));
-                            
-                            // A-4. 이벤트 발생률 (초당 이벤트 수): 세션의 활동 강도를 나타냅니다.
-                            double events_per_second = 0.0;
-                            if (session_duration_ms > 0) {
-                                events_per_second = static_cast<double>(total_event_count) / (static_cast<double>(session_duration_ms) / 1000.0);
-                            }
-                            feature_vector.push_back(events_per_second);
-
-                            //======================================================================
-                            // [B] --- 이벤트 기반 통계 (Event-based Statistics) ---
-                            //======================================================================
-                            // 이 피처들을 추출하기 위해 모든 이벤트를 순회합니다.
-
-                            // 이벤트 유형별 카운트를 저장할 맵
-                            std::map<std::string, unsigned long long> event_type_counts;
-                            event_type_counts["process_create"] = 0;
-                            event_type_counts["process_terminate"] = 0;
-                            event_type_counts["network"] = 0;
-                            event_type_counts["filesystem"] = 0;
-                            event_type_counts["apicall"] = 0;
-                            event_type_counts["imageload"] = 0;
-                            event_type_counts["registry"] = 0;
-                            event_type_counts["processaccess"] = 0;
-                            event_type_counts["etw"] = 0;
-
-
-                            unsigned long long max_depth = 0; // B-1. 최대 트리 깊이
-                            
-                            // 이벤트 내용 기반 카운트
-                            unsigned long long outbound_connection_count = 0;
-                            unsigned long long inbound_connection_count = 0;
-                            unsigned long long file_create_count = 0;
-                            unsigned long long file_write_count = 0;
-                            unsigned long long file_delete_count = 0;
-                            unsigned long long dll_load_count = 0;
-                            unsigned long long suspicious_api_call_count = 0; // 예시
-                            
-                            const auto& events = CompleteProcessNodeTree["events"];
-                            if (events.is_array())
-                            {
-                                for (const auto& event_json : events)
-                                {
-                                    if (!event_json.contains("header") || !event_json.contains("body")) continue;
-
-                                    // --- 내용 기반 통계 추출 ---
-                                    for (const auto& [event_name, event_json] : event_json["body"].items())
-                                    {
-                                        // 1. 프로세스 생성
-                                        if (event_name == "process") {
-                                            if( event_json["action"].get<std::string>() == "create" )
-                                                event_type_counts["process_create"]++;
-
-                                        }
-                                        else if (event_name == "Network") {
-                                            if (event_json["body"]["network"].value("direction", "") == "out") {
-                                                outbound_connection_count++;
-                                            } else {
-                                                inbound_connection_count++;
-                                            }
-                                        }
-                                        else if (event_name == "FileSystem") {
-                                            std::string action = event_json["body"]["filesystem"].value("action", "");
-                                            if (action == "create") file_create_count++;
-                                            else if (action == "write") file_write_count++;
-                                            else if (action == "delete") file_delete_count++;
-                                        }
-                                        else if (event_name == "ImageLoad") { // Windows-specific
-                                            dll_load_count++;
-                                        }
-                                        else if (event_name == "ApiCall") {
-                                            std::string api_name = event_json["body"]["apicall"].value("function", "");
-                                            // 예시: 의심스러운 API 목록과 비교
-                                            if (api_name == "CreateRemoteThread" || api_name == "LdrLoadDll") {
-                                                suspicious_api_call_count++;
-                                            }
-                                        }
-
-                                    }
-                                }
-                            }
-
-                            // B-1. 최대 트리 깊이 (더 정확한 방법)
-                            // to_jsonTree에서 노드별로 depth를 저장했다면, events를 순회하며 최대값을 찾을 수 있습니다.
-                            // 만약 이벤트 JSON에 노드 깊이가 없다면, to_jsonTree를 수정하여 추가해야 합니다.
-                            // 여기서는 이벤트에 'nodeDepthIndex'가 있다고 가정합니다.
-                            for (const auto& event_json : events) {
-                                if (event_json.contains("header") && event_json["header"].contains("nodeDepthIndex")) {
-                                    unsigned long long current_depth = event_json["header"]["nodeDepthIndex"].get<unsigned long long>();
-                                    if (current_depth > max_depth) {
-                                        max_depth = current_depth;
-                                    }
-                                }
-                            }
-                            feature_vector.push_back(static_cast<double>(max_depth));
-
-                            // B-2. 각 이벤트 유형별 총 개수
-                            // 일관된 순서를 위해 이벤트 이름 목록을 정의합니다.
-                            const std::vector<std::string> event_name_order = {
-                                "ProcessCreate", "ProcessTerminate", "Network", "FileSystem",
-                                "ImageLoad", "ProcessAccess", "Registry", "ApiCall", "Etw"
-                            };
-                            for (const auto& name : event_name_order) {
-                                feature_vector.push_back(static_cast<double>(event_type_counts[name]));
-                            }
-
-                            // B-3. 각 이벤트 유형의 비율 (전체 이벤트 수 대비)
-                            if (total_event_count > 0) {
-                                for (const auto& name : event_name_order) {
-                                    feature_vector.push_back(static_cast<double>(event_type_counts[name]) / total_event_count);
-                                }
-                            } else { // 이벤트가 없는 경우 0으로 채움
-                                for (size_t i = 0; i < event_name_order.size(); ++i) {
-                                    feature_vector.push_back(0.0);
-                                }
-                            }
-                            
-                            //======================================================================
-                            // [C] --- 콘텐츠 기반 통계 피처 벡터에 추가 ---
-                            //======================================================================
-                            feature_vector.push_back(static_cast<double>(outbound_connection_count));
-                            feature_vector.push_back(static_cast<double>(inbound_connection_count));
-                            feature_vector.push_back(static_cast<double>(file_create_count));
-                            feature_vector.push_back(static_cast<double>(file_write_count));
-                            feature_vector.push_back(static_cast<double>(file_delete_count));
-                            feature_vector.push_back(static_cast<double>(dll_load_count));
-                            feature_vector.push_back(static_cast<double>(suspicious_api_call_count));
-
-                            //======================================================================
-                            // [D] --- 룰 및 인텔리전스 정보 ---
-                            //======================================================================
-                            // to_jsonTree를 수정하여 MatchedRules와 Intelligences 정보를 포함시켜야 합니다.
-                            // 여기서는 JSON에 해당 정보가 있다고 가정합니다.
-                            unsigned long long matched_rule_count = 0;
-                            if (CompleteProcessNodeTree.contains("matched_rules")) {
-                                matched_rule_count = CompleteProcessNodeTree["matched_rules"].size();
-                            }
-                            feature_vector.push_back(static_cast<double>(matched_rule_count));
-
-                            unsigned long long intelligence_hit_count = 0;
-                            if (CompleteProcessNodeTree.contains("intelligences")) {
-                                intelligence_hit_count = CompleteProcessNodeTree["intelligences"].size();
-                            }
-                            feature_vector.push_back(static_cast<double>(intelligence_hit_count));
-                            
-                            //======================================================================
-                            // 최종 피처 벡터 처리
-                            //======================================================================
-                            
-                            // 생성된 피처 벡터 출력 (디버깅용)
-                            std::cout << "Generated Feature Vector for Session " << CompleteProcessNodeTree["session"]["Root_SessionID"].get<std::string>() << " (size: " << feature_vector.size() << "): ";
-                            for(size_t i = 0; i < feature_vector.size(); ++i) {
-                                std::cout << feature_vector[i] << (i == feature_vector.size() - 1 ? "" : ", ");
-                            }
-                            std::cout << std::endl;
-
-                            // TODO: 생성된 feature_vector를 SQLite나 다른 저장소에 샘플로 저장합니다.
-                            // e.g., save_sample_to_sqlite(CompleteProcessNodeTree["session"]["Root_SessionID"], feature_vector);
-                        }
-                        catch (const std::exception& e)
-                        {
-                            std::cerr << "Error processing completed tree: " << e.what() << std::endl;
-                            if (CompleteProcessNodeTree.is_object()) {
-                                std::cerr << "Problematic JSON: " << CompleteProcessNodeTree.dump(2) << std::endl;
-                            }
-                        }
-                    }
-                }*/
-
-                const std::vector<std::string> ALL_TECHNIQUE_IDS = {
-    // Reconnaissance (TA0043)
-    "T1595", "T1595.001", "T1595.002", "T1595.003", "T1592", "T1592.001", "T1592.002", "T1592.003", "T1592.004", "T1598", "T1598.001", "T1598.002", "T1598.003", "T1598.004",
-    "T1597", "T1597.001", "T1597.002", "T1596", "T1596.001", "T1596.002", "T1596.003", "T1596.004", "T1596.005", "T1593", "T1593.001", "T1593.002", "T1593.003", "T1594",
-    "T1589", "T1589.001", "T1589.002", "T1589.003", "T1590", "T1590.001", "T1590.002", "T1590.003", "T1590.004", "T1590.005", "T1590.006", "T1591", "T1591.001", "T1591.002",
-    "T1591.003", "T1591.004", "T1600",
-    // Resource Development (TA0042)
-    "T1583", "T1583.001", "T1583.002", "T1583.003", "T1583.004", "T1583.005", "T1583.006", "T1583.007", "T1584", "T1584.001", "T1584.002", "T1584.003", "T1584.004", "T1584.005",
-    "T1584.006", "T1584.007", "T1608", "T1608.001", "T1608.002", "T1608.003", "T1608.004", "T1608.005", "T1608.006", "T1585", "T1585.001", "T1585.002", "T1585.003", "T1586",
-    "T1586.001", "T1586.002", "T1586.003", "T1586.004", "T1586.005", "T1586.006", "T1587", "T1587.001", "T1587.002", "T1587.003", "T1587.004", "T1588", "T1588.001", "T1588.002",
-    "T1588.003", "T1588.004", "T1588.005", "T1588.006", "T1648", "T1648.001", "T1648.002",
-    // Initial Access (TA0001)
-    "T1078", "T1078.001", "T1078.002", "T1078.003", "T1078.004", "T1133", "T1189", "T1190", "T1195", "T1195.001", "T1195.002", "T1195.003", "T1566", "T1566.001", "T1566.002",
-    "T1566.003", "T1566.004", "T1655", "T1199", "T1200", "T1650", "T1651", "T1091",
-    // Execution (TA0002)
-    "T1204", "T1204.001", "T1204.002", "T1204.003", "T1059", "T1059.001", "T1059.002", "T1059.003", "T1059.004", "T1059.005", "T1059.006", "T1059.007", "T1059.008", "T1059.009",
-    "T1059.010", "T1559", "T1559.001", "T1559.002", "T1559.003", "T1569", "T1569.001", "T1569.002", "T1047", "T1072", "T1106", "T1129", "T1203", "T1574", "T1574.001",
-    "T1574.002", "T1574.004", "T1574.005", "T1574.006", "T1574.007", "T1574.008", "T1574.009", "T1574.010", "T1574.011", "T1574.012", "T1574.013", "T1574.014", "T1610",
-    "T1611", "T1653", "T1121", "T1216", "T1218", "T1218.001", "T1218.002", "T1218.003", "T1218.004", "T1218.005", "T1218.007", "T1218.008", "T1218.009", "T1218.010",
-    "T1218.011", "T1218.012", "T1218.013", "T1218.014", "T1649", "T1652",
-    // Persistence (TA0003)
-    "T1098", "T1098.001", "T1098.002", "T1098.003", "T1098.004", "T1098.005", "T1098.006", "T1098.007", "T1547", "T1547.001", "T1547.002", "T1547.003", "T1547.004", "T1547.005",
-    "T1547.006", "T1547.008", "T1547.009", "T1547.010", "T1547.011", "T1547.012", "T1547.013", "T1547.014", "T1547.015", "T1137", "T1137.001", "T1137.002", "T1137.003",
-    "T1137.004", "T1137.005", "T1137.006", "T1137.007", "T1176", "T1546", "T1546.001", "T1546.002", "T1546.003", "T1546.004", "T1546.005", "T1546.006", "T1546.007",
-    "T1546.008", "T1546.009", "T1546.010", "T1546.011", "T1546.012", "T1546.013", "T1546.015", "T1546.016", "T1546.017", "T1554", "T1543", "T1543.001", "T1543.002",
-    "T1543.003", "T1543.004", "T1543.005", "T1053", "T1053.001", "T1053.002", "T1053.003", "T1053.004", "T1053.005", "T1053.006", "T1053.007", "T1197", "T1136", "T1136.001",
-    "T1136.002", "T1136.003", "T1525", "T1542", "T1542.001", "T1542.002", "T1542.003", "T1542.004", "T1542.005", "T1542.006", "T1542.007", "T1542.008", "T1542.009",
-    "T1542.010", "T1574.001", "T1574.002", "T1574.004", "T1574.005", "T1574.006", "T1574.007", "T1574.008", "T1574.009", "T1574.010", "T1574.011", "T1574.012", "T1574.013",
-    "T1574.014", "T1601", "T1601.001", "T1601.002", "T1621", "T1621.001", "T1621.002", "T1112",
-    // Privilege Escalation (TA0004)
-    "T1548", "T1548.001", "T1548.002", "T1548.003", "T1548.004", "T1548.005", "T1548.006", "T1547", "T1547.001", "T1547.002", "T1547.003", "T1547.004", "T1547.005",
-    "T1547.006", "T1547.008", "T1547.009", "T1547.010", "T1547.011", "T1547.012", "T1547.013", "T1547.014", "T1547.015", "T1546", "T1546.001", "T1546.002", "T1546.003",
-    "T1546.004", "T1546.005", "T1546.006", "T1546.007", "T1546.008", "T1546.009", "T1546.010", "T1546.011", "T1546.012", "T1546.013", "T1546.015", "T1546.016", "T1546.017",
-    "T1068", "T1574.001", "T1574.002", "T1574.004", "T1574.005", "T1574.006", "T1574.007", "T1574.008", "T1574.009", "T1574.010", "T1574.011", "T1574.012", "T1574.013",
-    "T1574.014", "T1543", "T1543.001", "T1543.002", "T1543.003", "T1543.004", "T1543.005", "T1055", "T1055.001", "T1055.002", "T1055.003", "T1055.004", "T1055.005",
-    "T1055.008", "T1055.009", "T1055.011", "T1055.012", "T1055.013", "T1055.014", "T1053", "T1053.001", "T1053.002", "T1053.003", "T1053.004", "T1053.005", "T1053.006",
-    "T1053.007", "T1134", "T1134.001", "T1134.002", "T1134.004", "T1134.005", "T1078.001", "T1078.002", "T1078.003", "T1611", "T1621", "T1621.001", "T1621.002",
-    // Defense Evasion (TA0005)
-    "T1562", "T1562.001", "T1562.002", "T1562.003", "T1562.004", "T1562.006", "T1562.007", "T1562.008", "T1562.009", "T1562.010", "T1562.011", "T1562.012", "T1070",
-    "T1070.001", "T1070.002", "T1070.003", "T1070.004", "T1070.005", "T1070.006", "T1070.007", "T1070.008", "T1070.009", "T1211", "T1027", "T1027.001", "T1027.002",
-    "T1027.003", "T1027.004", "T1027.005", "T1027.006", "T1027.007", "T1027.008", "T1027.009", "T1027.010", "T1027.011", "T1027.012", "T1140", "T1548.002", "T1553",
-    "T1553.001", "T1553.002", "T1553.003", "T1553.004", "T1553.005", "T1553.006", "T1553.007", "T1564", "T1564.001", "T1564.002", "T1564.003", "T1564.004", "T1564.005",
-    "T1564.006", "T1564.007", "T1564.008", "T1564.009", "T1564.010", "T1599", "T1599.001", "T1599.002", "T1599.003", "T1036", "T1036.001", "T1036.002", "T1036.003",
-    "T1036.004", "T1036.005", "T1036.006", "T1036.007", "T1036.008", "T1036.009", "T1480", "T1480.001", "T1006", "T1221", "T1622", "T1620", "T1055", "T1055.001",
-    "T1055.002", "T1055.003", "T1055.004", "T1055.005", "T1055.008", "T1055.009", "T1055.011", "T1055.012", "T1055.013", "T1055.014", "T1202", "T1205", "T1207",
-    "T1218", "T1218.001", "T1218.002", "T1218.003", "T1218.004", "T1218.005", "T1218.007", "T1218.008", "T1218.009", "T1218.010", "T1218.011", "T1218.012", "T1218.013",
-    "T1218.014", "T1222", "T1222.001", "T1222.002", "T1497", "T1497.001", "T1497.002", "T1497.003", "T1614", "T1629", "T1629.001", "T1629.002", "T1629.003", "T1629.004",
-    "T1654", "T1014", "T1078.001", "T1078.002", "T1078.003", "T1112",
-    // Credential Access (TA0006)
-    "T1558", "T1558.001", "T1558.002", "T1558.003", "T1558.004", "T1558.005", "T1110", "T1110.001", "T1110.002", "T1110.003", "T1110.004", "T1110.005", "T1606", "T1606.001",
-    "T1606.002", "T1606.003", "T1552", "T1552.001", "T1552.002", "T1552.003", "T1552.004", "T1552.005", "T1552.006", "T1552.007", "T1552.008", "T1552.009", "T1003",
-    "T1003.001", "T1003.002", "T1003.003", "T1003.004", "T1003.005", "T1003.006", "T1003.007", "T1003.008", "T1003.009", "T1212", "T1555", "T1555.001", "T1555.002",
-    "T1555.003", "T1555.004", "T1555.005", "T1555.006", "T1555.007", "T1555.008", "T1555.009", "T1555.010", "T1555.011", "T1555.012", "T1556", "T1556.001", "T1556.002",
-    "T1556.003", "T1556.004", "T1556.005", "T1556.006", "T1556.007", "T1557", "T1557.001", "T1557.002", "T1557.003", "T1505", "T1505.001", "T1505.002", "T1505.003",
-    "T1505.004", "T1528", "T1539", "T1069", "T1621", "T1621.001", "T1621.002", "T1649", "T1653", "T1056", "T1056.001", "T1056.002", "T1056.003", "T1056.004",
-    "T1111", "T1187", "T1040", "T1081",
-    // Discovery (TA0007)
-    "T1087", "T1087.001", "T1087.002", "T1087.003", "T1087.004", "T1069", "T1069.001", "T1069.002", "T1069.003", "T1482", "T1217", "T1010", "T1615", "T1083", "T1033",
-    "T1135", "T1518", "T1518.001", "T1518.002", "T1057", "T1012", "T1592", "T1046", "T1018", "T1201", "T1049", "T1082", "T1614", "T1614.001", "T1538", "T1016",
-    "T1016.001", "T1016.002", "T1040", "T1120", "T1526", "T1526.001", "T1526.002", "T1526.003", "T1526.004", "T1526.005", "T1526.006", "T1526.007",
-    // Lateral Movement (TA0008)
-    "T1210", "T1563", "T1563.001", "T1563.002", "T1563.003", "T1563.004", "T1534", "T1021", "T1021.001", "T1021.002", "T1021.003", "T1021.004", "T1021.005", "T1021.006",
-    "T1021.007", "T1021.008", "T1021.009", "T1570", "T1550", "T1550.001", "T1550.002", "T1550.003", "T1550.004", "T1091", "T1105", "T1558.003", "T1651",
-    // Collection (TA0009)
-    "T1119", "T1005", "T1025", "T1039", "T1074", "T1074.001", "T1074.002", "T1123", "T1602", "T1602.001", "T1602.002", "T1602.003", "T1113", "T1115", "T1114",
-    "T1114.001", "T1114.002", "T1114.003", "T1114.004", "T1114.005", "T1530", "T1056", "T1056.001", "T1056.002", "T1056.003", "T1056.004", "T1560", "T1560.001",
-    "T1560.002", "T1560.003", "T1091", "T1185", "T1213", "T1213.001", "T1213.002", "T1213.003", "T1488",
-    // Command and Control (TA0011)
-    "T1071", "T1071.001", "T1071.002", "T1071.003", "T1071.004", "T1105", "T1573", "T1573.001", "T1573.002", "T1573.003", "T1092", "T1095", "T1104", "T1571", "T1572",
-    "T1090", "T1090.001", "T1090.002", "T1090.003", "T1090.004", "T1090.005", "T1001", "T1001.001", "T1001.002", "T1001.003", "T1132", "T1132.001", "T1132.002", "T1008",
-    "T1219", "T1094", "T1102", "T1102.001", "T1102.002", "T1102.003",
-    // Exfiltration (TA0010)
-    "T1048", "T1048.001", "T1048.002", "T1048.003", "T1048.004", "T1020", "T1020.001", "T1020.002", "T1020.003", "T1567", "T1567.001", "T1567.002", "T1011", "T1011.001",
-    "T1011.002", "T1041", "T1052", "T1052.001", "T1537", "T1030", "T1022", "T1029",
-    // Impact (TA0040)
-    "T1485", "T1486", "T1489", "T1490", "T1491", "T1491.001", "T1491.002", "T1531", "T1565", "T1565.001", "T1565.002", "T1565.003", "T1561", "T1561.001", "T1561.002",
-    "T1561.003", "T1495", "T1496", "T1498", "T1499", "T1499.001", "T1499.002", "T1499.003", "T1499.004", "T1529", "T1657", "T1558.003", "T1647", "T1492", "T1570"
-};
-
                 void TreeCompletedProcessingThreadRoutine()
                 {
                     while (is_TreeManager_Running)
                     {
                         auto CompleteProcessNodeTree = CompleteProcessNodeTreeQueue.get();
                         if (CompleteProcessNodeTree.is_null()) continue;
+
+                        //std::cout << "CompleteProcessNodeTree->Rule: " << CompleteProcessNodeTree["rules"].dump() << std::endl;
+
+                        // 최상위 부모 프로세스의 SHA256가져오기
+                        //std::string root_process_sha256 = 
 
                         try
                         {
@@ -1744,7 +1528,7 @@ namespace EDR
                             //======================================================================
 
                             // D-1. 탐지된 룰 개수 전체
-                            const unsigned long long matched_rule_count = CompleteProcessNodeTree.value("matched_rules", json::array()).size();
+                            const unsigned long long matched_rule_count = CompleteProcessNodeTree.value("rules", json::array()).size();
                             // D-2. 탐지된 info 심각도 룰 개수
                             unsigned long long matched_rule_severity_info_count = 0;
                             // D-3. 탐지된 low 심각도 룰 개수
@@ -1756,6 +1540,84 @@ namespace EDR
                             // D-6. 탐지된 critical 심각도 룰 개수
                             unsigned long long matched_rule_severity_critical_count = 0;
                             // D-7. MitreAttack 
+                            
+                            for(const auto& data : CompleteProcessNodeTree["rules"])
+                            {
+                                /*
+                                    // 1. MITRE_ATTACK
+                                    auto MitreAttack_ARRAY = json::array();
+                                    for (const auto mitreattack : matched_rule.mitre_attacks)
+                                    {
+                                        MitreAttack_ARRAY.push_back(
+                                            {
+                                                { "tactic_id", mitreattack.tactic_id },
+                                                { "technique_id", mitreattack.technique_id },
+                                                { "subtechnique_id", mitreattack.subtechnique_id },
+                                                { "data_sources", mitreattack.data_sources }
+                                            }
+                                        );
+                                    }
+                                    
+                                    // 2. PUSH
+                                    output["rules"].push_back(
+                                        {
+                                            {"id", matched_rule.rule_id},
+                                            {"name", matched_rule.rule_name},
+                                            {"description", matched_rule.rule_description},
+                                            {"severity", matched_rule.rule_severity},
+                                            {"mitreattacks", MitreAttack_ARRAY},
+                                            {"platforms", matched_rule.platforms},
+                                            {"operational_usage", matched_rule.operational_usage},
+                                            {"false_positive", matched_rule.false_positive},
+                                            
+                                        }
+                                    );
+                                */
+
+                                for(const auto& [k,v] : data.items())
+                                {
+                                    //std::cout << "data_k: " << k << std::endl;
+                                    // A. 심각도
+                                    if(k == "severity")
+                                    {
+                                        if(v.get<std::string>() == "info")
+                                            matched_rule_severity_info_count++;
+                                        else if (v.get<std::string>() == "low")
+                                            matched_rule_severity_low_count++;
+                                        else if (v.get<std::string>() == "medium")
+                                            matched_rule_severity_medium_count++;
+                                        else if (v.get<std::string>() == "high")
+                                            matched_rule_severity_high_count++;
+                                        else if (v.get<std::string>() == "critical")
+                                            matched_rule_severity_critical_count++;
+                                    }
+                                    else if ( k == "mitreattacks" )
+                                    {
+                                        //std::cout << "[mitreattacks] v.size: " << v.size() << std::endl;
+                                        for(const auto& MitreAttackData : v.get<std::vector<json>>())
+                                        {
+                                            //std::cout << "MitreAttackData-DUMP: " << MitreAttackData.dump() << std::endl;
+                                            for(const auto& [mitreattack_k,mitreattack_v] : MitreAttackData.items())
+                                            {
+                                                //std::cout << "mitreattack_k: " << mitreattack_k << "  mitreattack_v: " << mitreattack_v << std::endl;
+                                                if(mitreattack_k == "technique_id" && !( mitreattack_v.get<std::string>().empty() ) )
+                                                {
+                                                    event_type_counts[mitreattack_v.get<std::string>()]++;
+                                                    //std::cout << "mitreattack_k: " << mitreattack_k << "  event_type_counts[mitreattack_v.get<std::string>()]: " << event_type_counts[mitreattack_v.get<std::string>()] << std::endl;
+                                                }
+                                                    
+                                                else if(mitreattack_k == "tactic_id" && !( mitreattack_v.get<std::string>().empty() ) )
+                                                    event_type_counts[mitreattack_v.get<std::string>()]++;
+                                                else if(mitreattack_k == "subtechnique_id" && !( mitreattack_v.get<std::string>().empty() ) )
+                                                    event_type_counts[mitreattack_v.get<std::string>()]++;
+                                            }
+                                        }
+                                    }
+                                        
+                                            
+                                                
+                                }
+                            }
 
                             // Rule 벡터 추가
                             feature_vector.push_back(static_cast<double>(matched_rule_count));
