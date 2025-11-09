@@ -581,14 +581,22 @@ namespace EDR
                     // 트리 전체의 활동을 추적하기 위해 루트 노드에서 생성되고 공유되는 타임스탬프
                     std::shared_ptr<ProcessTreeTimestamp> shared_tree_timestamp;
 
-                    // --- 분석 및 정책 또는 AI 샘플링 관련 ---
+                    // --- 분석 및 정책  관련 ---
                     std::shared_ptr<Solution::Policy::Resource::Association::ASSOCIATION_RULE_MANAGER> AssociationRuleCTX = nullptr;
-                    std::vector<Solution::Policy::Resource::Association::Global::AssociationRuleStruct::Header> MatchedRules;// 룰 탐지 결과 리스트
+
+                    std::shared_ptr< std::vector<Solution::Policy::Resource::Association::Global::AssociationRuleStruct::Header> > MatchedRules;// 룰 탐지 결과 리스트
+
+                    std::shared_ptr<std::map<
+                        std::string,        // category
+                        std::vector< json >                // data
+                    >> Intelligences;
 
                     //std::atomic<float> threat_score{0.0f};
                     //std::atomic<bool> analysis_submitted{false};
                     
                     // --- 헬퍼 함수들 (포인터 기반으로 수정됨) ---
+
+                    // 매칭성공된 룰 기록
                     bool append_matched_rule(std::vector<Solution::Policy::Resource::Association::RuleMatchedOutput>& args_matchedRules)
                     {
                         if(args_matchedRules.empty())
@@ -596,7 +604,16 @@ namespace EDR
 
                         // key가 "rule"인 룰 전용 event를 생성하고, MatchedRules 필드에 push_back진행
                         for (auto& rule : args_matchedRules)
-                            MatchedRules.push_back( rule.RuleInfo );
+                            MatchedRules->push_back( rule.RuleInfo );
+
+                        return true;
+                    }
+
+                    // 인텔리전스 정보 기록
+                    bool append_intelligence(const std::string& category, const json& data)
+                    {
+                        
+                        ( (*Intelligences)[category] ).push_back(data);
 
                         return true;
                     }
@@ -623,6 +640,23 @@ namespace EDR
                             count += 1 + child_ptr->get_all_child_count();
                         }
                         return count;
+                    }
+
+                    unsigned long long get_max_depth() const
+                    {
+                        unsigned long long max_child_depth = nodeDepthIndex; // 현재 노드 깊이로 초기화
+
+                        for (const auto& child_ptr : Child)
+                        {
+                            if (child_ptr)
+                            {
+                                unsigned long long child_depth = child_ptr->get_max_depth();
+                                if (child_depth > max_child_depth)
+                                    max_child_depth = child_depth;
+                            }
+                        }
+
+                        return max_child_depth;
                     }
 
                     // 현재 노드부터 모든 하위 노드의 이벤트를 시간순으로 정렬하여 반환
@@ -653,13 +687,16 @@ namespace EDR
                     // 현재 노드와 하위 트리를 JSON으로 변환
                     bool to_jsonTree(json& output)
                     {
+                        // 전체 정보를 위해서는 "Root 노드에서 실행하라."
+
                         try {
                             // --- 1. 기본 노드 정보 직렬화 (기존과 동일) ---
                             output = {
                                 {"AGENT_ID", AGENT_ID},
                                 {"is_alive", is_alive.load()},
                                 {"is_placeholder", is_placeholder.load()},
-                                {"nodeDepthIndex", nodeDepthIndex},
+                                {"nodeDepthIndex", nodeDepthIndex}, // root node에서 하는거면 무조건 0값임
+                                {"nodeMaxDepth", get_max_depth()},
                                 {"child_count", get_all_child_count()},
                                 {"session", {
                                     {"SessionID", session.SessionID},
@@ -677,6 +714,7 @@ namespace EDR
 
                             // --- 2. 'events' 필드 채우기 (수정된 부분) ---
                             output["events"] = get_all_events_sorted_by_time();
+                            output["events_count"] = output["events"].size();
 
                             return true;
                         } catch (const std::exception& e) {
@@ -793,11 +831,17 @@ namespace EDR
                             new_node_ptr->shared_tree_timestamp->last_seen = now;
 
                             new_node_ptr->busy_ref_count = std::make_shared<std::atomic<unsigned long long>>(0);
+
+                            new_node_ptr->MatchedRules = std::make_shared< std::vector<Solution::Policy::Resource::Association::Global::AssociationRuleStruct::Header> >();
+                            new_node_ptr->Intelligences =  std::make_shared< std::map<std::string,std::vector< json >> >();
+
                         } else {
                             if (root_node_ptr) {
                                 new_node_ptr->AssociationRuleCTX = root_node_ptr->AssociationRuleCTX;
                                 new_node_ptr->shared_tree_timestamp = root_node_ptr->shared_tree_timestamp;
                                 new_node_ptr->busy_ref_count = root_node_ptr->busy_ref_count;
+                                new_node_ptr->MatchedRules = root_node_ptr->MatchedRules;
+                                new_node_ptr->Intelligences = root_node_ptr->Intelligences;
                             }
                         }
 
@@ -937,6 +981,22 @@ namespace EDR
                             placeholder_parent_ptr->busy_ref_count = std::make_shared<std::atomic<unsigned long long>>(0);
                             new_node_ptr->busy_ref_count = placeholder_parent_ptr->busy_ref_count;
                         }
+
+                        if(new_node_ptr->MatchedRules)
+                            placeholder_parent_ptr->MatchedRules = new_node_ptr->MatchedRules;
+                        else
+                        {
+                            placeholder_parent_ptr->MatchedRules = std::make_shared<std::vector<Solution::Policy::Resource::Association::Global::AssociationRuleStruct::Header>>();
+                            new_node_ptr->MatchedRules = placeholder_parent_ptr->MatchedRules;
+                        }
+
+                        if(new_node_ptr->Intelligences)
+                            placeholder_parent_ptr->Intelligences = new_node_ptr->Intelligences;
+                        else
+                        {
+                            placeholder_parent_ptr->Intelligences = std::make_shared<std::map<std::string,std::vector< json >>>();
+                            new_node_ptr->Intelligences = placeholder_parent_ptr->Intelligences;
+                        }
                             
 
                         if (!new_node_ptr->shared_tree_timestamp) { // 실제 루트가 아직 안 온 경우
@@ -1033,6 +1093,8 @@ namespace EDR
                             // 1. 룰 매칭
                             auto Results = Node->AssociationRuleCTX->Match_(eventNode->get_event());
                             Rule_to_Siem(Results);// ToSiem ( Rule )
+                            Node->append_matched_rule(Results); //Node에 기록
+
 
 
                             // 2. 인텔리전스 요청 ( 상당히 지연이 크기때문에 맨 나중에 진행. )
@@ -1058,10 +1120,18 @@ namespace EDR
                                                 
                                                 
                                                 for (const auto& JSON : data.output)
+                                                {
                                                     Intelligence_to_Siem(
                                                         fmt::format("ModuleName: {} Content: {}", ModuleName, JSON.dump()),
                                                         Category
                                                     );
+
+                                                    Node->append_intelligence(
+                                                        Category,
+                                                        JSON
+                                                    );
+                                                }
+                                                    
                                                 
                                             }
                                             
@@ -1229,22 +1299,411 @@ namespace EDR
                     }
                 }
 
+                /*void TreeCompletedProcessingThreadRoutine()
+                {
+                    while (is_TreeManager_Running)
+                    {
+                        // 1. 큐에서 완료된 프로세스 트리 JSON을 가져옵니다. (블로킹 동작)
+                        auto CompleteProcessNodeTree = CompleteProcessNodeTreeQueue.get();
+                        if (CompleteProcessNodeTree.is_null()) continue;
+
+                        try
+                        {
+                            
+                                [MachineLearning] X 샘플 제작
+                                - 하나의 vector<double> 또는 vector<unsigned long long>을 생성합니다.
+                                - 이 벡터의 각 요소는 프로세스 트리의 특정 행위를 나타내는 '피처(feature)'입니다.
+                            
+                            std::vector<double> feature_vector;
+
+                            //======================================================================
+                            // [A] --- 세션/트리 전체 정보 (Global Features) ---
+                            //======================================================================
+
+                            // A-1. 총 이벤트 수: 세션의 전체 활동량을 나타내는 가장 기본적인 피처.
+                            unsigned long long total_event_count = CompleteProcessNodeTree.value("events_count", 0);
+                            feature_vector.push_back(static_cast<double>(total_event_count));
+
+                            // A-2. 총 자식 노드 수: 얼마나 많은 자식 프로세스가 생성되었는지를 나타냅니다.
+                            unsigned long long child_node_count = CompleteProcessNodeTree.value("child_count", 0);
+                            feature_vector.push_back(static_cast<double>(child_node_count));
+
+                            // A-3. 세션 총 지속 시간 (밀리초): 세션이 얼마나 오래 활성 상태였는지를 나타냅니다.
+                            unsigned long long first_seen_ts = 0;
+                            unsigned long long last_seen_ts = 0;
+                            if (CompleteProcessNodeTree.contains("shared_tree_timestamp")) {
+                                first_seen_ts = CompleteProcessNodeTree["shared_tree_timestamp"].value("first_seen", 0);
+                                last_seen_ts = CompleteProcessNodeTree["shared_tree_timestamp"].value("last_seen", 0);
+                            }
+                            unsigned long long session_duration_ms = (last_seen_ts > first_seen_ts) ? (last_seen_ts - first_seen_ts) : 0;
+                            feature_vector.push_back(static_cast<double>(session_duration_ms));
+                            
+                            // A-4. 이벤트 발생률 (초당 이벤트 수): 세션의 활동 강도를 나타냅니다.
+                            double events_per_second = 0.0;
+                            if (session_duration_ms > 0) {
+                                events_per_second = static_cast<double>(total_event_count) / (static_cast<double>(session_duration_ms) / 1000.0);
+                            }
+                            feature_vector.push_back(events_per_second);
+
+                            //======================================================================
+                            // [B] --- 이벤트 기반 통계 (Event-based Statistics) ---
+                            //======================================================================
+                            // 이 피처들을 추출하기 위해 모든 이벤트를 순회합니다.
+
+                            // 이벤트 유형별 카운트를 저장할 맵
+                            std::map<std::string, unsigned long long> event_type_counts;
+                            event_type_counts["process_create"] = 0;
+                            event_type_counts["process_terminate"] = 0;
+                            event_type_counts["network"] = 0;
+                            event_type_counts["filesystem"] = 0;
+                            event_type_counts["apicall"] = 0;
+                            event_type_counts["imageload"] = 0;
+                            event_type_counts["registry"] = 0;
+                            event_type_counts["processaccess"] = 0;
+                            event_type_counts["etw"] = 0;
+
+
+                            unsigned long long max_depth = 0; // B-1. 최대 트리 깊이
+                            
+                            // 이벤트 내용 기반 카운트
+                            unsigned long long outbound_connection_count = 0;
+                            unsigned long long inbound_connection_count = 0;
+                            unsigned long long file_create_count = 0;
+                            unsigned long long file_write_count = 0;
+                            unsigned long long file_delete_count = 0;
+                            unsigned long long dll_load_count = 0;
+                            unsigned long long suspicious_api_call_count = 0; // 예시
+                            
+                            const auto& events = CompleteProcessNodeTree["events"];
+                            if (events.is_array())
+                            {
+                                for (const auto& event_json : events)
+                                {
+                                    if (!event_json.contains("header") || !event_json.contains("body")) continue;
+
+                                    // --- 내용 기반 통계 추출 ---
+                                    for (const auto& [event_name, event_json] : event_json["body"].items())
+                                    {
+                                        // 1. 프로세스 생성
+                                        if (event_name == "process") {
+                                            if( event_json["action"].get<std::string>() == "create" )
+                                                event_type_counts["process_create"]++;
+
+                                        }
+                                        else if (event_name == "Network") {
+                                            if (event_json["body"]["network"].value("direction", "") == "out") {
+                                                outbound_connection_count++;
+                                            } else {
+                                                inbound_connection_count++;
+                                            }
+                                        }
+                                        else if (event_name == "FileSystem") {
+                                            std::string action = event_json["body"]["filesystem"].value("action", "");
+                                            if (action == "create") file_create_count++;
+                                            else if (action == "write") file_write_count++;
+                                            else if (action == "delete") file_delete_count++;
+                                        }
+                                        else if (event_name == "ImageLoad") { // Windows-specific
+                                            dll_load_count++;
+                                        }
+                                        else if (event_name == "ApiCall") {
+                                            std::string api_name = event_json["body"]["apicall"].value("function", "");
+                                            // 예시: 의심스러운 API 목록과 비교
+                                            if (api_name == "CreateRemoteThread" || api_name == "LdrLoadDll") {
+                                                suspicious_api_call_count++;
+                                            }
+                                        }
+
+                                    }
+                                }
+                            }
+
+                            // B-1. 최대 트리 깊이 (더 정확한 방법)
+                            // to_jsonTree에서 노드별로 depth를 저장했다면, events를 순회하며 최대값을 찾을 수 있습니다.
+                            // 만약 이벤트 JSON에 노드 깊이가 없다면, to_jsonTree를 수정하여 추가해야 합니다.
+                            // 여기서는 이벤트에 'nodeDepthIndex'가 있다고 가정합니다.
+                            for (const auto& event_json : events) {
+                                if (event_json.contains("header") && event_json["header"].contains("nodeDepthIndex")) {
+                                    unsigned long long current_depth = event_json["header"]["nodeDepthIndex"].get<unsigned long long>();
+                                    if (current_depth > max_depth) {
+                                        max_depth = current_depth;
+                                    }
+                                }
+                            }
+                            feature_vector.push_back(static_cast<double>(max_depth));
+
+                            // B-2. 각 이벤트 유형별 총 개수
+                            // 일관된 순서를 위해 이벤트 이름 목록을 정의합니다.
+                            const std::vector<std::string> event_name_order = {
+                                "ProcessCreate", "ProcessTerminate", "Network", "FileSystem",
+                                "ImageLoad", "ProcessAccess", "Registry", "ApiCall", "Etw"
+                            };
+                            for (const auto& name : event_name_order) {
+                                feature_vector.push_back(static_cast<double>(event_type_counts[name]));
+                            }
+
+                            // B-3. 각 이벤트 유형의 비율 (전체 이벤트 수 대비)
+                            if (total_event_count > 0) {
+                                for (const auto& name : event_name_order) {
+                                    feature_vector.push_back(static_cast<double>(event_type_counts[name]) / total_event_count);
+                                }
+                            } else { // 이벤트가 없는 경우 0으로 채움
+                                for (size_t i = 0; i < event_name_order.size(); ++i) {
+                                    feature_vector.push_back(0.0);
+                                }
+                            }
+                            
+                            //======================================================================
+                            // [C] --- 콘텐츠 기반 통계 피처 벡터에 추가 ---
+                            //======================================================================
+                            feature_vector.push_back(static_cast<double>(outbound_connection_count));
+                            feature_vector.push_back(static_cast<double>(inbound_connection_count));
+                            feature_vector.push_back(static_cast<double>(file_create_count));
+                            feature_vector.push_back(static_cast<double>(file_write_count));
+                            feature_vector.push_back(static_cast<double>(file_delete_count));
+                            feature_vector.push_back(static_cast<double>(dll_load_count));
+                            feature_vector.push_back(static_cast<double>(suspicious_api_call_count));
+
+                            //======================================================================
+                            // [D] --- 룰 및 인텔리전스 정보 ---
+                            //======================================================================
+                            // to_jsonTree를 수정하여 MatchedRules와 Intelligences 정보를 포함시켜야 합니다.
+                            // 여기서는 JSON에 해당 정보가 있다고 가정합니다.
+                            unsigned long long matched_rule_count = 0;
+                            if (CompleteProcessNodeTree.contains("matched_rules")) {
+                                matched_rule_count = CompleteProcessNodeTree["matched_rules"].size();
+                            }
+                            feature_vector.push_back(static_cast<double>(matched_rule_count));
+
+                            unsigned long long intelligence_hit_count = 0;
+                            if (CompleteProcessNodeTree.contains("intelligences")) {
+                                intelligence_hit_count = CompleteProcessNodeTree["intelligences"].size();
+                            }
+                            feature_vector.push_back(static_cast<double>(intelligence_hit_count));
+                            
+                            //======================================================================
+                            // 최종 피처 벡터 처리
+                            //======================================================================
+                            
+                            // 생성된 피처 벡터 출력 (디버깅용)
+                            std::cout << "Generated Feature Vector for Session " << CompleteProcessNodeTree["session"]["Root_SessionID"].get<std::string>() << " (size: " << feature_vector.size() << "): ";
+                            for(size_t i = 0; i < feature_vector.size(); ++i) {
+                                std::cout << feature_vector[i] << (i == feature_vector.size() - 1 ? "" : ", ");
+                            }
+                            std::cout << std::endl;
+
+                            // TODO: 생성된 feature_vector를 SQLite나 다른 저장소에 샘플로 저장합니다.
+                            // e.g., save_sample_to_sqlite(CompleteProcessNodeTree["session"]["Root_SessionID"], feature_vector);
+                        }
+                        catch (const std::exception& e)
+                        {
+                            std::cerr << "Error processing completed tree: " << e.what() << std::endl;
+                            if (CompleteProcessNodeTree.is_object()) {
+                                std::cerr << "Problematic JSON: " << CompleteProcessNodeTree.dump(2) << std::endl;
+                            }
+                        }
+                    }
+                }*/
+
                 void TreeCompletedProcessingThreadRoutine()
                 {
                     while (is_TreeManager_Running)
                     {
                         auto CompleteProcessNodeTree = CompleteProcessNodeTreeQueue.get();
+                        if (CompleteProcessNodeTree.is_null()) continue;
 
+                        try
                         {
-                            /*
-                                X 샘플 제작
-                            */
+                            std::vector<double> feature_vector;
 
+                            //======================================================================
+                            // [A] --- 세션/트리 전체 정보 (Global Features) ---
+                            //======================================================================
+                            const unsigned long long total_event_count = CompleteProcessNodeTree.value("events_count", 0ULL);
+                            feature_vector.push_back(static_cast<double>(total_event_count));
+
+                            const unsigned long long child_node_count = CompleteProcessNodeTree.value("child_count", 0ULL);
+                            feature_vector.push_back(static_cast<double>(child_node_count));
+                            
+                            unsigned long long first_seen_ts = 0, last_seen_ts = 0;
+                            if (CompleteProcessNodeTree.contains("shared_tree_timestamp") && CompleteProcessNodeTree["shared_tree_timestamp"].is_object()) {
+                                first_seen_ts = CompleteProcessNodeTree["shared_tree_timestamp"].value("first_seen", 0ULL);
+                                last_seen_ts = CompleteProcessNodeTree["shared_tree_timestamp"].value("last_seen", 0ULL);
+                            }
+                            const unsigned long long session_duration_ms = (last_seen_ts > first_seen_ts) ? (last_seen_ts - first_seen_ts) : 1;
+                            feature_vector.push_back(static_cast<double>(session_duration_ms));
+                            
+                            const double events_per_second = static_cast<double>(total_event_count) / (static_cast<double>(session_duration_ms) / 1000.0);
+                            feature_vector.push_back(events_per_second);
+
+                            //======================================================================
+                            // [B] --- 이벤트 기반 통계 (Event-based Statistics) ---
+                            //======================================================================
+                            
+                            // 이벤트 유형별 카운트를 저장할 맵
+                            std::map<std::string, unsigned long long> event_type_counts;
+                            
+                            // 더 세분화된 행위 카운트
+                            std::map<std::string, unsigned long long> fs_action_counts;
+                            std::map<std::string, unsigned long long> reg_action_counts;
+                            
+                            
+                            unsigned long long outbound_connection_count = 0;
+                            std::set<std::string> loaded_dlls;
+
+                            const auto& events = CompleteProcessNodeTree.value("events", json::array());
+                            for (const auto& event_json : events)
+                            {
+                                const auto& header = event_json.value("header", json::object());
+                                const auto& body = event_json.value("body", json::object());
+                                if (body.empty()) continue;
+
+                                // --- 이벤트 유형 식별 (body의 첫 번째 키 사용) ---
+                                const auto& [event_type, event_data] = *body.items().begin();
+                                
+                                // --- 이벤트 유형별 카운팅 및 세부 분석 ---
+                                event_type_counts[event_type]++;
+
+                                if (event_type == "process") {
+                                    std::string action = event_data.value("action", "");
+                                    if (action == "create") event_type_counts["process_create"]++;
+                                    else if (action == "remove") event_type_counts["process_terminate"]++;
+                                }
+                                else if (event_type == "network") {
+                                    if (event_data.value("direction", "") == "out") outbound_connection_count++;
+                                }
+                                else if (event_type == "filesystem") {
+                                    fs_action_counts[event_data.value("action", "")]++;
+                                }
+                                else if (event_type == "imageload") {
+                                    loaded_dlls.insert(event_data.value("filepath", ""));
+                                }
+                                else if (event_type == "registry") {
+                                    reg_action_counts[event_data.value("keyclass", "")]++;
+                                }
+                                
+                                
+                            }
+
+                            // 최대 트리 깊이
+                            unsigned long long max_depth = CompleteProcessNodeTree.value("nodeMaxDepth", 0ULL);;
+                            feature_vector.push_back(static_cast<double>(max_depth));
+
+                            // B-1. 주요 이벤트 유형별 총 개수
+                            feature_vector.push_back(static_cast<double>(event_type_counts["process_create"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["process_terminate"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["network"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["filesystem"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["imageload"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["registry"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["processaccess"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["apicall"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["etw"]));
+
+                            // B-2. 파일시스템 세부 행위 카운트
+                            feature_vector.push_back(static_cast<double>(fs_action_counts["create"]));
+                            feature_vector.push_back(static_cast<double>(fs_action_counts["write"]));
+                            feature_vector.push_back(static_cast<double>(fs_action_counts["delete"]));
+                            feature_vector.push_back(static_cast<double>(fs_action_counts["rename"]));
+                            feature_vector.push_back(static_cast<double>(fs_action_counts["open"]));
+                            feature_vector.push_back(static_cast<double>(fs_action_counts["overwritten"]));
+                            feature_vector.push_back(static_cast<double>(fs_action_counts["superseded"]));
+                            feature_vector.push_back(static_cast<double>(fs_action_counts["exists"]));
+                            feature_vector.push_back(static_cast<double>(fs_action_counts["create_directory"]));
+                            feature_vector.push_back(static_cast<double>(fs_action_counts["remove_directory"]));
+                            feature_vector.push_back(static_cast<double>(fs_action_counts["rename_directory"]));
+
+
+                            // B-3. 레지스트리 세부 행위 카운트
+                            feature_vector.push_back(static_cast<double>(reg_action_counts["PreCreateKeyEx"]));
+                            feature_vector.push_back(static_cast<double>(reg_action_counts["PreQueryKey"]));
+                            feature_vector.push_back(static_cast<double>(reg_action_counts["PreQueryValueKey"]));
+                            feature_vector.push_back(static_cast<double>(reg_action_counts["PreQueryMultipleValueKey"]));
+                            feature_vector.push_back(static_cast<double>(reg_action_counts["PreKeyHandleClose"]));
+                            feature_vector.push_back(static_cast<double>(reg_action_counts["RegNtPreFlushKey"]));
+                            feature_vector.push_back(static_cast<double>(reg_action_counts["RegNtPreLoadKey"]));
+                            feature_vector.push_back(static_cast<double>(reg_action_counts["RegNtPreUnLoadKey"]));
+                            feature_vector.push_back(static_cast<double>(reg_action_counts["RegNtPreQueryKeySecurity"]));
+                            feature_vector.push_back(static_cast<double>(reg_action_counts["RegNtPreSetKeySecurity"]));
+                            feature_vector.push_back(static_cast<double>(reg_action_counts["RegNtPreRestoreKey"]));
+                            feature_vector.push_back(static_cast<double>(reg_action_counts["RegNtPreSaveKey"]));
+                            feature_vector.push_back(static_cast<double>(reg_action_counts["PreReplaceKey"]));
+                            feature_vector.push_back(static_cast<double>(reg_action_counts["PreQueryKeyName"]));
+                            feature_vector.push_back(static_cast<double>(reg_action_counts["PreSaveMergedKey"]));
+                            feature_vector.push_back(static_cast<double>(reg_action_counts["RegNtPreSetValueKey"]));
+                            feature_vector.push_back(static_cast<double>(reg_action_counts["RegNtPreDeleteValueKey"]));
+                            feature_vector.push_back(static_cast<double>(reg_action_counts["RegNtPreSetInformationKey"]));
+                            feature_vector.push_back(static_cast<double>(reg_action_counts["RegNtPreEnumerateKey"]));
+                            feature_vector.push_back(static_cast<double>(reg_action_counts["RegNtPreEnumerateValueKey"]));
+                            feature_vector.push_back(static_cast<double>(reg_action_counts["RegNtPreCreateKey"]));
+                            feature_vector.push_back(static_cast<double>(reg_action_counts["RegNtPreOpenKey"]));
+                            feature_vector.push_back(static_cast<double>(reg_action_counts["RegNtPreOpenKeyEx"]));
+
+
+                            //======================================================================
+                            // [C] --- 콘텐츠 기반 통계 피처 벡터에 추가 ---
+                            //======================================================================
+                            feature_vector.push_back(static_cast<double>(outbound_connection_count));
+                            feature_vector.push_back(static_cast<double>(loaded_dlls.size())); // 고유 DLL 로드 수
+
+                            // 새로 추가: 프로세스 생성 대비 DLL 로드 비율 (프로세스 인젝션 의심)
+                            double dll_per_proc_ratio = 0.0;
+                            if (event_type_counts["process_create"] > 0) {
+                                dll_per_proc_ratio = static_cast<double>(loaded_dlls.size()) / event_type_counts["process_create"];
+                            }
+                            feature_vector.push_back(dll_per_proc_ratio);
+
+                            // 새로 추가: 네트워크 이벤트 대비 아웃바운드 비율
+                            double outbound_ratio = 0.0;
+                            if (event_type_counts["network"] > 0) {
+                                outbound_ratio = static_cast<double>(outbound_connection_count) / event_type_counts["network"];
+                            }
+                            feature_vector.push_back(outbound_ratio);
+
+                            //======================================================================
+                            // [D] --- 룰 정보 ---
+                            //======================================================================
+
+                            // D-1. 탐지된 룰 개수 전체
+                            const unsigned long long matched_rule_count = CompleteProcessNodeTree.value("matched_rules", json::array()).size();
+                            // D-2. 탐지된 info 심각도 룰 개수
+                            // D-3. 탐지된 low 심각도 룰 개수
+                            // D-4. 탐지된 medium 심각도 룰 개수
+                            // D-5. 탐지된 high 심각도 룰 개수
+                            // D-6. 탐지된 critical 심각도 룰 개수
+
+                            // Rule 벡터 추가
+                            feature_vector.push_back(static_cast<double>(matched_rule_count));
+
+
+                            //======================================================================
+                            // [E] --- 인텔리전스 정보 ---
+                            //======================================================================
+                            const unsigned long long intelligence_hit_count = CompleteProcessNodeTree.value("intelligences", json::object()).size();
+                            feature_vector.push_back(static_cast<double>(intelligence_hit_count));
+                            
+                            //======================================================================
+                            // 최종 피처 벡터 처리
+                            //======================================================================
+                            
+                            std::cout << "Generated Feature Vector for Session " << CompleteProcessNodeTree["session"].value("Root_SessionID", "N/A") 
+                                    << " (size: " << feature_vector.size() << "): ";
+
+                            for(size_t i = 0; i < feature_vector.size(); ++i) {
+                                std::cout << feature_vector[i] << (i == feature_vector.size() - 1 ? "" : ", ");
+                            }
+                            std::cout << std::endl;
+
+                            // TODO: SQLite에 저장
                         }
-                        
-                        
+                        catch (const std::exception& e)
+                        {
+                            std::cerr << "Error processing completed tree: " << e.what() << std::endl;
+                            if (CompleteProcessNodeTree.is_object()) {
+                                std::cerr << "Problematic JSON: " << CompleteProcessNodeTree.dump(2) << std::endl;
+                            }
+                        }
                     }
-                    
                 }
 
             }; // class ProcessTreeManager
