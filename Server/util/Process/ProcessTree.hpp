@@ -1505,6 +1505,85 @@ namespace EDR
                     }
                 }*/
 
+                const std::vector<std::string> ALL_TECHNIQUE_IDS = {
+    // Reconnaissance (TA0043)
+    "T1595", "T1595.001", "T1595.002", "T1595.003", "T1592", "T1592.001", "T1592.002", "T1592.003", "T1592.004", "T1598", "T1598.001", "T1598.002", "T1598.003", "T1598.004",
+    "T1597", "T1597.001", "T1597.002", "T1596", "T1596.001", "T1596.002", "T1596.003", "T1596.004", "T1596.005", "T1593", "T1593.001", "T1593.002", "T1593.003", "T1594",
+    "T1589", "T1589.001", "T1589.002", "T1589.003", "T1590", "T1590.001", "T1590.002", "T1590.003", "T1590.004", "T1590.005", "T1590.006", "T1591", "T1591.001", "T1591.002",
+    "T1591.003", "T1591.004", "T1600",
+    // Resource Development (TA0042)
+    "T1583", "T1583.001", "T1583.002", "T1583.003", "T1583.004", "T1583.005", "T1583.006", "T1583.007", "T1584", "T1584.001", "T1584.002", "T1584.003", "T1584.004", "T1584.005",
+    "T1584.006", "T1584.007", "T1608", "T1608.001", "T1608.002", "T1608.003", "T1608.004", "T1608.005", "T1608.006", "T1585", "T1585.001", "T1585.002", "T1585.003", "T1586",
+    "T1586.001", "T1586.002", "T1586.003", "T1586.004", "T1586.005", "T1586.006", "T1587", "T1587.001", "T1587.002", "T1587.003", "T1587.004", "T1588", "T1588.001", "T1588.002",
+    "T1588.003", "T1588.004", "T1588.005", "T1588.006", "T1648", "T1648.001", "T1648.002",
+    // Initial Access (TA0001)
+    "T1078", "T1078.001", "T1078.002", "T1078.003", "T1078.004", "T1133", "T1189", "T1190", "T1195", "T1195.001", "T1195.002", "T1195.003", "T1566", "T1566.001", "T1566.002",
+    "T1566.003", "T1566.004", "T1655", "T1199", "T1200", "T1650", "T1651", "T1091",
+    // Execution (TA0002)
+    "T1204", "T1204.001", "T1204.002", "T1204.003", "T1059", "T1059.001", "T1059.002", "T1059.003", "T1059.004", "T1059.005", "T1059.006", "T1059.007", "T1059.008", "T1059.009",
+    "T1059.010", "T1559", "T1559.001", "T1559.002", "T1559.003", "T1569", "T1569.001", "T1569.002", "T1047", "T1072", "T1106", "T1129", "T1203", "T1574", "T1574.001",
+    "T1574.002", "T1574.004", "T1574.005", "T1574.006", "T1574.007", "T1574.008", "T1574.009", "T1574.010", "T1574.011", "T1574.012", "T1574.013", "T1574.014", "T1610",
+    "T1611", "T1653", "T1121", "T1216", "T1218", "T1218.001", "T1218.002", "T1218.003", "T1218.004", "T1218.005", "T1218.007", "T1218.008", "T1218.009", "T1218.010",
+    "T1218.011", "T1218.012", "T1218.013", "T1218.014", "T1649", "T1652",
+    // Persistence (TA0003)
+    "T1098", "T1098.001", "T1098.002", "T1098.003", "T1098.004", "T1098.005", "T1098.006", "T1098.007", "T1547", "T1547.001", "T1547.002", "T1547.003", "T1547.004", "T1547.005",
+    "T1547.006", "T1547.008", "T1547.009", "T1547.010", "T1547.011", "T1547.012", "T1547.013", "T1547.014", "T1547.015", "T1137", "T1137.001", "T1137.002", "T1137.003",
+    "T1137.004", "T1137.005", "T1137.006", "T1137.007", "T1176", "T1546", "T1546.001", "T1546.002", "T1546.003", "T1546.004", "T1546.005", "T1546.006", "T1546.007",
+    "T1546.008", "T1546.009", "T1546.010", "T1546.011", "T1546.012", "T1546.013", "T1546.015", "T1546.016", "T1546.017", "T1554", "T1543", "T1543.001", "T1543.002",
+    "T1543.003", "T1543.004", "T1543.005", "T1053", "T1053.001", "T1053.002", "T1053.003", "T1053.004", "T1053.005", "T1053.006", "T1053.007", "T1197", "T1136", "T1136.001",
+    "T1136.002", "T1136.003", "T1525", "T1542", "T1542.001", "T1542.002", "T1542.003", "T1542.004", "T1542.005", "T1542.006", "T1542.007", "T1542.008", "T1542.009",
+    "T1542.010", "T1574.001", "T1574.002", "T1574.004", "T1574.005", "T1574.006", "T1574.007", "T1574.008", "T1574.009", "T1574.010", "T1574.011", "T1574.012", "T1574.013",
+    "T1574.014", "T1601", "T1601.001", "T1601.002", "T1621", "T1621.001", "T1621.002", "T1112",
+    // Privilege Escalation (TA0004)
+    "T1548", "T1548.001", "T1548.002", "T1548.003", "T1548.004", "T1548.005", "T1548.006", "T1547", "T1547.001", "T1547.002", "T1547.003", "T1547.004", "T1547.005",
+    "T1547.006", "T1547.008", "T1547.009", "T1547.010", "T1547.011", "T1547.012", "T1547.013", "T1547.014", "T1547.015", "T1546", "T1546.001", "T1546.002", "T1546.003",
+    "T1546.004", "T1546.005", "T1546.006", "T1546.007", "T1546.008", "T1546.009", "T1546.010", "T1546.011", "T1546.012", "T1546.013", "T1546.015", "T1546.016", "T1546.017",
+    "T1068", "T1574.001", "T1574.002", "T1574.004", "T1574.005", "T1574.006", "T1574.007", "T1574.008", "T1574.009", "T1574.010", "T1574.011", "T1574.012", "T1574.013",
+    "T1574.014", "T1543", "T1543.001", "T1543.002", "T1543.003", "T1543.004", "T1543.005", "T1055", "T1055.001", "T1055.002", "T1055.003", "T1055.004", "T1055.005",
+    "T1055.008", "T1055.009", "T1055.011", "T1055.012", "T1055.013", "T1055.014", "T1053", "T1053.001", "T1053.002", "T1053.003", "T1053.004", "T1053.005", "T1053.006",
+    "T1053.007", "T1134", "T1134.001", "T1134.002", "T1134.004", "T1134.005", "T1078.001", "T1078.002", "T1078.003", "T1611", "T1621", "T1621.001", "T1621.002",
+    // Defense Evasion (TA0005)
+    "T1562", "T1562.001", "T1562.002", "T1562.003", "T1562.004", "T1562.006", "T1562.007", "T1562.008", "T1562.009", "T1562.010", "T1562.011", "T1562.012", "T1070",
+    "T1070.001", "T1070.002", "T1070.003", "T1070.004", "T1070.005", "T1070.006", "T1070.007", "T1070.008", "T1070.009", "T1211", "T1027", "T1027.001", "T1027.002",
+    "T1027.003", "T1027.004", "T1027.005", "T1027.006", "T1027.007", "T1027.008", "T1027.009", "T1027.010", "T1027.011", "T1027.012", "T1140", "T1548.002", "T1553",
+    "T1553.001", "T1553.002", "T1553.003", "T1553.004", "T1553.005", "T1553.006", "T1553.007", "T1564", "T1564.001", "T1564.002", "T1564.003", "T1564.004", "T1564.005",
+    "T1564.006", "T1564.007", "T1564.008", "T1564.009", "T1564.010", "T1599", "T1599.001", "T1599.002", "T1599.003", "T1036", "T1036.001", "T1036.002", "T1036.003",
+    "T1036.004", "T1036.005", "T1036.006", "T1036.007", "T1036.008", "T1036.009", "T1480", "T1480.001", "T1006", "T1221", "T1622", "T1620", "T1055", "T1055.001",
+    "T1055.002", "T1055.003", "T1055.004", "T1055.005", "T1055.008", "T1055.009", "T1055.011", "T1055.012", "T1055.013", "T1055.014", "T1202", "T1205", "T1207",
+    "T1218", "T1218.001", "T1218.002", "T1218.003", "T1218.004", "T1218.005", "T1218.007", "T1218.008", "T1218.009", "T1218.010", "T1218.011", "T1218.012", "T1218.013",
+    "T1218.014", "T1222", "T1222.001", "T1222.002", "T1497", "T1497.001", "T1497.002", "T1497.003", "T1614", "T1629", "T1629.001", "T1629.002", "T1629.003", "T1629.004",
+    "T1654", "T1014", "T1078.001", "T1078.002", "T1078.003", "T1112",
+    // Credential Access (TA0006)
+    "T1558", "T1558.001", "T1558.002", "T1558.003", "T1558.004", "T1558.005", "T1110", "T1110.001", "T1110.002", "T1110.003", "T1110.004", "T1110.005", "T1606", "T1606.001",
+    "T1606.002", "T1606.003", "T1552", "T1552.001", "T1552.002", "T1552.003", "T1552.004", "T1552.005", "T1552.006", "T1552.007", "T1552.008", "T1552.009", "T1003",
+    "T1003.001", "T1003.002", "T1003.003", "T1003.004", "T1003.005", "T1003.006", "T1003.007", "T1003.008", "T1003.009", "T1212", "T1555", "T1555.001", "T1555.002",
+    "T1555.003", "T1555.004", "T1555.005", "T1555.006", "T1555.007", "T1555.008", "T1555.009", "T1555.010", "T1555.011", "T1555.012", "T1556", "T1556.001", "T1556.002",
+    "T1556.003", "T1556.004", "T1556.005", "T1556.006", "T1556.007", "T1557", "T1557.001", "T1557.002", "T1557.003", "T1505", "T1505.001", "T1505.002", "T1505.003",
+    "T1505.004", "T1528", "T1539", "T1069", "T1621", "T1621.001", "T1621.002", "T1649", "T1653", "T1056", "T1056.001", "T1056.002", "T1056.003", "T1056.004",
+    "T1111", "T1187", "T1040", "T1081",
+    // Discovery (TA0007)
+    "T1087", "T1087.001", "T1087.002", "T1087.003", "T1087.004", "T1069", "T1069.001", "T1069.002", "T1069.003", "T1482", "T1217", "T1010", "T1615", "T1083", "T1033",
+    "T1135", "T1518", "T1518.001", "T1518.002", "T1057", "T1012", "T1592", "T1046", "T1018", "T1201", "T1049", "T1082", "T1614", "T1614.001", "T1538", "T1016",
+    "T1016.001", "T1016.002", "T1040", "T1120", "T1526", "T1526.001", "T1526.002", "T1526.003", "T1526.004", "T1526.005", "T1526.006", "T1526.007",
+    // Lateral Movement (TA0008)
+    "T1210", "T1563", "T1563.001", "T1563.002", "T1563.003", "T1563.004", "T1534", "T1021", "T1021.001", "T1021.002", "T1021.003", "T1021.004", "T1021.005", "T1021.006",
+    "T1021.007", "T1021.008", "T1021.009", "T1570", "T1550", "T1550.001", "T1550.002", "T1550.003", "T1550.004", "T1091", "T1105", "T1558.003", "T1651",
+    // Collection (TA0009)
+    "T1119", "T1005", "T1025", "T1039", "T1074", "T1074.001", "T1074.002", "T1123", "T1602", "T1602.001", "T1602.002", "T1602.003", "T1113", "T1115", "T1114",
+    "T1114.001", "T1114.002", "T1114.003", "T1114.004", "T1114.005", "T1530", "T1056", "T1056.001", "T1056.002", "T1056.003", "T1056.004", "T1560", "T1560.001",
+    "T1560.002", "T1560.003", "T1091", "T1185", "T1213", "T1213.001", "T1213.002", "T1213.003", "T1488",
+    // Command and Control (TA0011)
+    "T1071", "T1071.001", "T1071.002", "T1071.003", "T1071.004", "T1105", "T1573", "T1573.001", "T1573.002", "T1573.003", "T1092", "T1095", "T1104", "T1571", "T1572",
+    "T1090", "T1090.001", "T1090.002", "T1090.003", "T1090.004", "T1090.005", "T1001", "T1001.001", "T1001.002", "T1001.003", "T1132", "T1132.001", "T1132.002", "T1008",
+    "T1219", "T1094", "T1102", "T1102.001", "T1102.002", "T1102.003",
+    // Exfiltration (TA0010)
+    "T1048", "T1048.001", "T1048.002", "T1048.003", "T1048.004", "T1020", "T1020.001", "T1020.002", "T1020.003", "T1567", "T1567.001", "T1567.002", "T1011", "T1011.001",
+    "T1011.002", "T1041", "T1052", "T1052.001", "T1537", "T1030", "T1022", "T1029",
+    // Impact (TA0040)
+    "T1485", "T1486", "T1489", "T1490", "T1491", "T1491.001", "T1491.002", "T1531", "T1565", "T1565.001", "T1565.002", "T1565.003", "T1561", "T1561.001", "T1561.002",
+    "T1561.003", "T1495", "T1496", "T1498", "T1499", "T1499.001", "T1499.002", "T1499.003", "T1499.004", "T1529", "T1657", "T1558.003", "T1647", "T1492", "T1570"
+};
+
                 void TreeCompletedProcessingThreadRoutine()
                 {
                     while (is_TreeManager_Running)
@@ -1667,13 +1746,855 @@ namespace EDR
                             // D-1. 탐지된 룰 개수 전체
                             const unsigned long long matched_rule_count = CompleteProcessNodeTree.value("matched_rules", json::array()).size();
                             // D-2. 탐지된 info 심각도 룰 개수
+                            unsigned long long matched_rule_severity_info_count = 0;
                             // D-3. 탐지된 low 심각도 룰 개수
+                            unsigned long long matched_rule_severity_low_count = 0;
                             // D-4. 탐지된 medium 심각도 룰 개수
+                            unsigned long long matched_rule_severity_medium_count = 0;
                             // D-5. 탐지된 high 심각도 룰 개수
+                            unsigned long long matched_rule_severity_high_count = 0;
                             // D-6. 탐지된 critical 심각도 룰 개수
+                            unsigned long long matched_rule_severity_critical_count = 0;
+                            // D-7. MitreAttack 
 
                             // Rule 벡터 추가
                             feature_vector.push_back(static_cast<double>(matched_rule_count));
+                            feature_vector.push_back(static_cast<double>(matched_rule_severity_info_count));
+                            feature_vector.push_back(static_cast<double>(matched_rule_severity_low_count));
+                            feature_vector.push_back(static_cast<double>(matched_rule_severity_medium_count));
+                            feature_vector.push_back(static_cast<double>(matched_rule_severity_high_count));
+                            feature_vector.push_back(static_cast<double>(matched_rule_severity_critical_count));
+
+                            // MITRE-ATTACK
+                            // Reconnaissance (TA0043)
+                            feature_vector.push_back(static_cast<double>(event_type_counts["TA0043"]));
+
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1595"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1595.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1595.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1595.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1592"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1592.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1592.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1592.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1592.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1598"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1598.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1598.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1598.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1598.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1597"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1597.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1597.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1596"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1596.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1596.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1596.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1596.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1596.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1593"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1593.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1593.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1593.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1594"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1589"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1589.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1589.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1589.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1590"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1590.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1590.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1590.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1590.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1590.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1590.006"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1591"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1591.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1591.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1591.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1591.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1600"]));
+
+                            // Resource Development (TA0042)
+                            feature_vector.push_back(static_cast<double>(event_type_counts["TA0042"]));
+
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1583"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1583.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1583.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1583.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1583.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1583.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1583.006"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1583.007"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1584"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1584.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1584.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1584.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1584.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1584.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1584.006"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1584.007"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1608"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1608.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1608.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1608.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1608.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1608.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1608.006"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1585"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1585.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1585.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1585.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1586"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1586.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1586.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1586.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1586.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1586.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1586.006"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1587"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1587.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1587.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1587.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1587.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1588"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1588.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1588.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1588.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1588.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1588.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1588.006"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1648"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1648.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1648.002"]));
+
+                            // Initial Access (TA0001)
+                            feature_vector.push_back(static_cast<double>(event_type_counts["TA0001"]));
+
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1078"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1078.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1078.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1078.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1078.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1133"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1189"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1190"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1195"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1195.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1195.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1195.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1566"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1566.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1566.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1566.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1566.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1655"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1199"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1200"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1650"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1651"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1091"]));
+
+                            // Execution (TA0002)
+                            feature_vector.push_back(static_cast<double>(event_type_counts["TA0002"]));
+
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1204"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1204.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1204.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1204.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1059"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1059.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1059.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1059.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1059.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1059.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1059.006"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1059.007"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1059.008"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1059.009"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1059.010"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1559"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1559.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1559.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1559.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1569"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1569.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1569.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1047"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1072"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1106"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1129"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1203"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.006"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.007"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.008"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.009"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.010"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.011"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.012"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.013"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.014"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1610"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1611"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1653"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1121"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1216"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1218"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1218.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1218.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1218.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1218.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1218.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1218.007"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1218.008"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1218.009"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1218.010"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1218.011"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1218.012"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1218.013"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1218.014"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1649"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1652"]));
+
+                            // Persistence (TA0003)
+                            feature_vector.push_back(static_cast<double>(event_type_counts["TA0003"]));
+
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1098"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1098.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1098.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1098.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1098.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1098.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1098.006"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1098.007"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1547"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1547.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1547.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1547.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1547.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1547.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1547.006"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1547.008"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1547.009"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1547.010"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1547.011"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1547.012"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1547.013"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1547.014"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1547.015"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1137"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1137.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1137.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1137.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1137.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1137.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1137.006"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1137.007"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1176"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1546"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1546.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1546.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1546.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1546.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1546.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1546.006"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1546.007"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1546.008"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1546.009"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1546.010"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1546.011"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1546.012"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1546.013"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1546.015"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1546.016"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1546.017"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1554"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1543"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1543.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1543.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1543.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1543.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1543.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1053"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1053.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1053.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1053.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1053.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1053.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1053.006"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1053.007"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1197"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1136"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1136.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1136.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1136.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1525"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1542"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1542.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1542.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1542.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1542.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1542.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1542.006"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1542.007"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1542.008"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1542.009"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1542.010"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.006"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.007"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.008"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.009"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.010"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.011"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.012"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.013"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.014"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1601"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1601.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1601.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1621"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1621.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1621.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1112"]));
+
+                            // Privilege Escalation (TA0004)
+                            feature_vector.push_back(static_cast<double>(event_type_counts["TA0004"]));
+
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1548"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1548.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1548.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1548.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1548.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1548.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1548.006"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1547"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1547.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1547.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1547.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1547.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1547.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1547.006"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1547.008"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1547.009"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1547.010"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1547.011"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1547.012"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1547.013"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1547.014"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1547.015"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1546"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1546.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1546.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1546.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1546.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1546.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1546.006"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1546.007"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1546.008"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1546.009"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1546.010"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1546.011"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1546.012"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1546.013"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1546.015"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1546.016"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1546.017"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1068"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.006"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.007"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.008"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.009"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.010"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.011"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.012"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.013"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1574.014"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1543"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1543.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1543.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1543.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1543.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1543.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1055"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1055.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1055.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1055.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1055.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1055.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1055.008"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1055.009"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1055.011"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1055.012"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1055.013"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1055.014"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1053"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1053.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1053.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1053.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1053.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1053.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1053.006"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1053.007"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1134"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1134.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1134.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1134.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1134.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1078.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1078.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1078.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1611"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1621"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1621.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1621.002"]));
+
+                            // Defense Evasion (TA0005)
+                            feature_vector.push_back(static_cast<double>(event_type_counts["TA0005"]));
+
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1562"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1562.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1562.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1562.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1562.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1562.006"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1562.007"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1562.008"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1562.009"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1562.010"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1562.011"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1562.012"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1070"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1070.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1070.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1070.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1070.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1070.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1070.006"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1070.007"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1070.008"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1070.009"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1211"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1027"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1027.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1027.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1027.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1027.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1027.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1027.006"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1027.007"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1027.008"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1027.009"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1027.010"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1027.011"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1027.012"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1140"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1548.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1553"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1553.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1553.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1553.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1553.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1553.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1553.006"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1553.007"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1564"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1564.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1564.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1564.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1564.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1564.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1564.006"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1564.007"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1564.008"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1564.009"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1564.010"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1599"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1599.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1599.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1599.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1036"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1036.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1036.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1036.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1036.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1036.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1036.006"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1036.007"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1036.008"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1036.009"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1480"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1480.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1006"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1221"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1622"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1620"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1055"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1055.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1055.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1055.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1055.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1055.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1055.008"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1055.009"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1055.011"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1055.012"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1055.013"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1055.014"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1202"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1205"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1207"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1218"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1218.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1218.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1218.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1218.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1218.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1218.007"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1218.008"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1218.009"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1218.010"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1218.011"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1218.012"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1218.013"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1218.014"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1222"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1222.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1222.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1497"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1497.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1497.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1497.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1614"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1629"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1629.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1629.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1629.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1629.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1654"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1014"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1078.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1078.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1078.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1112"]));
+
+                            // Credential Access (TA0006)
+                            feature_vector.push_back(static_cast<double>(event_type_counts["TA0006"]));
+
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1558"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1558.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1558.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1558.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1558.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1558.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1110"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1110.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1110.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1110.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1110.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1110.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1606"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1606.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1606.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1606.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1552"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1552.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1552.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1552.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1552.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1552.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1552.006"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1552.007"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1552.008"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1552.009"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1003.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1003.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1003.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1003.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1003.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1003.006"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1003.007"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1003.008"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1003.009"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1212"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1555"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1555.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1555.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1555.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1555.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1555.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1555.006"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1555.007"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1555.008"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1555.009"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1555.010"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1555.011"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1555.012"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1556"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1556.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1556.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1556.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1556.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1556.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1556.006"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1556.007"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1557"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1557.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1557.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1557.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1505"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1505.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1505.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1505.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1505.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1528"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1539"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1069"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1621"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1621.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1621.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1649"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1653"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1056"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1056.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1056.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1056.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1056.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1111"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1187"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1040"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1081"]));
+
+                            // Discovery (TA0007)
+                            feature_vector.push_back(static_cast<double>(event_type_counts["TA0007"]));
+
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1087"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1087.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1087.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1087.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1087.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1069"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1069.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1069.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1069.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1482"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1217"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1010"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1615"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1083"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1033"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1135"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1518"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1518.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1518.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1057"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1012"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1592"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1046"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1018"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1201"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1049"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1082"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1614"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1614.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1538"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1016"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1016.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1016.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1040"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1120"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1526"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1526.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1526.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1526.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1526.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1526.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1526.006"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1526.007"]));
+
+                            // Lateral Movement (TA0008)
+                            feature_vector.push_back(static_cast<double>(event_type_counts["TA0008"]));
+
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1210"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1563"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1563.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1563.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1563.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1563.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1534"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1021"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1021.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1021.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1021.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1021.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1021.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1021.006"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1021.007"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1021.008"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1021.009"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1570"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1550"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1550.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1550.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1550.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1550.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1091"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1105"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1558.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1651"]));
+
+                            // Collection (TA0009)
+                            feature_vector.push_back(static_cast<double>(event_type_counts["TA0009"]));
+
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1119"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1025"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1039"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1074"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1074.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1074.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1123"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1602"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1602.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1602.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1602.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1113"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1115"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1114"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1114.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1114.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1114.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1114.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1114.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1530"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1056"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1056.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1056.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1056.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1056.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1560"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1560.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1560.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1560.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1091"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1185"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1213"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1213.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1213.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1213.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1488"]));
+
+                            // Command and Control (TA0011)
+                            feature_vector.push_back(static_cast<double>(event_type_counts["TA0011"]));
+
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1071"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1071.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1071.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1071.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1071.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1105"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1573"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1573.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1573.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1573.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1092"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1095"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1104"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1571"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1572"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1090"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1090.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1090.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1090.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1090.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1090.005"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1001.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1001.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1001.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1132"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1132.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1132.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1008"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1219"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1094"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1102"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1102.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1102.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1102.003"]));
+
+                            // Exfiltration (TA0010)
+                            feature_vector.push_back(static_cast<double>(event_type_counts["TA0010"]));
+
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1048"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1048.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1048.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1048.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1048.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1020"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1020.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1020.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1020.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1567"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1567.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1567.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1011"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1011.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1011.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1041"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1052"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1052.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1537"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1030"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1022"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1029"]));
+
+                            // Impact (TA0040)
+                            feature_vector.push_back(static_cast<double>(event_type_counts["TA0040"]));
+
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1485"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1486"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1489"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1490"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1491"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1491.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1491.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1531"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1565"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1565.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1565.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1565.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1561"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1561.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1561.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1561.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1495"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1496"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1498"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1499"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1499.001"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1499.002"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1499.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1499.004"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1529"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1657"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1558.003"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1647"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1492"]));
+                            feature_vector.push_back(static_cast<double>(event_type_counts["T1570"]));
 
 
                             //======================================================================
