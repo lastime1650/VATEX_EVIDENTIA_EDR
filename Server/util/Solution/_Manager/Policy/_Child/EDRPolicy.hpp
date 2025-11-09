@@ -34,20 +34,6 @@ namespace Solution
                     this->Manager.Reload_Rule();
                     std::cout << "EDR-Policy Reloaded" << std::endl;
 
-                    // test
-                    json s = {
-                            {"body",
-                                {
-                                    {"process", {
-                                        {"exe_path", "screencapture"}
-                                    }}
-                                }
-                            }
-                        };
-                    this->Manager.Match(
-                        s
-                    );
-
                     BasePolicy::Set_Policy_Enable(); 
                 }
 

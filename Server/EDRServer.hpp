@@ -28,12 +28,16 @@ namespace EDR
                     std::string EDR_APIServerIp,
                     unsigned int EDR_APIServerPort,
 
+                    std::string VATEX_SAPIENTIA_SIEM_API_ServerIp,
+                    unsigned int VATEX_SAPIENTIA_SIEM_API_ServerPort,
+
                     std::string VATEX_INTELLINA_API_ServerIp,
                     unsigned int VATEX_INTELLINA_API_ServerPort = 51034
                 ) 
-                : IntelligenceManager(VATEX_INTELLINA_API_ServerIp, VATEX_INTELLINA_API_ServerPort),
+                : SiemClient(VATEX_SAPIENTIA_SIEM_API_ServerIp, VATEX_SAPIENTIA_SIEM_API_ServerPort),
+                IntelligenceManager(VATEX_INTELLINA_API_ServerIp, VATEX_INTELLINA_API_ServerPort),
                 PolicyManager(rule_dir_path),
-                BehaviorManager( KafkaBroker, Kafkagroup_id, Kafkatopic, PolicyManager ),
+                BehaviorManager( KafkaBroker, Kafkagroup_id, Kafkatopic, PolicyManager, SiemClient ),
                 AgentTCPManager(EDR_AgentTCPServerIp, EDR_AgentTCPServerPort)
                 {}
 
@@ -99,6 +103,8 @@ namespace EDR
 
                 // VATEX INTELLINA INTELLIGENCE API 호출 인스턴스
                 EDR::Util::Intelligence::VATEX_INTELLINA_INTELLIGENCE IntelligenceManager;
+
+                EDR::Util::ToSiem::SiemClient SiemClient;
                 
         };
 

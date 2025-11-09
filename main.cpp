@@ -34,7 +34,9 @@ int main()
 )"));
 
     VNA.Predict_ML(model_json);*/
-
+    auto t = EDR::Util::timestamp::Get_Real_Timestamp();
+    std::cout << t << std::endl;
+    std::cout << EDR::Util::timestamp::To_Nano_Iso8601( t );
 
     
     EDR::Server::EDRServer Server(
@@ -62,6 +64,12 @@ int main()
         */
         "192.168.1.205",
         51033,
+
+        /*
+            VATEX SAPIENTIA SIEM API Connection
+        */
+        "192.168.1.205",
+        10900,
 
         /*
             VATEX INTELLINA INTELLIGENCE API Connection

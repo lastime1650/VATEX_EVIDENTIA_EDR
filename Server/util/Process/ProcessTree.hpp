@@ -14,6 +14,12 @@ namespace EDR
             namespace ProcessEvent
             {
 
+                struct IntelligenceOutput
+                {
+                    EDR::Util::Intelligence::VATEX_INTELLINA_INTELLIGENCE__RESPONSE intelligence_response;
+                    std::string IntelligenceCategory; // e.g. network, file ,, 등
+                };
+
                 class Event
                 {
                     public:
@@ -40,6 +46,12 @@ namespace EDR
                         json get_event(){ return jsonEvent; }
                         json get_header(){ return jsonEvent["header"]; }
                         json get_body(){ return jsonEvent["body"]; }
+
+
+                        bool append_detected_rule()
+                        {
+                            return false;
+                        }
                         
                         /*
                             Intelligence
@@ -47,29 +59,34 @@ namespace EDR
                         virtual void send_to_intelligence() = 0;
 
                         // 인텔리전스 쿼리 결과 PUSH
-                        bool append_intelligence( const std::optional< EDR::Util::Intelligence::VATEX_INTELLINA_INTELLIGENCE__RESPONSE >& response)
+                        bool append_intelligence( const std::string& category , const std::optional< EDR::Util::Intelligence::VATEX_INTELLINA_INTELLIGENCE__RESPONSE >& response)
                         {
                             if(!response.has_value())
                                 return false;
                             if( !response->is_success )
                                 return false;
 
-                            
-                            intelligence_responses.push_back( response.value() );
+                            //std::cout << (response->outputs.begin()->second[0].output[0]) << std::endl;
+                            intelligence_outputs.push_back( IntelligenceOutput{ 
+
+                                    .intelligence_response = response.value(), 
+                                    .IntelligenceCategory = category  
+                                }  
+                            );
 
                             return true;
                         }
 
                         // 지금까지 PUSHED 인텔리전스 쿼리 결과를 하나의 JSON으로 리턴
-                        json output_intelligence_result()
+                        json output_intelligence_result_as_json()
                         {
                             auto Output = json::object();
                             Output["intelligence"] = json::array(); 
 
-                            for(const auto& response : intelligence_responses)
+                            for(const auto& response : intelligence_outputs)
                             {
                                 auto data = Intelligence.RESPONSE_to_Json(
-                                    response
+                                    response.intelligence_response
                                 );
 
                                 if(data.has_value())
@@ -81,6 +98,11 @@ namespace EDR
                             }
 
                             return Output;
+                        }
+
+                        std::vector<IntelligenceOutput>  output_intelligence_result_as_vector()
+                        {
+                            return intelligence_outputs;
                         }
                         
 
@@ -104,7 +126,11 @@ namespace EDR
 
 
                         EDR::Util::Intelligence::VATEX_INTELLINA_INTELLIGENCE& Intelligence;
-                        std::vector<EDR::Util::Intelligence::VATEX_INTELLINA_INTELLIGENCE__RESPONSE> intelligence_responses;
+
+
+                        
+
+                        std::vector<IntelligenceOutput> intelligence_outputs;
 
                     protected:
                         json jsonEvent;
@@ -173,6 +199,7 @@ namespace EDR
                             if( !exe_sha256.empty() )
                             {
                                 append_intelligence(
+                                    "file",
                                     Intelligence.Query_FILE_SHA256(exe_sha256)
                                 );
                                     
@@ -181,6 +208,7 @@ namespace EDR
                             if( parent_exe_sha256.length() )
                             {
                                 append_intelligence(
+                                    "file",
                                     Intelligence.Query_FILE_SHA256(parent_exe_sha256)
                                 );
                             }
@@ -219,6 +247,7 @@ namespace EDR
                             if( filesha256.length() >= 64 )
                             {
                                 append_intelligence(
+                                    "file",
                                     Intelligence.Query_FILE_SHA256(filesha256)
                                 );
                             }
@@ -266,12 +295,14 @@ namespace EDR
                                 if(destinationip.length())
                                 {
                                     append_intelligence(
+                                        "network",
                                         Intelligence.Query_NETWORK_IPV4(destinationip)
                                     );
                                     
                                     if(destinationport)
                                     {
                                         append_intelligence(
+                                            "network",
                                             Intelligence.Query_NETWORK_IPV4_with_PORT(destinationip, destinationport)
                                         );
                                     }
@@ -288,12 +319,14 @@ namespace EDR
                                 if(sourceip.length())
                                 {
                                     append_intelligence(
+                                        "network",
                                         Intelligence.Query_NETWORK_IPV4(sourceip)
                                     );
                                     
                                     if(sourceport)
                                     {
                                         append_intelligence(
+                                            "network",
                                             Intelligence.Query_NETWORK_IPV4_with_PORT(sourceip, sourceport)
                                         );
                                     }
@@ -362,6 +395,7 @@ namespace EDR
                                 if( filesha256.length() >= 64 )
                                 {
                                     append_intelligence(
+                                        "file",
                                         Intelligence.Query_FILE_SHA256(filesha256)
                                     );
                                 }
@@ -513,6 +547,10 @@ namespace EDR
                 // 프로세스 트리의 각 노드를 나타내는 구조체
                 struct ProcessTreeNode
                 {
+
+                    // 세션 busy 체크 ( 부모에서 최초 shared_ptr 생성 되고, 자식은 참조만 . )
+                    std::shared_ptr<std::atomic<unsigned long long>> busy_ref_count;
+
                     // --- 고유 정보 ---
                     std::string AGENT_ID;
                     struct {
@@ -531,6 +569,8 @@ namespace EDR
                     std::vector<std::shared_ptr<ProcessEvent::Event>> events;
                     std::vector<std::shared_ptr<ProcessTreeNode>> Child;
 
+                    
+
                     // --- 타임스탬프 ---
                     // 이 노드 자체의 이벤트 기반 타임스탬프
                     struct {
@@ -541,12 +581,25 @@ namespace EDR
                     // 트리 전체의 활동을 추적하기 위해 루트 노드에서 생성되고 공유되는 타임스탬프
                     std::shared_ptr<ProcessTreeTimestamp> shared_tree_timestamp;
 
-                    // --- 분석 및 정책 관련 ---
+                    // --- 분석 및 정책 또는 AI 샘플링 관련 ---
                     std::shared_ptr<Solution::Policy::Resource::Association::ASSOCIATION_RULE_MANAGER> AssociationRuleCTX = nullptr;
-                    std::atomic<float> threat_score{0.0f};
-                    std::atomic<bool> analysis_submitted{false};
+                    std::vector<Solution::Policy::Resource::Association::Global::AssociationRuleStruct::Header> MatchedRules;// 룰 탐지 결과 리스트
+
+                    //std::atomic<float> threat_score{0.0f};
+                    //std::atomic<bool> analysis_submitted{false};
                     
                     // --- 헬퍼 함수들 (포인터 기반으로 수정됨) ---
+                    bool append_matched_rule(std::vector<Solution::Policy::Resource::Association::RuleMatchedOutput>& args_matchedRules)
+                    {
+                        if(args_matchedRules.empty())
+                            return false;
+
+                        // key가 "rule"인 룰 전용 event를 생성하고, MatchedRules 필드에 push_back진행
+                        for (auto& rule : args_matchedRules)
+                            MatchedRules.push_back( rule.RuleInfo );
+
+                        return true;
+                    }
 
                     // 모든 하위 자식들이 종료되었는지 재귀적으로 확인
                     bool are_all_children_terminated() const
@@ -652,12 +705,14 @@ namespace EDR
             {
             public:
                 ProcessTreeManager(
+                    EDR::Util::ToSiem::SiemClient& SiemClient,
                     Solution::Policy::EDRPolicy& EDRPolicyManager,
                     size_t max_events_per_node = 5000,
                     size_t max_nodes_per_tree = 1000,
-                    size_t MAX_ASYNC_TASKS = 2048,
-                    unsigned long long tree_timeout_ms = 30000000 // 5분
-                ) : EDRPolicyManager(EDRPolicyManager),
+                    size_t MAX_ASYNC_TASKS = 10000,
+                    unsigned long long tree_timeout_ms = 300000 // 5분
+                ) : SiemClient(SiemClient),
+                    EDRPolicyManager(EDRPolicyManager),
                     MAX_EVENTS_PER_NODE(max_events_per_node),
                     MAX_NODES_PER_TREE(max_nodes_per_tree),
                     MAX_ASYNC_TASKS(MAX_ASYNC_TASKS),
@@ -665,6 +720,8 @@ namespace EDR
                 {
                     is_TreeManager_Running = true;
                     TreeCleanUpLoopThread = std::thread(&ProcessTreeManager::TreeCleanUpLoopThread_Function, this);
+                    TreeAsyncCleanUpLoopThread = std::thread(&ProcessTreeManager::TreeAsyncCleanUpLoopThreat_Function, this);
+                    TreeCompletedProcessingThread = std::thread(&ProcessTreeManager::TreeCompletedProcessingThreadRoutine, this);
                 }
 
                 ~ProcessTreeManager()
@@ -673,6 +730,14 @@ namespace EDR
                     if (TreeCleanUpLoopThread.joinable())
                     {
                         TreeCleanUpLoopThread.join();
+                    }
+                    if (TreeAsyncCleanUpLoopThread.joinable())
+                    {
+                        TreeAsyncCleanUpLoopThread.join();
+                    }
+                    if (TreeCompletedProcessingThread.joinable())
+                    {
+                        TreeCompletedProcessingThread.join();
                     }
                 }
 
@@ -726,10 +791,13 @@ namespace EDR
                             unsigned long long now = EDR::Util::timestamp::Get_Real_Timestamp();
                             new_node_ptr->shared_tree_timestamp->first_seen = now;
                             new_node_ptr->shared_tree_timestamp->last_seen = now;
+
+                            new_node_ptr->busy_ref_count = std::make_shared<std::atomic<unsigned long long>>(0);
                         } else {
                             if (root_node_ptr) {
                                 new_node_ptr->AssociationRuleCTX = root_node_ptr->AssociationRuleCTX;
                                 new_node_ptr->shared_tree_timestamp = root_node_ptr->shared_tree_timestamp;
+                                new_node_ptr->busy_ref_count = root_node_ptr->busy_ref_count;
                             }
                         }
 
@@ -808,6 +876,7 @@ namespace EDR
                // }
 
             private:
+                EDR::Util::ToSiem::SiemClient& SiemClient;
                 Solution::Policy::EDRPolicy& EDRPolicyManager;
                 const size_t MAX_EVENTS_PER_NODE;
                 const size_t MAX_NODES_PER_TREE;
@@ -827,6 +896,7 @@ namespace EDR
                 // --- 백그라운드 스레드 관련 ---
                 std::atomic<bool> is_TreeManager_Running{false};
                 std::thread TreeCleanUpLoopThread;
+                std::thread TreeAsyncCleanUpLoopThread;
                 std::thread TreeCompletedProcessingThread;
 
                 // --- 내부 헬퍼 함수 (모두 포인터 기반) ---
@@ -859,6 +929,15 @@ namespace EDR
                         placeholder_parent_ptr->shared_tree_timestamp = new_node_ptr->shared_tree_timestamp;
                         placeholder_parent_ptr->nodeDepthIndex = 0;
                         new_node_ptr->nodeDepthIndex = 1;
+
+                        if(new_node_ptr->busy_ref_count)
+                            placeholder_parent_ptr->busy_ref_count = new_node_ptr->busy_ref_count;
+                        else
+                        {
+                            placeholder_parent_ptr->busy_ref_count = std::make_shared<std::atomic<unsigned long long>>(0);
+                            new_node_ptr->busy_ref_count = placeholder_parent_ptr->busy_ref_count;
+                        }
+                            
 
                         if (!new_node_ptr->shared_tree_timestamp) { // 실제 루트가 아직 안 온 경우
                             
@@ -896,6 +975,10 @@ namespace EDR
                 // Tree가 만들어지고, 비동기적으로 후속작업 진행 함수 ( 1. 인텔리전스 요청 / 2. 룰 매치 )
                 void _Async_Tree_Processing(std::shared_ptr<ProcessEvent::Event> eventNode, std::shared_ptr<node::ProcessTreeNode> Node)
                 {
+                    if (!Node || !eventNode) {
+                        std::cerr << "[Async Error] Node or eventNode is null." << std::endl;
+                        return;
+                    }
                     
                     bool limit_reached;
                     {
@@ -906,45 +989,175 @@ namespace EDR
                     // 한계에 도달했다면 동기적으로 실행
                     if (limit_reached)
                     {
-                        //std::cerr << "[Warning] Max async tasks limit reached. Running synchronously." << std::endl;
-                        if (Node && Node->AssociationRuleCTX) {
-                            Node->AssociationRuleCTX->Match(eventNode->get_event());
-                        }
+                        _tree_postfix_processing_internal(Node, eventNode);
                         return; // 여기서 함수 종료
                     }
-
-
-                    auto Future = std::async(
-                                std::launch::async, [this, eventNode, Node]()
-                                {
-                                    if (!Node || !eventNode) {
-                                        std::cerr << "[Async Error] Node or eventNode is null." << std::endl;
-                                        return;
-                                    }
-
-                                    // Async_Tree_Processing_async 비동기 실행
-                                    // 1. 인텔리전스 요청
-                                    //eventNode->send_to_intelligence();
-
-                                    // 2. 룰 매칭 
-                                    Node->AssociationRuleCTX->Match(eventNode->get_event());
-                                }
-                            );
-
-
+                    else
                     {
-                        std::lock_guard<std::mutex> lock(Async_Mutex);
-                        Async_Tree_Processing_asyncs.emplace_back(
-                            std::move( Future )
+                         auto Future = std::async(
+                            std::launch::async, [this, eventNode, Node]()
+                            {
+                                // Async_Tree_Processing_async 비동기 실행
+                                _tree_postfix_processing_internal(Node, eventNode);
+                            }
                         );
+
+
+                        {
+                            std::lock_guard<std::mutex> lock(Async_Mutex);
+                            Async_Tree_Processing_asyncs.emplace_back(
+                                std::move( Future ) // 비동기 실행
+                            );
+                        }
                     }
                     
                 }
+                void _tree_postfix_processing_internal( std::shared_ptr<EDR::Server::Util::node::ProcessTreeNode> Node, std::shared_ptr<EDR::Server::Util::ProcessEvent::Event> eventNode )
+                {
+                    /*
+                    **********************************************
+                        중간 return 은 절대 불가하다. 
+
+                        -> 노드 참조 카운트가 엇갈리면 노드가 종료되지 않아 메모리에 상주하므로 큰일난다. 
+                    **********************************************
+                    */
+                    
+                    /*
+                        노드 참조 카운트 1 증가
+                    */
+                    Node->busy_ref_count->fetch_add(1, std::memory_order_seq_cst); // 가시성 보장 ( 값을 읽는 부분에서도 실시간 read로 값 체킹해야하므로 )
+                    
+                    {
+                        try{
+
+                            // 1. 룰 매칭
+                            auto Results = Node->AssociationRuleCTX->Match_(eventNode->get_event());
+                            Rule_to_Siem(Results);// ToSiem ( Rule )
 
 
+                            // 2. 인텔리전스 요청 ( 상당히 지연이 크기때문에 맨 나중에 진행. )
+                            eventNode->send_to_intelligence();
+                            auto intelligence_outputs = eventNode->output_intelligence_result_as_vector();
+
+                            if(!intelligence_outputs.empty())
+                            {
+                                for(const auto& intelligence : intelligence_outputs)
+                                {
+                                    std::string Category = intelligence.IntelligenceCategory;
+                                    for ( const auto&[Intelligence_Platform, Vectors] : intelligence.intelligence_response.outputs )
+                                    {
+                                        //std::cout << EDR::Util::Intelligence::QueryEnum_to_String(Intelligence_Platform) << std::endl;
+                                        for(const auto& data : Vectors)
+                                        {
+                                            if( !data.output.empty() )
+                                            {
+                                                std::string ModuleName = data.ModuleName;
+                                                //std::cout << "ModuleName: " << data.ModuleName << std::endl;
+                                                std::cout << "JSON: " << data.output[0] << std::endl;
+
+                                                
+                                                
+                                                for (const auto& JSON : data.output)
+                                                    Intelligence_to_Siem(
+                                                        fmt::format("ModuleName: {} Content: {}", ModuleName, JSON.dump()),
+                                                        Category
+                                                    );
+                                                
+                                            }
+                                            
+
+                                        }
+                                    }
+                                }
+                            }
+
+                        }
+                        catch ( const std::exception& e )
+                        {
+                            //std::cerr << "Exception on _Async_Tree_Processing e: " << e.what() << std::endl;
+                        }
+                        catch ( ... )
+                        {
+                            //std::cerr << "Exception on _Async_Tree_Processing but IDK" << std::endl;
+                        }
+                    }
+
+                    Node->busy_ref_count->fetch_sub(1, std::memory_order_seq_cst);
+                    
+                }
+
+                bool Intelligence_to_Siem( const std::string& detected_intelligence_description, const std::string& category="network"  )
+                {
+                    SiemClient.Send_Security_Event(
+                            "edr",
+                            "info", // 인텔리전스는 info로 동일
+                            detected_intelligence_description,
+                            "",
+                            category,
+                            "intelligence",
+                            EDR::Util::timestamp::Get_Real_Timestamp()
+                        );
+                    return true;
+                }
+                bool Rule_to_Siem(const std::vector<Solution::Policy::Resource::Association::RuleMatchedOutput>& Rules)
+                {
+                    for(auto& rule : Rules)
+                    {
+                        // 1. 룰 탐지된 경우 무조건 전달
+                        SiemClient.Send_Security_Event(
+                            "edr",
+                            rule.RuleInfo.rule_severity,
+                            rule.RuleInfo.rule_description,
+                            rule.RuleInfo.false_positive,
+                            "behavior",
+                            "rule",
+                            EDR::Util::timestamp::Get_Real_Timestamp()
+                        );
+
+                        // 2. Rule 내, 별도의 Notice등 조치가 있는경우 ( 룰 기반 차단(Response) 가능 )
+                        for ( auto& action : rule.actions)
+                        {
+                            SiemClient.Send_Security_Event(
+                                "edr",
+                                "info",
+                                action.description,
+                                "",
+                                action.type == Solution::Policy::Resource::Association::Global::ActionType::notice ? "notice" : "response" ,
+                                "rule",
+                                EDR::Util::timestamp::Get_Real_Timestamp()
+                            );
+
+                            // Response
+                            if ( action.type == Solution::Policy::Resource::Association::Global::ActionType::block )
+                            {
+                                // 차단 수행 TCP매니저 인스턴스 상호작용 진행하라.
+                            }
+                        }
+                    }
+                }
 
                 //-----------------------------------------
 
+                // 비동기 작업 Async Future 마감 루프 스레드
+                void TreeAsyncCleanUpLoopThreat_Function()
+                {
+                    while (is_TreeManager_Running)
+                    {
+                        std::lock_guard<std::mutex> lock(Async_Mutex);
+                        for (auto it = Async_Tree_Processing_asyncs.begin(); it != Async_Tree_Processing_asyncs.end(); ) {
+
+                            // 블로킹없이 비동기 함수 종료인지 확인포함
+                            if (it->valid() && it->wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
+                                it->get();  // 완료된 작업 회수
+                                it = Async_Tree_Processing_asyncs.erase(it); // 벡터에서 제거
+                            } else {
+                                ++it; // 아직 실행 중이면 다음으로
+                            }
+                        }
+                    }
+                }
+
+                // 프로세스 세션 마감 루프 스레드
                 void TreeCleanUpLoopThread_Function()
                 {
                     while (is_TreeManager_Running)
@@ -952,29 +1165,13 @@ namespace EDR
                         std::this_thread::sleep_for(std::chrono::seconds(60));
                         if (!is_TreeManager_Running) break;
 
-                        // Async_Tree_Processing_asyncs 작업 해제 시도
-                        {
-                            std::lock_guard<std::mutex> lock(Async_Mutex);
-                            for (auto it = Async_Tree_Processing_asyncs.begin(); it != Async_Tree_Processing_asyncs.end(); ) {
-
-                                // 블로킹없이 비동기 함수 종료인지 확인포함
-                                if (it->valid() && it->wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
-                                    it->get();  // 완료된 작업 회수
-                                    it = Async_Tree_Processing_asyncs.erase(it); // 벡터에서 제거
-                                } else {
-                                    ++it; // 아직 실행 중이면 다음으로
-                                }
-                            }
-                        }
-                        
-
 
                         unsigned long long now = EDR::Util::timestamp::Get_Real_Timestamp();
                         
                         std::vector<std::pair<std::string, std::shared_ptr<AgentProcessTree>>> tree_map_snapshot;
                         {
                             std::lock_guard<std::mutex> map_lock(map_mutex);
-                            tree_map_snapshot.assign(tree_map.begin(), tree_map.end());
+                            tree_map_snapshot.assign(tree_map.begin(), tree_map.end()); // 복제, 단, 요소/객체는 공유
                         }
 
                         for (const auto& [agent_id, agent_tree_ptr] : tree_map_snapshot)
@@ -983,10 +1180,19 @@ namespace EDR
                             auto& root_nodes = agent_tree_ptr->root_nodes;
 
                             // 뒤에서부터 순회하며 제거 (erase 안전)
-                            for (auto it = root_nodes.rbegin(); it != root_nodes.rend(); )
+                            for (auto it = root_nodes.rbegin(); it != root_nodes.rend(); ) 
                             {
                                 auto& root_node_ptr = *it;
                                 bool should_remove = false;
+
+                                //  해당 세션이 busy가 아닌경우에는 종료 처리할 수 없다.
+                                std::cout << "root_node_ptr->busy_ref_count->load(std::memory_order_seq_cst): " << root_node_ptr->busy_ref_count->load(std::memory_order_seq_cst) << std::endl; 
+                                if ( root_node_ptr->busy_ref_count->load(std::memory_order_seq_cst) != 0 )
+                                {
+                                    ++it;
+                                    continue;
+                                }
+
 
                                 // 조건 1: 루트가 종료되었고 모든 자식도 종료된 경우
                                 if (!root_node_ptr->is_alive && root_node_ptr->are_all_children_terminated()) {
@@ -999,18 +1205,21 @@ namespace EDR
                                 }
 
                                 if (should_remove) {
+                                    std::cout << "should_remove: True ----> " << std::endl;
 
-
-                                    // 최상위 노드 필드인 placeholder 값이 (false)인지? 확인한다.
-                                    // *placehold값이 false인 경우는 정상적으로 해당 세션내 맨 최초의 프로세스 생성(최상위 부모)이벤트를 받았음을 의미.
-                                    if(!root_node_ptr->is_placeholder)
+                                    // 최상위 노드 필드인 placeholder 값이 (false)인지 확인한다.
+                                    // *placehold값이 false인 경우는 정상적으로 해당 세션내 맨 최초의 프로세스 생성(최상위 부모)이벤트를 정상적으로 받았음을 의미.
+                                    if(root_node_ptr->is_placeholder == false)
                                     {
+                                        // 의도된 정상 로직
+
                                         json completed_tree;
                                         if (root_node_ptr->to_jsonTree(completed_tree)) {
+                                            // 여기까지 True 테스트 됨
                                             CompleteProcessNodeTreeQueue.put(completed_tree);
                                         }
                                     }
-                                    
+                                    // decltype -> 타입 추론
                                     it = decltype(it)(root_nodes.erase(std::next(it).base())); // 해당 부모-자식 세션 완전제거
                                 } else {
                                     ++it;
@@ -1020,15 +1229,23 @@ namespace EDR
                     }
                 }
 
-                /*void TreeCompletedProcessingThread()
+                void TreeCompletedProcessingThreadRoutine()
                 {
                     while (is_TreeManager_Running)
                     {
                         auto CompleteProcessNodeTree = CompleteProcessNodeTreeQueue.get();
 
-                        // AI 처리 등
+                        {
+                            /*
+                                X 샘플 제작
+                            */
+
+                        }
+                        
+                        
                     }
-                }*/
+                    
+                }
 
             }; // class ProcessTreeManager
         }

@@ -5,6 +5,7 @@
 
 #include "VATEX_INTELLINA_INTELLIGENCE/intelligence.hpp"
 #include "VATEX_NOVA_AI/Ai.hpp"
+#include "VATEX_SAPIENTIA_SIEM/ToSiem.hpp"
 
 #include "Kafka/kafka_consume.hpp"
 #include "json.hpp"

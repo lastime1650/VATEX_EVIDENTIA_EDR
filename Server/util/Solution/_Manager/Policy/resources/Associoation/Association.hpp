@@ -97,6 +97,13 @@ namespace Solution
                         } body;
                     };
                 }
+                
+                struct RuleMatchedOutput
+                {
+                    Global::AssociationRuleStruct::Header RuleInfo;
+                    std::vector<Global::Action> actions;
+
+                };
 
                 // 문자열을 enum으로 변환하는 헬퍼 함수들
                 inline Global::Operator StringToOperator(const std::string& op_str) {
@@ -259,7 +266,7 @@ namespace Solution
                         }
                     }
 
-                    bool Match(const json& event, std::vector<Global::Action>& action_output, bool is_string_forced_lower = true) const {
+                    bool Match(const json& event, RuleMatchedOutput& output, bool is_string_forced_lower = true) const {
                         // event_type이 없으면 매칭 불가
                         if (!event.contains("body") || !event["body"].is_object()) return false;
                         
@@ -331,7 +338,8 @@ namespace Solution
                                     std::cout << "  Inclusion ID: " << inclusion.id << std::endl;
                                     std::cout << "  Action: " << inclusion.action.description << std::endl;
                                     
-                                    action_output.push_back(inclusion.action); // 외부로 action 전달
+                                    output.RuleInfo = RuleStruct.header;
+                                    output.actions.push_back(inclusion.action); // 외부로 action 전달
                                     final_action_triggered = true;
                                     
                                     // [추가] 매우 중요: Action이 트리거되었으므로, 이 inclusion의 상태를 초기화하여 중복 탐지를 방지
@@ -357,23 +365,28 @@ namespace Solution
                         std::shared_ptr<ASSOCIATION_RULE_MANAGER> Clone() const {
                             return std::make_shared<ASSOCIATION_RULE_MANAGER>(*this); // 깊은 복제
                         }
+                        //bool Match(const json& AgentEvent) override
+                        //{
+                        //    return true;
+                        //}
 
                         // [수정] 부모의 가상 함수를 재정의함을 명시적으로 나타내기 위해 'override' 키워드 추가
-                        bool Match(const json& AgentEvent)  override
+                        std::vector<RuleMatchedOutput> Match_(const json& AgentEvent)  //override
                         {
                             
+                            std::vector<RuleMatchedOutput> Outputs;
 
                             // [버그 수정] 루프 조건식을 '==' 에서 '!=' 로 수정하여 루프가 정상적으로 실행되도록 함
                             for(auto it = rules.begin(); it != rules.end(); ++it)
                             {
-                                std::vector<Global::Action> action;
-                                if( (it->second).Match(AgentEvent, action, true) ) // AssociationRuleMatcher.Match() Method call
+                                RuleMatchedOutput output;
+                                if( (it->second).Match(AgentEvent, output, true) ) // AssociationRuleMatcher.Match() Method call
                                 {
-                                    //std::cout << "\n\n[RuleMatched]: " << AgentEvent.dump() << "\n\n" <<std::endl;
+                                    Outputs.push_back(output);
                                 }
                             }
 
-                            return true;
+                            return Outputs;
                         }
 
                         bool Reload_Rule()

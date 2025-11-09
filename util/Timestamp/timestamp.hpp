@@ -39,22 +39,21 @@ namespace EDR
             }
 
             // nano to string
-            inline std::string Timestamp_From_Nano(__u64 nano_since_epoch)
+            inline std::string To_Nano_Iso8601(__u64 nano_since_epoch)
             {
-                auto tp = std::chrono::system_clock::time_point(std::chrono::nanoseconds(nano_since_epoch));
+                using namespace std::chrono;
 
-                // 1. 날짜와 시:분:초 부분을 포맷팅하기 위해 초 단위로 자릅니다.
-                auto tp_sec = std::chrono::time_point_cast<std::chrono::seconds>(tp);
+                // 나노초 단위 타임포인트 생성
+                auto tp = system_clock::time_point(nanoseconds(nano_since_epoch));
 
-                // 2. 밀리초(millisecond) 부분만 따로 계산합니다.
-                //    전체 나노초를 1,000,000으로 나누면 전체 밀리초가 되고,
-                //    1000으로 나눈 나머지가 초 아래의 밀리초 부분이 됩니다.
-                auto milliseconds = (nano_since_epoch / 1'000'000) % 1000;
+                // 초 단위까지만 자른 기준 시각
+                auto tp_sec = time_point_cast<seconds>(tp);
 
-                // 3. 두 부분을 합쳐서 최종 문자열을 만듭니다.
-                //    - 첫 번째 {}: tp_sec를 Y-m-dTH:M:S 형식으로 포맷팅
-                //    - 두 번째 {}: milliseconds를 3자리 숫자로, 비는 곳은 0으로 채워서 포맷팅 (예: 45 -> "045")
-                return fmt::format("{:%Y-%m-%dT%H:%M:%S}.{:03}Z", tp_sec, milliseconds);
+                // 나노초 잔여 부분 계산
+                auto nanos = nano_since_epoch % 1'000'000'000ULL;  // 10억 나노초 = 1초
+
+                // ISO 8601 시각 문자열(나노초 9자리 포함)
+                return fmt::format("{:%Y-%m-%dT%H:%M:%S}.{:09}Z", tp_sec, nanos);
             }
 
             // nano to timespec

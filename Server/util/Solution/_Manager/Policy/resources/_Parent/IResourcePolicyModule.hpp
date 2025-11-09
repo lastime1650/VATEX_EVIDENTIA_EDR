@@ -17,7 +17,7 @@ namespace Solution
                 ~IResourcePolicyModule(){};
 
                 // 외부에서 호출할 공통 기능들을 순수 가상 함수로 정의합니다.
-                virtual bool Match(const json& AgentEvent) = 0;
+                //virtual bool Match(const json& AgentEvent) = 0;
                 virtual std::string Get_module_name() = 0;
                 virtual json Get_PolicyResourceModule_Info() = 0;
                 virtual bool LoadRules(bool is_overwrite = false) = 0;

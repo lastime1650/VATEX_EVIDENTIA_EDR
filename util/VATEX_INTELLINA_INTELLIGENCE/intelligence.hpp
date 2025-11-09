@@ -31,6 +31,23 @@ namespace EDR
                 std::map< VATEX_INTELLINA_INTELLIGENCE__RESPONSE_Query_Enum, std::vector<VATEX_INTELLINA_INTELLIGENCE__RESPONSE_Platform> > outputs; // if "is_success" == false, empty
             };
 
+            std::string QueryEnum_to_String(const VATEX_INTELLINA_INTELLIGENCE__RESPONSE_Query_Enum enumvalue)
+            {
+                switch (enumvalue)
+                {
+                    case VATEX_INTELLINA_INTELLIGENCE__RESPONSE_Query_Enum::Query_FILE_SHA256:
+                        return "file-sha256";
+                    case VATEX_INTELLINA_INTELLIGENCE__RESPONSE_Query_Enum::Query_NETWORK_IPV4:
+                        return "network-only-ipv4";
+                    case VATEX_INTELLINA_INTELLIGENCE__RESPONSE_Query_Enum::Query_NETWORK_IPV4_with_PORT:
+                        return "network-ipv4-port";   
+                    default:
+                    {
+                        throw std::runtime_error("??? at Enum_to_String");
+                    }
+                }
+            }
+
             class VATEX_INTELLINA_INTELLIGENCE
             {
                 public:
@@ -92,8 +109,6 @@ namespace EDR
                             throw std::runtime_error("Failed to connect to server or server is down.");
                         }
 
-                        std::cout << response->status << std::endl;
-
                         if ( response->status != 200 )
                             return std::nullopt;
                         
@@ -104,6 +119,8 @@ namespace EDR
                     // 5. EMAIL
 
                     
+                    
+
                     std::optional<json> RESPONSE_to_Json( const VATEX_INTELLINA_INTELLIGENCE__RESPONSE& input_Response_struct )
                     {
                         /*

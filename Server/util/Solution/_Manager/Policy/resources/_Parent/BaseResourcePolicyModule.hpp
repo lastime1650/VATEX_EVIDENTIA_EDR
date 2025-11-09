@@ -41,7 +41,7 @@
                     */
                     // [수정] override 키워드를 추가하여 순수 가상 함수를 재정의함을 명시합니다.
                     // 자식 클래스가 반드시 이 함수를 구현해야 합니다.
-                    virtual bool Match(const json& AgentEvent) override = 0;
+                    //virtual bool Match(const json& AgentEvent) override = 0;
 
                     /*
                         Default (from Interface)
