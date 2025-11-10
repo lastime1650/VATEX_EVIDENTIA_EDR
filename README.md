@@ -106,6 +106,29 @@ For supervised learning (Classification, Regression), a corresponding target var
 
 <br>
 
+### EDR_MachineLearning_AI_Loop_Cycle
+
+![initial](https://github.com/lastime1650/VATEX_EVIDENTIA_EDR/blob/master/VATEX_EDR_AI_LOOP_CYCLE_ML.PNG)
+
+The EDR can configure the AI loop cycle as follows.
+
+First, you create a process session, which continues to collect events such as file systems, registry, network, child generation, and so on, and combine them with action-based rules and intelligence results.
+
+For sessions that have since closed, asynchronous postprocessing is of utmost importance.
+Send session events to the SIEM in a summary or communicate rule-based severity.
+
+In particular, for AI, "machine learning" is available for performance and relatively few data samples.
+
+The picture above additionally shows the loop AI cycle, which has the following process.
+
+1. Process Session Closed
+2. To obtain the machine learning sample X value, a sample of a one-dimensional structure is generated through aggregation processing.
+3. Ask the VATEX NOVA AI to proceed with the model prediction.
+4. Apply the predicted value as the y value of the sample obtained in (2).
+5. The completed sample can be delivered to NOVA AI and delivered to SIEM.
+
+<br>
+
 ### 2. Threat Intelligence & Utilities
 
 

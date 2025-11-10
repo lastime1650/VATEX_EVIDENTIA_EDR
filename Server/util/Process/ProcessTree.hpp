@@ -703,6 +703,11 @@ namespace EDR
                                 throw std::runtime_error(e.what());
                             }
                         }
+                        else
+                        {
+                            // 못찾는 경우,이때는 자신의 SessionID 값이 선정된다 ( 최악 )
+                            root_process_sha256 = session.SessionID;
+                        }
 
                         std::cout << "root_process_sha256: " << root_process_sha256 << std::endl;
 
@@ -769,7 +774,7 @@ namespace EDR
                             }
 
                             // --- 4. 'intelligence' 필드
-                            output["intelligences"] = json::array();
+                            output["intelligences"] = json::object();
                             for(const auto& [intelligence_category, v] : *Intelligences)
                             {
                                 if( !output["intelligences"].contains(intelligence_category) )
@@ -779,6 +784,7 @@ namespace EDR
                                 output["intelligences"][intelligence_category].push_back(v);
                                 
                             }
+                            std::cout << "intelligences:  " << output["intelligences"].dump() << std::endl;
 
                             return true;
                         } catch (const std::exception& e) {
@@ -808,12 +814,14 @@ namespace EDR
             public:
                 ProcessTreeManager(
                     EDR::Util::ToSiem::SiemClient& SiemClient,
+                     EDR::Util::AI::VATEX_NOVA_AI& AiClient,
                     Solution::Policy::EDRPolicy& EDRPolicyManager,
                     size_t max_events_per_node = 5000,
                     size_t max_nodes_per_tree = 1000,
                     size_t MAX_ASYNC_TASKS = 10000,
                     unsigned long long tree_timeout_ms = 300000 // 5분
                 ) : SiemClient(SiemClient),
+                    AiClient(AiClient),
                     EDRPolicyManager(EDRPolicyManager),
                     MAX_EVENTS_PER_NODE(max_events_per_node),
                     MAX_NODES_PER_TREE(max_nodes_per_tree),
@@ -985,6 +993,7 @@ namespace EDR
 
             private:
                 EDR::Util::ToSiem::SiemClient& SiemClient;
+                EDR::Util::AI::VATEX_NOVA_AI& AiClient;
                 Solution::Policy::EDRPolicy& EDRPolicyManager;
                 const size_t MAX_EVENTS_PER_NODE;
                 const size_t MAX_NODES_PER_TREE;
@@ -1179,7 +1188,7 @@ namespace EDR
                                             {
                                                 std::string ModuleName = data.ModuleName;
                                                 //std::cout << "ModuleName: " << data.ModuleName << std::endl;
-                                                std::cout << "JSON: " << data.output[0] << std::endl;
+                                                //std::cout << "JSON: " << data.output[0] << std::endl;
 
                                                 
                                                 
@@ -1370,6 +1379,8 @@ namespace EDR
                         auto CompleteProcessNodeTree = CompleteProcessNodeTreeQueue.get();
                         if (CompleteProcessNodeTree.is_null()) continue;
 
+
+                        
                         //std::cout << "CompleteProcessNodeTree->Rule: " << CompleteProcessNodeTree["rules"].dump() << std::endl;
 
                         // 최상위 부모 프로세스의 SHA256가져오기
@@ -2469,13 +2480,21 @@ namespace EDR
                             // 최종 피처 벡터 처리
                             //======================================================================
                             
-                            std::cout << "Generated Feature Vector for Session " << CompleteProcessNodeTree["session"].value("Root_SessionID", "N/A") 
+                            std::cout << "Generated Feature Vector for Session " << CompleteProcessNodeTree.value("root_process_sha256", "???????") 
                                     << " (size: " << feature_vector.size() << "): ";
 
                             for(size_t i = 0; i < feature_vector.size(); ++i) {
                                 std::cout << feature_vector[i] << (i == feature_vector.size() - 1 ? "" : ", ");
                             }
                             std::cout << std::endl;
+
+                            std::cout << "WithId_Sample_Push_Path_Classification Calling() " << std::endl;
+                            AiClient.WithId_Sample_Push_Path_Classification(
+                                CompleteProcessNodeTree["root_process_sha256"].get<std::string>(),
+                                feature_vector,
+                                "악성아님"
+                            );
+                            std::cout << "WithId_Sample_Push_Path_Classification Completed " << std::endl;
 
                             // TODO: SQLite에 저장
                         }

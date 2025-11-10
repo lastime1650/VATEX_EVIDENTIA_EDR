@@ -66,6 +66,12 @@ int main()
         51033,
 
         /*
+            VATEX NOVA AI API Server
+        */
+        "192.168.1.205",
+        10302,
+
+        /*
             VATEX SAPIENTIA SIEM API Connection
         */
         "192.168.1.205",

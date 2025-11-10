@@ -28,16 +28,20 @@ namespace EDR
                     std::string EDR_APIServerIp,
                     unsigned int EDR_APIServerPort,
 
+                    std::string VATEX_NOVA_AI_API_ServerIp,
+                    unsigned int VATEX_NOVA_AI_API_ServerPort,
+
                     std::string VATEX_SAPIENTIA_SIEM_API_ServerIp,
                     unsigned int VATEX_SAPIENTIA_SIEM_API_ServerPort,
 
                     std::string VATEX_INTELLINA_API_ServerIp,
                     unsigned int VATEX_INTELLINA_API_ServerPort = 51034
                 ) 
-                : SiemClient(VATEX_SAPIENTIA_SIEM_API_ServerIp, VATEX_SAPIENTIA_SIEM_API_ServerPort),
+                : NOVA_AI(VATEX_NOVA_AI_API_ServerIp, VATEX_NOVA_AI_API_ServerPort),
+                SiemClient(VATEX_SAPIENTIA_SIEM_API_ServerIp, VATEX_SAPIENTIA_SIEM_API_ServerPort),
                 IntelligenceManager(VATEX_INTELLINA_API_ServerIp, VATEX_INTELLINA_API_ServerPort),
                 PolicyManager(rule_dir_path),
-                BehaviorManager( KafkaBroker, Kafkagroup_id, Kafkatopic, PolicyManager, SiemClient ),
+                BehaviorManager( KafkaBroker, Kafkagroup_id, Kafkatopic, PolicyManager, SiemClient, NOVA_AI ),
                 AgentTCPManager(EDR_AgentTCPServerIp, EDR_AgentTCPServerPort)
                 {}
 
@@ -91,6 +95,8 @@ namespace EDR
                     Features
                 */
                 
+                // NOVA AI
+                EDR::Util::AI::VATEX_NOVA_AI NOVA_AI;
 
                 // 프로세스 행위 트리 추적 매니저
                 EDR::Server::ProcessBehavior::ProcessBehaviorLogManager BehaviorManager;
