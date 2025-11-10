@@ -108,7 +108,7 @@ For supervised learning (Classification, Regression), a corresponding target var
 
 ### EDR_MachineLearning_AI_Loop_Cycle
 
-![initial](https://github.com/lastime1650/VATEX_EVIDENTIA_EDR/blob/master/VATEX_EDR_AI_LOOP_CYCLE_ML.PNG)
+![initial](https://github.com/lastime1650/VATEX_EVIDENTIA_EDR/blob/master/VATEX_EDR_AI_LOOP_CYCLE_ML.png)
 
 The EDR can configure the AI loop cycle as follows.
 
