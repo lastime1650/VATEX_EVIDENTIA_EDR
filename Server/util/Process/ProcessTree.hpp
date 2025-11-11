@@ -147,19 +147,9 @@ namespace EDR
                         ProcessCreateEvent(json event, EDR::Util::Intelligence::VATEX_INTELLINA_INTELLIGENCE& Intelligence) : Event(event, Intelligence) 
                         {
                             exe_path = event["body"]["process"]["exe_path"].get<std::string>();
-                            if(exe_path.find("2d19.bat") != std::string::npos)
-                            {
-                                std::cout << ".bat 찾음" << std::endl;
-                                std::cout << jsonEvent.dump() << std::endl;
-                            }
                             exe_size = event["body"]["process"]["exe_size"].get<unsigned long long>();
                             exe_sha256 = event["body"]["process"]["exe_sha256"].get<std::string>();
                             commandline = event["body"]["process"]["commandline"].get<std::string>();
-                            if(commandline.find("2d19.bat") != std::string::npos)
-                            {
-                                std::cout << ".bat 찾음" << std::endl;
-                                std::cout << jsonEvent.dump() << std::endl;
-                            }
 
                             ppid = event["body"]["process"]["ppid"].get<unsigned long long>();
                             parent_exe_path = event["body"]["process"]["parent_exe_path"].get<std::string>();
@@ -709,7 +699,8 @@ namespace EDR
                             }catch (std::exception& e)
                             {
                                 std::cerr << e.what() << std::endl;
-                                throw std::runtime_error(e.what());
+                                //throw std::runtime_error(e.what());
+                                return false;
                             }
                         }
                         else
@@ -718,7 +709,7 @@ namespace EDR
                             root_process_sha256 = session.SessionID;
                         }
 
-                        std::cout << "root_process_sha256: " << root_process_sha256 << std::endl;
+                        std::cout << "root_process_sha256: " << root_process_sha256 << "root_session: " <<  session.Root_SessionID << std::endl;
 
                         try {
                             // --- 1. 기본 노드 정보 직렬화 (기존과 동일) ---
@@ -828,10 +819,10 @@ namespace EDR
                     EDR::Util::ToSiem::SiemClient& SiemClient,
                      Solution::AI::AI_MANAGER& AIManager,
                     Solution::Policy::EDRPolicy& EDRPolicyManager,
-                    size_t max_events_per_node = 5000,
+                    size_t max_events_per_node = 99999999,
                     size_t max_nodes_per_tree = 1000,
                     size_t MAX_ASYNC_TASKS = 10000,
-                    unsigned long long tree_timeout_ms = 300000000 // 5분
+                    unsigned long long tree_timeout_ms = 300000000 // ?분
                 ) : SiemClient(SiemClient),
                     AIManager(AIManager),
                     EDRPolicyManager(EDRPolicyManager),
@@ -894,7 +885,6 @@ namespace EDR
                                 root_node_ptr->is_alive = false;
                                 root_node_ptr->termination_reason = node::TerminateReason::BY_MAX_NODES_LIMIT;
                             }
-                            //node_output = nullptr;
                             return false; // 자식 생성 거부
                         }
 
@@ -908,6 +898,9 @@ namespace EDR
                         new_node_ptr->events.push_back(eventNode);
 
                         if (new_node_ptr->session.SessionID == new_node_ptr->session.Root_SessionID) { // 루트 노드인 경우
+                            /*
+                                ★✪★(◕‿◕) 상속관련 객체 생성 (부모-자식에서 공유하는 객체.)
+                            */
                             new_node_ptr->AssociationRuleCTX = EDRPolicyManager.Get_Cloned_AssociationRuleCTX();
                             new_node_ptr->shared_tree_timestamp = std::make_shared<node::ProcessTreeTimestamp>();
                             unsigned long long now = EDR::Util::timestamp::Get_Real_Timestamp();
@@ -917,11 +910,15 @@ namespace EDR
                             new_node_ptr->busy_ref_count = std::make_shared<std::atomic<unsigned long long>>(0);
 
                             new_node_ptr->MatchedRules = std::make_shared< std::vector<Solution::Policy::Resource::Association::Global::AssociationRuleStruct::Header> >();
+
                             new_node_ptr->Intelligences =  std::make_shared< std::map<std::string,std::vector< json >> >();
                             new_node_ptr->Once_TreeNode_Mutex = std::make_shared<std::mutex>();
 
                         } else {
                             if (root_node_ptr) {
+                                /*
+                                    ★✪★(◕‿◕) 일반적인 상속구간
+                                */
                                 new_node_ptr->AssociationRuleCTX = root_node_ptr->AssociationRuleCTX;
                                 new_node_ptr->shared_tree_timestamp = root_node_ptr->shared_tree_timestamp;
                                 new_node_ptr->busy_ref_count = root_node_ptr->busy_ref_count;
@@ -948,7 +945,7 @@ namespace EDR
 
                         
                         node_for_async = new_node_ptr;// async 인수로 활용
-                        if( node_for_async->session.Root_SessionID == "9282553878355104d3696e39e0a6e8b3db8d993082eb1ab57afc7270203e9539" )
+                        if( node_for_async->session.Root_SessionID == "bc8771751e7dc43a8f7a02e91932c462cc13d47172d32208e27097c4ed162d5a" )
                         {
                             std::string X = eventNode->get_event().dump() + ",\n";
                             testFileHandle.writeToFile("./test.json", std::vector<uint8_t>(X.begin(), X.end()), true);
@@ -958,14 +955,13 @@ namespace EDR
                     else
                     {
                         if (!target_node_ptr->is_alive) { // 이미 종료된 노드에는 이벤트 추가 안 함
-                            //node_output = target_node_ptr;
                             return false;
                         }
-                        
+
+                        // 노드 당 최대 수용가능한 이벤트 개수 설정 (events limit)
                         if (target_node_ptr->events.size() >= MAX_EVENTS_PER_NODE) {
                             target_node_ptr->is_alive = false;
                             target_node_ptr->termination_reason = node::TerminateReason::BY_MAX_EVENTS_LIMIT;
-                            //node_output = target_node_ptr;
                             return false; // 새 이벤트 추가 거부
                         }
 
@@ -982,7 +978,7 @@ namespace EDR
                         }
 
                         if (dynamic_cast<ProcessEvent::ProcessTerminateEvent*>(eventNode.get())) {
-                            target_node_ptr->is_alive = false;
+                            //target_node_ptr->is_alive = false;
                             target_node_ptr->termination_reason = node::TerminateReason::BY_EVENT;
                         }
                         //node_output = target_node_ptr;
@@ -1058,16 +1054,22 @@ namespace EDR
                     }
                     auto parent_node_ptr = _find_node_by_session_id(agent_tree, new_node_ptr->session.Parent_SessionID);
                     if (parent_node_ptr) {
+                        /*
+                            ★✪★(◕‿◕) 상속구간
+                        */
                         new_node_ptr->AssociationRuleCTX = parent_node_ptr->AssociationRuleCTX;
                         new_node_ptr->shared_tree_timestamp = parent_node_ptr->shared_tree_timestamp;
                         new_node_ptr->busy_ref_count = parent_node_ptr->busy_ref_count;
                         new_node_ptr->MatchedRules = parent_node_ptr->MatchedRules;
                         new_node_ptr->Intelligences = parent_node_ptr->Intelligences;
                         new_node_ptr->Once_TreeNode_Mutex = parent_node_ptr->Once_TreeNode_Mutex;
-                        
+
                         new_node_ptr->nodeDepthIndex = parent_node_ptr->nodeDepthIndex + 1;
                         parent_node_ptr->Child.push_back(new_node_ptr);
-                    } else { // 부모를 못 찾으면 임시 플레이스홀더 부모 생성
+                    } else { // 직계부모를 못 찾으면 임시 플레이스홀더 부모 생성
+                        /*
+                            ★✪★(◕‿◕) 생성 + 상속구간
+                        */
                         auto placeholder_parent_ptr = std::make_shared<node::ProcessTreeNode>();
                         placeholder_parent_ptr->AGENT_ID = new_node_ptr->AGENT_ID;
                         placeholder_parent_ptr->session.SessionID = new_node_ptr->session.Parent_SessionID;
@@ -1083,6 +1085,9 @@ namespace EDR
 
                         auto new_rules_vec = std::make_shared<std::vector<Solution::Policy::Resource::Association::Global::AssociationRuleStruct::Header>>();
                         placeholder_parent_ptr->MatchedRules = new_rules_vec;
+
+                        if(new_node_ptr->session.Root_SessionID == "bc8771751e7dc43a8f7a02e91932c462cc13d47172d32208e27097c4ed162d5a")
+                            std::cout << "new_node_ptr->MatchedRules: " << new_node_ptr->MatchedRules << " new_rules_vec: " << new_rules_vec << std::endl;
                         new_node_ptr->MatchedRules = new_rules_vec;
 
                         auto new_mutex = std::make_shared<std::mutex>();
@@ -1131,9 +1136,16 @@ namespace EDR
                     }
                 }
 
-                // Tree가 만들어지고, 비동기적으로 후속작업 진행 함수 ( 1. 인텔리전스 요청 / 2. 룰 매치 )
+                // Tree가 만들어지고, 비동기적으로 후속작업 진행 함수 (  인텔리전스 요청 , 룰 매치 )
                 void _Async_Tree_Processing(std::shared_ptr<ProcessEvent::Event> eventNode, std::shared_ptr<node::ProcessTreeNode> Node)
                 {
+                    /*
+                        1차 검증된
+                    */
+
+                     _tree_postfix_processing_internal(Node, eventNode);
+
+                     
                     if (!Node || !eventNode) {
                         std::cerr << "[Async Error] Node or eventNode is null." << std::endl;
                         return;
@@ -1190,19 +1202,24 @@ namespace EDR
                         try{
 
                             {
-                                /*
-                                    일관성있는 규칙 처리. 및 일관성처리
-                                */
-                                std::lock_guard<std::mutex> lock2(*Node->Once_TreeNode_Mutex);
+                                // 1. 룰 및 일관성처리 (이 메서드내 높은 우선순위)
+                                try
+                                {
+                                    std::lock_guard<std::mutex> lock2(*Node->Once_TreeNode_Mutex);
+                                    
+                                    // 1. 룰 매칭
+                                    auto Results = Node->AssociationRuleCTX->Match_(eventNode->get_event());
+                                    Rule_to_Siem(Results);// ToSiem ( Rule )
+                                    Node->append_matched_rule(Results); //Node에 기록
 
-                                // 1. 룰 매칭
-                                auto Results = Node->AssociationRuleCTX->Match_(eventNode->get_event());
-                                Rule_to_Siem(Results);// ToSiem ( Rule )
-                                Node->append_matched_rule(Results); //Node에 기록
+                                }
+                                catch(const std::exception& e)
+                                {
+                                    std::cerr << "_tree_postfix_processing_internal -> ERROR: " << e.what() << '\n';
+                                }
+                                
+                                
                             }
-                            
-
-
 
                             // 2. 인텔리전스 요청 ( 상당히 지연이 크기때문에 맨 나중에 진행. )
                             eventNode->send_to_intelligence();
@@ -1215,14 +1232,11 @@ namespace EDR
                                     std::string Category = intelligence.IntelligenceCategory;
                                     for ( const auto&[Intelligence_Platform, Vectors] : intelligence.intelligence_response.outputs )
                                     {
-                                        //std::cout << EDR::Util::Intelligence::QueryEnum_to_String(Intelligence_Platform) << std::endl;
                                         for(const auto& data : Vectors)
                                         {
                                             if( !data.output.empty() )
                                             {
                                                 std::string ModuleName = data.ModuleName;
-                                                //std::cout << "ModuleName: " << data.ModuleName << std::endl;
-                                                //std::cout << "JSON: " << data.output[0] << std::endl;
 
                                                 
                                                 
@@ -1363,7 +1377,6 @@ namespace EDR
                                 bool should_remove = false;
 
                                 //  해당 세션이 busy가 아닌경우에는 종료 처리할 수 없다.
-                                //std::cout << "root_node_ptr->busy_ref_count->load(std::memory_order_seq_cst): " << root_node_ptr->busy_ref_count->load(std::memory_order_seq_cst) << std::endl; 
                                 if ( root_node_ptr->busy_ref_count->load(std::memory_order_seq_cst) != 0 )
                                 {
                                     ++it;
@@ -1375,6 +1388,7 @@ namespace EDR
                                 if (!root_node_ptr->is_alive && root_node_ptr->are_all_children_terminated()) {
                                     should_remove = true;
                                 }
+                                
                                 // 조건 2: 타임아웃
                                 else if (root_node_ptr->shared_tree_timestamp && (now - root_node_ptr->shared_tree_timestamp->last_seen.load(std::memory_order_seq_cst) > TREE_TIMEOUT_MS)) {
                                     _mark_all_nodes_as_terminated(*root_node_ptr, node::TerminateReason::BY_TIMEOUT);
@@ -1382,7 +1396,6 @@ namespace EDR
                                 }
 
                                 if (should_remove) {
-                                    std::cout << "should_remove: True ----> " << std::endl;
 
                                     // 최상위 노드 필드인 placeholder 값이 (false)인지 확인한다.
                                     // *placehold값이 false인 경우는 정상적으로 해당 세션내 맨 최초의 프로세스 생성(최상위 부모)이벤트를 정상적으로 받았음을 의미.
@@ -1408,107 +1421,140 @@ namespace EDR
 
                 void TreeCompletedProcessingThreadRoutine()
                 {
+                    
                     while (is_TreeManager_Running)
                     {
                         auto CompleteProcessNodeTree = CompleteProcessNodeTreeQueue.get();
                         if (CompleteProcessNodeTree.is_null()) continue;
 
+                        auto CompleteProcessNodeTree_Unique = std::make_unique<json>(CompleteProcessNodeTree);
 
+
+                        bool limit_reached;
                         {
-                            //======================================================================
-                            //  RAW-EDR ---- SIEM 전송
-                            //======================================================================
-                            try
-                            {
-                                // To Siem < Send_RAW_EDR_INDEX_Event >
-                                SiemClient.Send_RAW_EDR_INDEX_Event(CompleteProcessNodeTree); // To Siem
-                            }catch (std::exception& e)
-                            {
-                                std::cerr << e.what() << std::endl;
-                            }
-                            
+                            std::lock_guard<std::mutex> lock(Async_Mutex);
+                            limit_reached = (Async_Tree_Processing_asyncs.size() >= MAX_ASYNC_TASKS);
                         }
-                        //std::cout << "CompleteProcessNodeTree->Rule: " << CompleteProcessNodeTree["rules"].dump() << std::endl;
 
-                        // 최상위 부모 프로세스의 SHA256가져오기
-                        //std::string root_process_sha256 = 
+                        // 한계에 도달했다면 동기적으로 실행
+                        if (limit_reached)
+                        {
+                            __TreeCompletedProcessingThreadRoutine(std::move(CompleteProcessNodeTree_Unique));
+                            return; // 여기서 함수 종료
+                        }
 
+                        auto Future = std::async(
+                            std::launch::async, [this, Postfix_CompleteProcessNodeTree = std::move( CompleteProcessNodeTree_Unique )]() mutable
+                            {
+                                // 비동기 프로세스 세션 전체 POST 처리 ( SIEM , AI etc .. ) < "프로세스 트리 인스턴스" 완전 최종 단계 >
+                                __TreeCompletedProcessingThreadRoutine(std::move(Postfix_CompleteProcessNodeTree));
+                            }
+                        );
+
+                        
+                        {
+                            std::lock_guard<std::mutex> lock(Async_Mutex);
+                            Async_Tree_Processing_asyncs.emplace_back(
+                                std::move( Future ) // 비동기 실행
+                            );
+                        }
+
+                    }
+                }
+
+                void __TreeCompletedProcessingThreadRoutine(std::unique_ptr<json> Postfix_CompleteProcessNodeTree ) // Unique Owner is move here ! 
+                {
+                    {
+                        //======================================================================
+                        //  RAW-EDR ---- SIEM 전송
+                        //======================================================================
                         try
                         {
-                            std::vector<double> feature_vector;
-
-                            
-                            //======================================================================
-                            // [1/3] 세션 정보 ---- 샘플 구하기
-                            //======================================================================
-                            __get_sample_SessionInfo(feature_vector, CompleteProcessNodeTree);
-
-
-                            
-
-
-                            //======================================================================
-                            // [2/3] 탐지된 룰 정보 ---- 샘플 구하기
-                            //======================================================================
-                            __get_sample_RuleInfo(feature_vector, CompleteProcessNodeTree);
-
-
-
-
-                            //======================================================================
-                            // [3/3] 탐지된 인텔리전스 ---- 정보 샘플 구하기
-                            //======================================================================
-                            __get_sample_IntelligenceInfo(feature_vector, CompleteProcessNodeTree);
-                            
-
-
-                            
-                            
-                            //======================================================================
-                            // 최종 피처 벡터 처리
-                            //======================================================================
-                            
-                            std::cout << "Generated Feature Vector for Session " << CompleteProcessNodeTree.value("root_process_sha256", "???????") 
-                                    << " (size: " << feature_vector.size() << "): ";
-
-                            for(size_t i = 0; i < feature_vector.size(); ++i) {
-                                std::cout << feature_vector[i] << (i == feature_vector.size() - 1 ? "" : ", ");
-                            }
-                            std::cout << std::endl;
-
-                            
-                            // Finish 
-                            //======================================================================
-                            // Send to AIManager Instance
-                            //======================================================================
-
-
-                            // 1. MachineLearning 
-                            unsigned long long x_sample_count = 0;
-                            std::cout << "AiManager.is_Possible_Train(): " << AIManager.is_Possible_Train(&x_sample_count) << " x_sample_cout: " << x_sample_count << std::endl;
-
-                            // Sample X+y Send to NOVA_AI
-                            
-                            // Classification - A
-                            std::cout << "WithId_Sample_Push_Path_Classification Calling() " << std::endl;
-                            AIManager.PushData(
-                                CompleteProcessNodeTree["root_process_sha256"].get<std::string>(),
-                                feature_vector,
-                                "normal"
-                            );
-                            std::cout << "WithId_Sample_Push_Path_Classification Completed " << std::endl;
-
-
-
-                        }
-                        catch (const std::exception& e)
+                            // To Siem < Send_RAW_EDR_INDEX_Event >
+                            SiemClient.Send_RAW_EDR_INDEX_Event(*Postfix_CompleteProcessNodeTree); // To Siem
+                        }catch (std::exception& e)
                         {
-                            std::cerr << "Error processing completed tree: " << e.what() << std::endl;
-                            if (CompleteProcessNodeTree.is_object()) {
-                                //std::cerr << "Problematic JSON: " << CompleteProcessNodeTree.dump(2) << std::endl;
-                            }
+                            std::cerr << e.what() << std::endl;
+                        }
+                        
+                    }
+
+                    try
+                    {
+                        std::vector<double> feature_vector;
+
+                        
+                        //======================================================================
+                        // [1/3] 세션 정보 ---- 샘플 구하기
+                        //======================================================================
+                        __get_sample_SessionInfo(feature_vector, *Postfix_CompleteProcessNodeTree);
+
+
+                        
+
+
+                        //======================================================================
+                        // [2/3] 탐지된 룰 정보 ---- 샘플 구하기
+                        //===================================================================Postfix_CompleteProcessNodeTree===
+                        __get_sample_RuleInfo(feature_vector, *Postfix_CompleteProcessNodeTree);
+
+
+
+
+                        //======================================================================
+                        // [3/3] 탐지된 인텔리전스 ---- 정보 샘플 구하기
+                        //======================================================================
+                        __get_sample_IntelligenceInfo(feature_vector, *Postfix_CompleteProcessNodeTree);
+                        
+
+
+                        
+                        
+                        //======================================================================
+                        // 최종 피처 벡터 처리
+                        //======================================================================
+                        
+                        std::cout << "Generated Feature Vector for Session " << (*Postfix_CompleteProcessNodeTree).value("root_process_sha256", "???????") 
+                                << " (size: " << feature_vector.size() << "): ";
+
+                        for(size_t i = 0; i < feature_vector.size(); ++i) {
+                            std::cout << feature_vector[i] << (i == feature_vector.size() - 1 ? "" : ", ");
+                        }
+                        std::cout << std::endl;
+
+                        
+                        // Finish 
+                        //======================================================================
+                        // Send to AIManager Instance
+                        //======================================================================
+
+
+                        // 1. MachineLearning 
+                        unsigned long long x_sample_count = 0;
+                        std::cout << "AiManager.is_Possible_Train(): " << AIManager.is_Possible_Train(&x_sample_count) << " x_sample_cout: " << x_sample_count << std::endl;
+
+                        // Sample X+y Send to NOVA_AI
+                        
+                        // Classification - A
+                        std::cout << "WithId_Sample_Push_Path_Classification Calling() " << std::endl;
+                        AIManager.PushData(
+                            (*Postfix_CompleteProcessNodeTree)["root_process_sha256"].get<std::string>(),
+                            feature_vector,
+                            "normal"
+                        );
+                        std::cout << "WithId_Sample_Push_Path_Classification Completed " << std::endl;
+
+
+
+                    }
+                    catch (const std::exception& e)
+                    {
+                        std::cerr << "Error processing completed tree: " << e.what() << std::endl;
+                        if ((*Postfix_CompleteProcessNodeTree).is_object()) {
+                            //std::cerr << "Problematic JSON: " << CompleteProcessNodeTree.dump(2) << std::endl;
                         }
                     }
+
                 }
                 
                 // [1/3] 이벤트 세션 정보 - 샘플 섹션
@@ -1796,6 +1842,8 @@ namespace EDR
                                             matched_rule_severity_high_count++;
                                         else if (v.get<std::string>() == "critical")
                                             matched_rule_severity_critical_count++;
+                                        else
+                                            continue;
                                     }
                                     else if ( k == "mitreattacks" )
                                     {

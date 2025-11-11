@@ -76,12 +76,12 @@ s
                                    
 
                                     std::shared_ptr< EDR::Server::Util::ProcessEvent::Event > ev = nullptr; // 부모 
-                                    if( message.message["body"].contains("network") )
+                                    /*if( message.message["body"].contains("network") )
                                     {
                                         ev = std::make_shared< EDR::Server::Util::ProcessEvent::NetworkEvent >(message.message, IntelligenceManager);
                                         
                                     }
-                                    else if ( message.message["body"].contains("process") )
+                                    else*/ if ( message.message["body"].contains("process") )
                                     {
                                         if ( message.message["body"]["process"]["action"].get<std::string>() == "create" )
                                         {
@@ -99,7 +99,7 @@ s
                                             ev = std::make_shared< EDR::Server::Util::ProcessEvent::ProcessTerminateEvent >(message.message, IntelligenceManager);
                                         }
                                     }
-                                    else if ( message.message["body"].contains("filesystem") )
+                                    /*else if ( message.message["body"].contains("filesystem") )
                                     {
                                         ev = std::make_shared< EDR::Server::Util::ProcessEvent::FileSystemEvent >(message.message, IntelligenceManager);
                                     }
@@ -109,9 +109,9 @@ s
                                         ev = std::make_shared< EDR::Server::Util::ProcessEvent::API_Call_Event >(message.message, IntelligenceManager);
                                     }
 
-                                    /*
-                                        Windows
-                                    */
+                                    
+                                    //    Windows
+                                    
                                     else if ( message.message["body"].contains("imageload") )
                                     {
                                         //std::cout << "offest: " << message.offset << "message: " << message.message.dump() << std::endl;
@@ -124,7 +124,7 @@ s
                                     else if (message.message["body"].contains("registry"))
                                     {
                                         ev = std::make_shared< EDR::Server::Util::ProcessEvent::windows::RegistryEvent >(message.message, IntelligenceManager);
-                                    }
+                                    }*/
                                     else if (message.message["body"].contains("etw"))
                                     {
                                         ev = std::make_shared< EDR::Server::Util::ProcessEvent::windows::EtwEvent >(message.message, IntelligenceManager);
