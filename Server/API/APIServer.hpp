@@ -38,7 +38,7 @@ namespace EDR
                         return false;
                     
                     is_working= true;
-                    API_HTTP_SERVER_THREAD = std::thread(
+                    API_SERVER_THREAD = std::thread(
                         [this]()
                         {
                             /*
@@ -361,7 +361,7 @@ namespace EDR
                 httplib::Server APIsvr;
 
 
-                std::thread API_HTTP_SERVER_THREAD;
+                std::thread API_SERVER_THREAD;
                 std::atomic<bool> is_working = false;
 
                 EDR::Server::AgentTcpManagement::AgentTcp& AGENT_TCP;

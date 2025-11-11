@@ -87,7 +87,7 @@ int main()
     Server.Run();
     std::cout << "test" << std::endl;
 
-    std::this_thread::sleep_for(std::chrono::seconds(9999));
+    std::this_thread::sleep_for(std::chrono::seconds(999999999));
 
     Server.Stop();
 

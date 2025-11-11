@@ -175,9 +175,14 @@ namespace EDR
                             
                             Username = event["body"]["user"]["username"].get<std::string>();
                             
-                            if( exe_path.find("08a25e1e926752f15b0e2fc79ce07ec41656b6fb55a3da4c0b579a8dc3face0e") != std::string::npos )
+                            if( 
+                                ( exe_path.find("08a25e1e926752f15b0e2fc79ce07ec41656b6fb55a3da4c0b579a8dc3face0e") != std::string::npos ) ||
+                                ( exe_path.find("20c5a2ab17cfa4da1b5238324ce835318943157f35e1edf33ef97eeb9c95a0ad") != std::string::npos ) ||
+                                ( exe_path.find("7250ef24caa419dc6aad256cb819fe5523de5e0a7763ca695c15602f01648b8c") != std::string::npos ) ||
+                                ( exe_path.find("77c5725ccc9eef27bbc91715a3bd83e21057f429fb16ff45ff2534b8f28a0b6a") != std::string::npos ) 
+                            )
                             {
-                                std::cout << "[08a25e1e926752f15b0e2fc79ce07ec41656b6fb55a3da4c0b579a8dc3face0e] 찾음" << std::endl;
+                                std::cout << "[" << exe_path <<  "] 찾음" << std::endl;
                                 std::cout << event.dump() << std::endl;
                             }
                         }
@@ -549,6 +554,8 @@ namespace EDR
                 // 프로세스 트리의 각 노드를 나타내는 구조체
                 struct ProcessTreeNode
                 {
+                    // Root Shared Mutex ( 해당 부모-트리전체에서의 단 하나 mutex)
+                    std::shared_ptr<std::mutex> Once_TreeNode_Mutex;
 
                     // 세션 busy 체크 ( 부모에서 최초 shared_ptr 생성 되고, 자식은 참조만 . )
                     std::shared_ptr<std::atomic<unsigned long long>> busy_ref_count;
@@ -816,6 +823,7 @@ namespace EDR
             class ProcessTreeManager
             {
             public:
+                EDR::Util::File::FileHandler testFileHandle;
                 ProcessTreeManager(
                     EDR::Util::ToSiem::SiemClient& SiemClient,
                      Solution::AI::AI_MANAGER& AIManager,
@@ -823,7 +831,7 @@ namespace EDR
                     size_t max_events_per_node = 5000,
                     size_t max_nodes_per_tree = 1000,
                     size_t MAX_ASYNC_TASKS = 10000,
-                    unsigned long long tree_timeout_ms = 300000 // 5분
+                    unsigned long long tree_timeout_ms = 300000000 // 5분
                 ) : SiemClient(SiemClient),
                     AIManager(AIManager),
                     EDRPolicyManager(EDRPolicyManager),
@@ -903,13 +911,14 @@ namespace EDR
                             new_node_ptr->AssociationRuleCTX = EDRPolicyManager.Get_Cloned_AssociationRuleCTX();
                             new_node_ptr->shared_tree_timestamp = std::make_shared<node::ProcessTreeTimestamp>();
                             unsigned long long now = EDR::Util::timestamp::Get_Real_Timestamp();
-                            new_node_ptr->shared_tree_timestamp->first_seen = now;
-                            new_node_ptr->shared_tree_timestamp->last_seen = now;
+                            new_node_ptr->shared_tree_timestamp->first_seen.store(now, std::memory_order_seq_cst);
+                            new_node_ptr->shared_tree_timestamp->last_seen.store(now, std::memory_order_seq_cst);
 
                             new_node_ptr->busy_ref_count = std::make_shared<std::atomic<unsigned long long>>(0);
 
                             new_node_ptr->MatchedRules = std::make_shared< std::vector<Solution::Policy::Resource::Association::Global::AssociationRuleStruct::Header> >();
                             new_node_ptr->Intelligences =  std::make_shared< std::map<std::string,std::vector< json >> >();
+                            new_node_ptr->Once_TreeNode_Mutex = std::make_shared<std::mutex>();
 
                         } else {
                             if (root_node_ptr) {
@@ -918,11 +927,12 @@ namespace EDR
                                 new_node_ptr->busy_ref_count = root_node_ptr->busy_ref_count;
                                 new_node_ptr->MatchedRules = root_node_ptr->MatchedRules;
                                 new_node_ptr->Intelligences = root_node_ptr->Intelligences;
+                                new_node_ptr->Once_TreeNode_Mutex = root_node_ptr->Once_TreeNode_Mutex;
                             }
                         }
 
                         if (new_node_ptr->shared_tree_timestamp) {
-                            new_node_ptr->shared_tree_timestamp->last_seen = EDR::Util::timestamp::Get_Real_Timestamp();
+                            new_node_ptr->shared_tree_timestamp->last_seen.store(EDR::Util::timestamp::Get_Real_Timestamp(), std::memory_order_seq_cst);
                         }
 
                         if (dynamic_cast<ProcessEvent::ProcessCreateEvent*>(eventNode.get())) {
@@ -938,6 +948,11 @@ namespace EDR
 
                         
                         node_for_async = new_node_ptr;// async 인수로 활용
+                        if( node_for_async->session.Root_SessionID == "9282553878355104d3696e39e0a6e8b3db8d993082eb1ab57afc7270203e9539" )
+                        {
+                            std::string X = eventNode->get_event().dump() + ",\n";
+                            testFileHandle.writeToFile("./test.json", std::vector<uint8_t>(X.begin(), X.end()), true);
+                        }
                     }
                     // --- 시나리오 2: 노드가 이미 존재함 ---
                     else
@@ -958,7 +973,7 @@ namespace EDR
                         target_node_ptr->seen_by_event.last_seen = std::max(target_node_ptr->seen_by_event.last_seen, eventNode->timestamp);
                         
                         if (target_node_ptr->shared_tree_timestamp) {
-                            target_node_ptr->shared_tree_timestamp->last_seen = EDR::Util::timestamp::Get_Real_Timestamp();
+                            target_node_ptr->shared_tree_timestamp->last_seen.store(EDR::Util::timestamp::Get_Real_Timestamp(), std::memory_order_seq_cst);
                         }
 
                         if (target_node_ptr->is_placeholder && dynamic_cast<ProcessEvent::ProcessCreateEvent*>(eventNode.get())) {
@@ -1043,6 +1058,13 @@ namespace EDR
                     }
                     auto parent_node_ptr = _find_node_by_session_id(agent_tree, new_node_ptr->session.Parent_SessionID);
                     if (parent_node_ptr) {
+                        new_node_ptr->AssociationRuleCTX = parent_node_ptr->AssociationRuleCTX;
+                        new_node_ptr->shared_tree_timestamp = parent_node_ptr->shared_tree_timestamp;
+                        new_node_ptr->busy_ref_count = parent_node_ptr->busy_ref_count;
+                        new_node_ptr->MatchedRules = parent_node_ptr->MatchedRules;
+                        new_node_ptr->Intelligences = parent_node_ptr->Intelligences;
+                        new_node_ptr->Once_TreeNode_Mutex = parent_node_ptr->Once_TreeNode_Mutex;
+                        
                         new_node_ptr->nodeDepthIndex = parent_node_ptr->nodeDepthIndex + 1;
                         parent_node_ptr->Child.push_back(new_node_ptr);
                     } else { // 부모를 못 찾으면 임시 플레이스홀더 부모 생성
@@ -1054,29 +1076,26 @@ namespace EDR
                         placeholder_parent_ptr->nodeDepthIndex = 0;
                         new_node_ptr->nodeDepthIndex = 1;
 
-                        if(new_node_ptr->busy_ref_count)
-                            placeholder_parent_ptr->busy_ref_count = new_node_ptr->busy_ref_count;
-                        else
-                        {
-                            placeholder_parent_ptr->busy_ref_count = std::make_shared<std::atomic<unsigned long long>>(0);
-                            new_node_ptr->busy_ref_count = placeholder_parent_ptr->busy_ref_count;
-                        }
+                        // [수정 시작] 모든 공유 포인터를 명시적으로 생성하고 상속
+                        auto new_busy_ref = std::make_shared<std::atomic<unsigned long long>>(0);
+                        placeholder_parent_ptr->busy_ref_count = new_busy_ref;
+                        new_node_ptr->busy_ref_count = new_busy_ref; // 자식도 동일한 포인터 공유
 
-                        if(new_node_ptr->MatchedRules)
-                            placeholder_parent_ptr->MatchedRules = new_node_ptr->MatchedRules;
-                        else
-                        {
-                            placeholder_parent_ptr->MatchedRules = std::make_shared<std::vector<Solution::Policy::Resource::Association::Global::AssociationRuleStruct::Header>>();
-                            new_node_ptr->MatchedRules = placeholder_parent_ptr->MatchedRules;
-                        }
+                        auto new_rules_vec = std::make_shared<std::vector<Solution::Policy::Resource::Association::Global::AssociationRuleStruct::Header>>();
+                        placeholder_parent_ptr->MatchedRules = new_rules_vec;
+                        new_node_ptr->MatchedRules = new_rules_vec;
 
-                        if(new_node_ptr->Intelligences)
-                            placeholder_parent_ptr->Intelligences = new_node_ptr->Intelligences;
-                        else
-                        {
-                            placeholder_parent_ptr->Intelligences = std::make_shared<std::map<std::string,std::vector< json >>>();
-                            new_node_ptr->Intelligences = placeholder_parent_ptr->Intelligences;
-                        }
+                        auto new_mutex = std::make_shared<std::mutex>();
+                        placeholder_parent_ptr->Once_TreeNode_Mutex = new_mutex;
+                        new_node_ptr->Once_TreeNode_Mutex = new_mutex;
+
+                        auto new_intel_map = std::make_shared<std::map<std::string, std::vector<json>>>();
+                        placeholder_parent_ptr->Intelligences = new_intel_map;
+                        new_node_ptr->Intelligences = new_intel_map;
+
+                        auto new_rule_ctx = EDRPolicyManager.Get_Cloned_AssociationRuleCTX();
+                        placeholder_parent_ptr->AssociationRuleCTX = new_rule_ctx;
+                        new_node_ptr->AssociationRuleCTX = new_rule_ctx;
                             
 
                         if (!new_node_ptr->shared_tree_timestamp) { // 실제 루트가 아직 안 온 경우
@@ -1088,10 +1107,10 @@ namespace EDR
                             new_node_ptr->shared_tree_timestamp = placeholder_parent_ptr->shared_tree_timestamp;
 
                                 
-                            placeholder_parent_ptr->AssociationRuleCTX = EDRPolicyManager.Get_Cloned_AssociationRuleCTX();
-                            if (!new_node_ptr->AssociationRuleCTX) {
-                                new_node_ptr->AssociationRuleCTX = placeholder_parent_ptr->AssociationRuleCTX;
-                            }
+                            //placeholder_parent_ptr->AssociationRuleCTX = EDRPolicyManager.Get_Cloned_AssociationRuleCTX();
+                           // if (!new_node_ptr->AssociationRuleCTX) {
+                            //    new_node_ptr->AssociationRuleCTX = placeholder_parent_ptr->AssociationRuleCTX;
+                            //}
                         } else {
                              placeholder_parent_ptr->shared_tree_timestamp = new_node_ptr->shared_tree_timestamp;
                         }
@@ -1170,10 +1189,18 @@ namespace EDR
                     {
                         try{
 
-                            // 1. 룰 매칭
-                            auto Results = Node->AssociationRuleCTX->Match_(eventNode->get_event());
-                            Rule_to_Siem(Results);// ToSiem ( Rule )
-                            Node->append_matched_rule(Results); //Node에 기록
+                            {
+                                /*
+                                    일관성있는 규칙 처리. 및 일관성처리
+                                */
+                                std::lock_guard<std::mutex> lock2(*Node->Once_TreeNode_Mutex);
+
+                                // 1. 룰 매칭
+                                auto Results = Node->AssociationRuleCTX->Match_(eventNode->get_event());
+                                Rule_to_Siem(Results);// ToSiem ( Rule )
+                                Node->append_matched_rule(Results); //Node에 기록
+                            }
+                            
 
 
 
@@ -1312,7 +1339,7 @@ namespace EDR
                 {
                     while (is_TreeManager_Running)
                     {
-                        std::this_thread::sleep_for(std::chrono::seconds(25));
+                        std::this_thread::sleep_for(std::chrono::seconds(60));
                         if (!is_TreeManager_Running) break;
 
 
@@ -1336,7 +1363,7 @@ namespace EDR
                                 bool should_remove = false;
 
                                 //  해당 세션이 busy가 아닌경우에는 종료 처리할 수 없다.
-                                std::cout << "root_node_ptr->busy_ref_count->load(std::memory_order_seq_cst): " << root_node_ptr->busy_ref_count->load(std::memory_order_seq_cst) << std::endl; 
+                                //std::cout << "root_node_ptr->busy_ref_count->load(std::memory_order_seq_cst): " << root_node_ptr->busy_ref_count->load(std::memory_order_seq_cst) << std::endl; 
                                 if ( root_node_ptr->busy_ref_count->load(std::memory_order_seq_cst) != 0 )
                                 {
                                     ++it;
@@ -1349,7 +1376,7 @@ namespace EDR
                                     should_remove = true;
                                 }
                                 // 조건 2: 타임아웃
-                                else if (root_node_ptr->shared_tree_timestamp && (now - root_node_ptr->shared_tree_timestamp->last_seen > TREE_TIMEOUT_MS)) {
+                                else if (root_node_ptr->shared_tree_timestamp && (now - root_node_ptr->shared_tree_timestamp->last_seen.load(std::memory_order_seq_cst) > TREE_TIMEOUT_MS)) {
                                     _mark_all_nodes_as_terminated(*root_node_ptr, node::TerminateReason::BY_TIMEOUT);
                                     should_remove = true;
                                 }
@@ -1388,6 +1415,9 @@ namespace EDR
 
 
                         {
+                            //======================================================================
+                            //  RAW-EDR ---- SIEM 전송
+                            //======================================================================
                             try
                             {
                                 // To Siem < Send_RAW_EDR_INDEX_Event >
@@ -1452,8 +1482,13 @@ namespace EDR
                             // Send to AIManager Instance
                             //======================================================================
 
-                            // Sample X+y Send to NOVA_AI
 
+                            // 1. MachineLearning 
+                            unsigned long long x_sample_count = 0;
+                            std::cout << "AiManager.is_Possible_Train(): " << AIManager.is_Possible_Train(&x_sample_count) << " x_sample_cout: " << x_sample_count << std::endl;
+
+                            // Sample X+y Send to NOVA_AI
+                            
                             // Classification - A
                             std::cout << "WithId_Sample_Push_Path_Classification Calling() " << std::endl;
                             AIManager.PushData(
@@ -1470,7 +1505,7 @@ namespace EDR
                         {
                             std::cerr << "Error processing completed tree: " << e.what() << std::endl;
                             if (CompleteProcessNodeTree.is_object()) {
-                                std::cerr << "Problematic JSON: " << CompleteProcessNodeTree.dump(2) << std::endl;
+                                //std::cerr << "Problematic JSON: " << CompleteProcessNodeTree.dump(2) << std::endl;
                             }
                         }
                     }
