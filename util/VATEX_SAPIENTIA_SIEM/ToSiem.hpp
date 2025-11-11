@@ -88,6 +88,14 @@ namespace EDR
                         return _sendPost(Security_Threat_URL, PushEvent);
                     }
 
+                    // 2. RAW_EDR_INDEX 이벤트 
+                    bool Send_RAW_EDR_INDEX_Event(
+                        const json& ClosedSessionLog
+                    )
+                    {
+                        return _sendPost(RAW_EDR_URL, ClosedSessionLog );
+                    }
+
                 private:
                     std::string server_ip;
                     unsigned int server_port;

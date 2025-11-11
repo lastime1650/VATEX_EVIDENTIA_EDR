@@ -16,5 +16,6 @@
 #include "Sqlite/SqliteManager.hpp"
 #include "Timestamp/timestamp.hpp"
 #include <future>
+#include <variant>
 
 #endif

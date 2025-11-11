@@ -37,12 +37,12 @@ namespace EDR
                     std::string VATEX_INTELLINA_API_ServerIp,
                     unsigned int VATEX_INTELLINA_API_ServerPort = 51034
                 ) 
-                : NOVA_AI(VATEX_NOVA_AI_API_ServerIp, VATEX_NOVA_AI_API_ServerPort),
+                : AgentTCPManager(EDR_AgentTCPServerIp, EDR_AgentTCPServerPort),
                 SiemClient(VATEX_SAPIENTIA_SIEM_API_ServerIp, VATEX_SAPIENTIA_SIEM_API_ServerPort),
+                AIManager(VATEX_NOVA_AI_API_ServerIp, VATEX_NOVA_AI_API_ServerPort, AgentTCPManager, SiemClient),
                 IntelligenceManager(VATEX_INTELLINA_API_ServerIp, VATEX_INTELLINA_API_ServerPort),
                 PolicyManager(rule_dir_path),
-                BehaviorManager( KafkaBroker, Kafkagroup_id, Kafkatopic, PolicyManager, SiemClient, NOVA_AI ),
-                AgentTCPManager(EDR_AgentTCPServerIp, EDR_AgentTCPServerPort)
+                BehaviorManager( KafkaBroker, Kafkagroup_id, Kafkatopic, PolicyManager, SiemClient, AIManager )
                 {}
 
                 ~EDRServer(){ std::cout << "~EDRServer" << std::endl; Stop(); }
@@ -96,7 +96,7 @@ namespace EDR
                 */
                 
                 // NOVA AI
-                EDR::Util::AI::VATEX_NOVA_AI NOVA_AI;
+                Solution::AI::AI_MANAGER AIManager;
 
                 // 프로세스 행위 트리 추적 매니저
                 EDR::Server::ProcessBehavior::ProcessBehaviorLogManager BehaviorManager;

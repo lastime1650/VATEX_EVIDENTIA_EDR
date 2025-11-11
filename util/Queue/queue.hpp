@@ -68,6 +68,12 @@ namespace EDR
                 T get() {
                     std::unique_lock<std::mutex> lock(mutex);
                     condition.wait(lock, [this] { return !queue.empty(); });
+
+
+                    if (stopped)
+                        throw std::runtime_error("Queue stopped");
+
+
                     T item = std::move(queue.front());
                     queue.pop();
                     return item;
@@ -86,11 +92,21 @@ namespace EDR
                     return queue.size();
                 }
 
+
+                void stop() {
+                    {
+                        std::lock_guard<std::mutex> lock(mutex);
+                        stopped = true;
+                    }
+                    condition.notify_all();  // wait 중인 스레드 모두 깨움
+                }
+
             private:
 
                 mutable std::mutex mutex;
                 std::queue<T> queue;
                 std::condition_variable condition;
+                bool stopped = false;
             };
         }
     }

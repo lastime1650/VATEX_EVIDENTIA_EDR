@@ -77,7 +77,7 @@ namespace EDR
                     {}
                     ~VATEX_NOVA_AI() = default;
 
-                    // Sample 전송
+                    // 분류 전용 샘플 Push
                     template <typename T>
                     bool WithId_Sample_Push_Path_Classification(const std::string& sample_id, const std::vector<T>& sample, const std::string& sample_y)
                     {
@@ -85,10 +85,41 @@ namespace EDR
 
                             json sample_query = json::object();
                             if constexpr (
-                                std::is_floating_point_v<T> || 
-                                std::is_same_v<T, int> ||
-                                std::is_same_v<T, unsigned int> ||
-                                std::is_same_v<T, unsigned long long>
+                                std::is_arithmetic_v<T>
+                            )
+                            {
+
+                                sample_query = {
+                                    {"id", Id},
+                                    {"samples",  json::array({
+                                        { {"sample_id", sample_id}, {"sample_x", sample}, {"sample_y", sample_y} } // Only One Sample
+                                    }) }
+                                };
+
+                            }
+                            else
+                                return false;
+
+
+
+                            auto result = Request_Post(WithId_Sample_Push_Path, sample_query);
+                            return true;
+                        }
+                        catch (const std::exception& e) {
+                            std:: cout << e.what();
+                            return false;
+                        }
+                    }
+
+                    // 회귀 전용 샘플 Push
+                    template <typename T, typename Y>
+                    bool WithId_Sample_Push_Path_Regression(const std::string& sample_id, const std::vector<T>& sample, const Y& sample_y)
+                    {
+                        try
+                        {
+                            json sample_query = json::object();
+                            if constexpr (
+                                std::is_arithmetic_v<T> && std::is_arithmetic_v<Y>
                             )
                             {
 

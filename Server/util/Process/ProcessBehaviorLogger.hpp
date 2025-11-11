@@ -28,10 +28,10 @@ namespace EDR
 
                         Solution::Policy::EDRPolicy& EDRPolicyManager,
                         EDR::Util::ToSiem::SiemClient& SiemClient,
-                        EDR::Util::AI::VATEX_NOVA_AI& AiClient
+                        Solution::AI::AI_MANAGER& AIManager
                     ) : 
                     KafkaConsumer( KafkaBroker, Kafkagroup_id, Kafkatopic ),
-                    TreeManager(SiemClient, AiClient, EDRPolicyManager)
+                    TreeManager(SiemClient, AIManager, EDRPolicyManager)
                     {
                         std::cout << "[ProcessBehaviorLogManager]{Notice} created" << std::endl;
                     }
