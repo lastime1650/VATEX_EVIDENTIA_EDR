@@ -57,8 +57,8 @@ namespace EDR
                     /* 필드&생성자 에 초기화되어 있음 */
 
                     // Step 1. [에이전트 간 TCP 통신]
-                     //if( !AgentTCPManager.Run() )
-                        //return false;
+                    if( !AgentTCPManager.Run() )
+                        return false;
 
                     // Step 2. [에이전트 Kakfa기반 로그 관리 및 정책처리 ] Tree Behavior 수집 인스턴스 생성
                     if( !BehaviorManager.Run( AgentTCPManager, IntelligenceManager ) )
@@ -87,7 +87,7 @@ namespace EDR
 
 
 
-            private:
+            
 
                 // EDR서버 상태
                 std::atomic<bool> is_server_running = false;

@@ -71,7 +71,8 @@ namespace EDR
 
 
                         const std::string& detected_method,         // 이벤트 탐지 방법/원인 경로
-                        const unsigned long long& timestamp_nano    // 당시 타임스탬프
+                        const std::string& solution_mapping_id,     // 실제 솔루션 로그와 매핑하기 위한 값
+                        const unsigned long long& timestamp_nano    // EDR기준 타임스탬프
                     )
                     {
                         nlohmann::json PushEvent = {
@@ -82,6 +83,7 @@ namespace EDR
                             {"severity", severity },
                             {"category", category},
                             
+                            {"solution_mapping_id", solution_mapping_id},
                             {"timestamp_nano", timestamp_nano },
                             {"timestamp_nano_iso8601", EDR::Util::timestamp::To_Nano_Iso8601(timestamp_nano) }
                         };

@@ -13,19 +13,22 @@ namespace EDR
         {
             class APIServer
             {
+            private:
+                EDR::Server::EDRServer& EDR_Backend;
+
             public:
             
                 APIServer(
                     std::string APIServerIP, 
                     unsigned int APIServerPORT,
                     
-                    // instances
-                    EDR::Server::AgentTcpManagement::AgentTcp& AGENT_TCP
+                    // EDR Backend
+                    EDR::Server::EDRServer& EDR_Backend
                 ) : 
                 APIServerIP(APIServerIP), 
                 APIServerPORT(APIServerPORT),
 
-                AGENT_TCP(AGENT_TCP)
+                EDR_Backend(EDR_Backend)
                 {
                     // httplib 기반 API서버
                     
@@ -33,12 +36,39 @@ namespace EDR
                 }
                 ~APIServer();
 
+
+                bool Runner()
+                {
+                    if(is_working)
+                        return false;
+
+                    is_working= true;
+
+                    // ==================================================
+
+                    // 1. Query
+                    // -> 1.A. Live_Data (Solution Depend)
+                    // -> 2.A. Serve
+
+                    // 2. Response
+                    // -> 2.A. File
+                    // -> 2.B. Process
+                    // -> 2.C. Network
+
+                    // ==================================================
+
+
+
+                    // Blocking ... ( 맨 마지막에 실행해야 한다.)
+
+                }
+
                 bool Run(){
                     if(is_working)
                         return false;
                     
                     is_working= true;
-                    API_SERVER_THREAD = std::thread(
+                    std::thread(
                         [this]()
                         {
                             /*
@@ -57,8 +87,6 @@ namespace EDR
                                         => EDR솔루션에서 사용하는 정책 쿼리
                                     => 5. /api/solution/edr/query/event                             -> all
                                         => EDR솔루션에서 "수집된" 이벤트 쿼리
-                                        => 5.1. /api/solution/edr/query/event/trees                 -> 특정 Agentid 로 tree 조회 ( id 조회 )
-                                        => 5.2. /api/solution/edr/query/event/tree/detail           -> 특정 Agentid, 특정 tree 에 대한 이벤트 반환 ( tree에 저장된 이벤트 조회 )
                                         => 5.3. /api/solution/edr/query/event/original
                                         => 5.4. /api/solution/edr/query/event/mitre_attack
                                         => 5.5. /api/soultion/edr/query/event/association
@@ -66,10 +94,7 @@ namespace EDR
 
                                 ===========================================================
                                 2. Policy       타입
-                                    => 1. /api/solution/edr/policy/add/mitre_attack
-                                        =>? EDR솔루션 정책 중. <<마이터 어택 연동 룰>> 관리
-                                    => 2. /api/solution/edr/policy/add/association
-                                        =>? EDR솔루션 정책 중. <<연관 시나리오 분석 연동 룰>> 관리
+                                    => 1. /api/solution/edr/policy/add ( 룰은 올인원으로 변경됨 )
                                 ===========================================================
 
                                 ===========================================================
@@ -91,7 +116,7 @@ namespace EDR
                             //  - "/api/solution/edr/query/event"
                             // 1. 
                             this->APIsvr.Get(
-                                "/api/solution/edr/query/event",
+                                "/api/solution/edr/query/agent",
                                 [this](const httplib::Request& req, httplib::Response& res)
                                 {
                                     /*
@@ -119,7 +144,7 @@ namespace EDR
                                     std::string fail_reason = "";
                                     json success_result_output;
 
-                                    success_result_output = this->AGENT_TCP.Get_Information(); 
+                                    success_result_output = this->EDR_Backend.AgentTCPManager.Get_Information(); 
                                     
                                     SUCCESS:
                                     {
@@ -143,16 +168,29 @@ namespace EDR
                                     /*
                                         agent 전체 조회 임
                                     */
+
+                                    /* no parameters */
                                     
                                     /////////////////////////////////////////////////////////////////////////
                                     /////////////////////////////////////////////////////////////////////////
                                     /////////////////////////////////////////////////////////////////////////
-
+                                    /*
+                                        <output>
+                                        {
+                                            "agents": {
+                                                "AGENT_ID-1": {
+                                                    "is_alive": true,
+                                                    "ipv4": ...,
+                                                    "port": ...
+                                                }
+                                            },
+                                        }
+                                    */
 
                                     std::string fail_reason = "";
                                     json success_result_output;
 
-                                    success_result_output = this->AGENT_TCP.Get_Information(); 
+                                    success_result_output = this->EDR_Backend.AgentTCPManager.Get_Information(); 
                                     
                                     SUCCESS:
                                     {
@@ -168,7 +206,25 @@ namespace EDR
                             );
 
 
-                            // << Policy >>
+                            /* << Policy >> */
+                            this->APIsvr.Post(
+                                "/api/solution/edr/policy/add",
+                                [this](const httplib::Request& req, httplib::Response& res)
+                                {
+                                    /*
+                                        인 메모리 룰 등록
+                                    */
+                                    /*
+                                        {
+                                            // Rule Keys... id to filename
+                                        }
+                                    */
+                                    req.body;
+                                    /////////////////////////////////////////////////////////////////////////
+                                    /////////////////////////////////////////////////////////////////////////
+                                    /////////////////////////////////////////////////////////////////////////
+                                }
+                            );
 
                             /*
                                 << Response >>
@@ -203,8 +259,8 @@ namespace EDR
 
                                     json REQ_JSON;
                                     try{
-                                        if( this->_text_to_json(req.body, REQ_JSON) )
-                                            goto FAIL;
+
+                                        REQ_JSON = this->_text_to_json(req.body);
 
                                     }catch (const std::exception& e )
                                     {
@@ -225,14 +281,14 @@ namespace EDR
                                     exe_path = REQ_JSON["exe_path"].get<std::string>();
                                     
                                     // 1. Check AgentId in Memory
-                                    if ( !this->AGENT_TCP.findAgent(AgentId) )
+                                    if ( !this->EDR_Backend.AgentTCPManager.findAgent(AgentId) )
                                     {
                                         fail_reason = "No Running Agent";
                                         goto FAIL;
                                     }
 
                                     // 2. Request Process Request
-                                    if ( !this->AGENT_TCP.Response_PROCESS(AgentId, pid, exe_path) )
+                                    if ( !this->EDR_Backend.AgentTCPManager.Response_PROCESS(AgentId, pid, exe_path) )
                                     {
                                         fail_reason = "Failed Response Process";
                                         goto FAIL;
@@ -283,8 +339,8 @@ namespace EDR
 
                                     json REQ_JSON;
                                     try{
-                                        if( this->_text_to_json(req.body, REQ_JSON) )
-                                            goto FAIL;
+                                        
+                                        REQ_JSON = this->_text_to_json(req.body);
 
                                     }catch (const std::exception& e )
                                     {
@@ -304,14 +360,14 @@ namespace EDR
                                     file_path = REQ_JSON["file_path"].get<std::string>();
                                     
                                     // 1. Check AgentId in Memory
-                                    if ( !this->AGENT_TCP.findAgent(AgentId) )
+                                    if ( !this->EDR_Backend.AgentTCPManager.findAgent(AgentId) )
                                     {
                                         fail_reason = "No Running Agent";
                                         goto FAIL;
                                     }
 
                                     // 2. Request Process Request
-                                    if ( !this->AGENT_TCP.Response_FILE(AgentId, file_path) )
+                                    if ( !this->EDR_Backend.AgentTCPManager.Response_FILE(AgentId, file_path) )
                                     { 
                                         fail_reason = "Failed Response Process";
                                         goto FAIL;
@@ -360,27 +416,21 @@ namespace EDR
 
                 httplib::Server APIsvr;
 
-
-                std::thread API_SERVER_THREAD;
                 std::atomic<bool> is_working = false;
-
-                EDR::Server::AgentTcpManagement::AgentTcp& AGENT_TCP;
 
                 // helper
                 
                 // 1. text to json
-                bool _text_to_json(const std::string Body, json& output)
+                json _text_to_json(const std::string Body)
                 {
                     try
                     {
-                        output = json::parse(Body);
-                        return true;
+                        return json::parse(Body);
                     }
                     catch (const std::exception& e)
                     {
                         throw e.what();
                     }
-                    return false;
                 }
 
                  // 2. Failed JSON Output

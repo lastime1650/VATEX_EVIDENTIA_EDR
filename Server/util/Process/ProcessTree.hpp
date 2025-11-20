@@ -524,6 +524,7 @@ namespace EDR
 
             namespace node
             {
+
                 // 노드가 종료된 이유를 나타내는 열거형
                 enum class TerminateReason
                 {
@@ -568,7 +569,9 @@ namespace EDR
                     std::vector<std::shared_ptr<ProcessEvent::Event>> events;
                     std::vector<std::shared_ptr<ProcessTreeNode>> Child;
 
-                    
+                    // --- 누적 스코어링 기반 자동화 차단 스코어 ---
+                    std::shared_ptr<std::atomic<unsigned long>> accumulated_risk_score = nullptr;
+                    std::shared_ptr<std::atomic<bool>> is_blocked = nullptr; // 차단 신호가 이미 보내졌는가? (기본값 false)
 
                     // --- 타임스탬프 ---
                     // 이 노드 자체의 이벤트 기반 타임스탬프
@@ -583,27 +586,34 @@ namespace EDR
                     // --- 분석 및 정책  관련 ---
                     std::shared_ptr<Solution::Policy::Resource::Association::ASSOCIATION_RULE_MANAGER> AssociationRuleCTX = nullptr;
 
-                    std::shared_ptr< std::vector<Solution::Policy::Resource::Association::Global::AssociationRuleStruct::Header> > MatchedRules;// 룰 탐지 결과 리스트
+                    std::shared_ptr< 
+                        std::map<
+                            unsigned long long,                                                                             // 당시 탐지된 실제 이벤트 타임스탬프
+                            std::vector<Solution::Policy::Resource::Association::Global::AssociationRuleStruct::Header>     // 탐지된 룰 헤더 정보
+                        >
+                    > MatchedRules;// 룰 탐지 결과 리스트
 
                     std::shared_ptr<std::map<
-                        std::string,        // category
-                        std::vector< json >                // data
+                        std::string,                        // category
+                        std::vector< json >             // data
                     >> Intelligences;
 
-                    //std::atomic<float> threat_score{0.0f};
-                    //std::atomic<bool> analysis_submitted{false};
                     
                     // --- 헬퍼 함수들 (포인터 기반으로 수정됨) ---
 
                     // 매칭성공된 룰 기록
-                    bool append_matched_rule(std::vector<Solution::Policy::Resource::Association::RuleMatchedOutput>& args_matchedRules)
+                    bool append_matched_rule(const unsigned long long& EventTimestamp, const std::vector<Solution::Policy::Resource::Association::RuleMatchedOutput>& args_matchedRules)
                     {
                         if(args_matchedRules.empty())
                             return false;
 
                         // key가 "rule"인 룰 전용 event를 생성하고, MatchedRules 필드에 push_back진행
+                        (*MatchedRules)[EventTimestamp] = std::vector<Solution::Policy::Resource::Association::Global::AssociationRuleStruct::Header>{};
                         for (auto& rule : args_matchedRules)
-                            MatchedRules->push_back( rule.RuleInfo );
+                        {
+                            
+                            (*MatchedRules)[EventTimestamp].push_back( rule.RuleInfo );
+                        }
 
                         return true;
                     }
@@ -611,7 +621,6 @@ namespace EDR
                     // 인텔리전스 정보 기록
                     bool append_intelligence(const std::string& category, const json& data)
                     {
-                        
                         ( (*Intelligences)[category] ).push_back(data);
 
                         return true;
@@ -727,11 +736,13 @@ namespace EDR
                                     {"Parent_SessionID", session.Parent_SessionID}
                                 }}
                             };
-                            // 타임스탬프 정보도 추가하면 유용합니다.
+                            // 타임스탬프 정보
                             if (shared_tree_timestamp) {
-                                output["shared_tree_timestamp"] = {
+                                output["timestamp"] = {
                                     {"first_seen", shared_tree_timestamp->first_seen.load()},
-                                    {"last_seen", shared_tree_timestamp->last_seen.load()}
+                                    {"last_seen", shared_tree_timestamp->last_seen.load()},
+                                    {"first_seen_iso8601", EDR::Util::timestamp::To_Nano_Iso8601(shared_tree_timestamp->first_seen.load())},
+                                    {"last_seen_iso8601", EDR::Util::timestamp::To_Nano_Iso8601(shared_tree_timestamp->last_seen.load())}
                                 };
                             }
 
@@ -741,42 +752,55 @@ namespace EDR
 
                             // --- 3. 'rule' 필드
                             output["rules"] = json::array();
-                            for( const auto& matched_rule : *MatchedRules )
+                            for( const auto& [event_timestamp, matched_rules] : *MatchedRules )
                             {
-                                // 1. MITRE_ATTACK
-                                auto MitreAttack_ARRAY = json::array();
-                                for (const auto mitreattack : matched_rule.mitre_attacks)
+                                for (const auto& matched_rule : matched_rules)
                                 {
-                                    MitreAttack_ARRAY.push_back(
+                                    // 1. MITRE_ATTACK
+                                    auto MitreAttack_ARRAY = json::array();
+                                    for (const auto mitreattack : matched_rule.mitre_attacks)
+                                    {
+                                        MitreAttack_ARRAY.push_back(
+                                            {
+                                                { "tactic_id", mitreattack.tactic_id },
+                                                { "technique_id", mitreattack.technique_id },
+                                                { "subtechnique_id", mitreattack.subtechnique_id },
+                                                { "data_sources", mitreattack.data_sources }
+                                            }
+                                        );
+                                    }
+                                    
+                                    // 2. PUSH
+                                    output["rules"].push_back(
                                         {
-                                            { "tactic_id", mitreattack.tactic_id },
-                                            { "technique_id", mitreattack.technique_id },
-                                            { "subtechnique_id", mitreattack.subtechnique_id },
-                                            { "data_sources", mitreattack.data_sources }
+                                            {"id", matched_rule.rule_id},
+                                            {"name", matched_rule.rule_name},
+                                            {"description", matched_rule.rule_description},
+                                            {"severity", matched_rule.rule_severity},
+                                            {"mitreattacks", MitreAttack_ARRAY},
+                                            {"platforms", matched_rule.platforms},
+                                            {"operational_usage", matched_rule.operational_usage},
+                                            {"false_positive", matched_rule.false_positive},
+
+                                            {"event_timestamp", event_timestamp} // 해당 실제 이벤트
+                                            
                                         }
                                     );
                                 }
-                                
-                                // 2. PUSH
-                                output["rules"].push_back(
-                                    {
-                                        {"id", matched_rule.rule_id},
-                                        {"name", matched_rule.rule_name},
-                                        {"description", matched_rule.rule_description},
-                                        {"severity", matched_rule.rule_severity},
-                                        {"mitreattacks", MitreAttack_ARRAY},
-                                        {"platforms", matched_rule.platforms},
-                                        {"operational_usage", matched_rule.operational_usage},
-                                        {"false_positive", matched_rule.false_positive},
-                                        
-                                    }
-                                );
                             }
 
                             // --- 4. 'intelligence' 필드
                             output["intelligences"] = json::object();
                             for(const auto& [intelligence_category, v] : *Intelligences)
                             {
+                                /*
+                                    "Category_name": [
+                                        {
+                                            + "intelligence Infomation" ...
+                                            + 'Event_Timestamp'
+                                        }
+                                    ]
+                                */
                                 if( !output["intelligences"].contains(intelligence_category) )
                                     output["intelligences"][intelligence_category] = json::array();
 
@@ -908,11 +932,13 @@ namespace EDR
                             new_node_ptr->shared_tree_timestamp->last_seen.store(now, std::memory_order_seq_cst);
 
                             new_node_ptr->busy_ref_count = std::make_shared<std::atomic<unsigned long long>>(0);
+                            new_node_ptr->accumulated_risk_score = std::make_shared<std::atomic<unsigned long>>(0);
 
-                            new_node_ptr->MatchedRules = std::make_shared< std::vector<Solution::Policy::Resource::Association::Global::AssociationRuleStruct::Header> >();
+                            new_node_ptr->MatchedRules = std::make_shared< std::map< unsigned long long, std::vector<Solution::Policy::Resource::Association::Global::AssociationRuleStruct::Header>> >( );
 
                             new_node_ptr->Intelligences =  std::make_shared< std::map<std::string,std::vector< json >> >();
                             new_node_ptr->Once_TreeNode_Mutex = std::make_shared<std::mutex>();
+                            new_node_ptr->is_blocked = std::make_shared<std::atomic<bool>>(false);
 
                         } else {
                             if (root_node_ptr) {
@@ -925,6 +951,8 @@ namespace EDR
                                 new_node_ptr->MatchedRules = root_node_ptr->MatchedRules;
                                 new_node_ptr->Intelligences = root_node_ptr->Intelligences;
                                 new_node_ptr->Once_TreeNode_Mutex = root_node_ptr->Once_TreeNode_Mutex;
+                                new_node_ptr->accumulated_risk_score = root_node_ptr->accumulated_risk_score;
+                                new_node_ptr->is_blocked = root_node_ptr->is_blocked;
                             }
                         }
 
@@ -1063,6 +1091,8 @@ namespace EDR
                         new_node_ptr->MatchedRules = parent_node_ptr->MatchedRules;
                         new_node_ptr->Intelligences = parent_node_ptr->Intelligences;
                         new_node_ptr->Once_TreeNode_Mutex = parent_node_ptr->Once_TreeNode_Mutex;
+                        new_node_ptr->accumulated_risk_score = parent_node_ptr->accumulated_risk_score;
+                        new_node_ptr->is_blocked = parent_node_ptr->is_blocked;
 
                         new_node_ptr->nodeDepthIndex = parent_node_ptr->nodeDepthIndex + 1;
                         parent_node_ptr->Child.push_back(new_node_ptr);
@@ -1083,12 +1113,21 @@ namespace EDR
                         placeholder_parent_ptr->busy_ref_count = new_busy_ref;
                         new_node_ptr->busy_ref_count = new_busy_ref; // 자식도 동일한 포인터 공유
 
-                        auto new_rules_vec = std::make_shared<std::vector<Solution::Policy::Resource::Association::Global::AssociationRuleStruct::Header>>();
+                        auto new_rules_vec = std::make_shared< std::map<unsigned long long, std::vector<Solution::Policy::Resource::Association::Global::AssociationRuleStruct::Header>> > ();
                         placeholder_parent_ptr->MatchedRules = new_rules_vec;
 
                         if(new_node_ptr->session.Root_SessionID == "bc8771751e7dc43a8f7a02e91932c462cc13d47172d32208e27097c4ed162d5a")
                             std::cout << "new_node_ptr->MatchedRules: " << new_node_ptr->MatchedRules << " new_rules_vec: " << new_rules_vec << std::endl;
                         new_node_ptr->MatchedRules = new_rules_vec;
+
+                        
+                        auto new_accumulated_risk_score = std::make_shared<std::atomic<unsigned long>>(0);
+                        placeholder_parent_ptr->accumulated_risk_score = new_accumulated_risk_score;
+                        new_node_ptr->accumulated_risk_score = new_accumulated_risk_score; // 자식도 동일한 포인터 공유
+
+                        auto new_is_blocked = std::make_shared<std::atomic<bool>>(false);
+                        placeholder_parent_ptr->is_blocked = new_is_blocked;
+                        new_node_ptr->is_blocked = new_is_blocked; // 자식도 동일한 포인터 공유
 
                         auto new_mutex = std::make_shared<std::mutex>();
                         placeholder_parent_ptr->Once_TreeNode_Mutex = new_mutex;
@@ -1143,7 +1182,7 @@ namespace EDR
                         1차 검증된
                     */
 
-                     _tree_postfix_processing_internal(Node, eventNode);
+                    //_tree_postfix_processing_internal(Node, eventNode);
 
                      
                     if (!Node || !eventNode) {
@@ -1190,6 +1229,7 @@ namespace EDR
                         중간 return 은 절대 불가하다. 
 
                         -> 노드 참조 카운트가 엇갈리면 노드가 종료되지 않아 메모리에 상주하므로 큰일난다. 
+                        
                     **********************************************
                     */
                     
@@ -1201,28 +1241,108 @@ namespace EDR
                     {
                         try{
 
+                            auto EventLogJson = eventNode->get_event();
+
+                             // EDR에서 탐지된 (1)MITRE_ATTACK연동 행위 탐지 결과, (2) 인텔리전스 서버 결과 포함
+                            EventLogJson["threat"]["rules"] = json::array();
+                            EventLogJson["threat"]["intelligences"] = json::array();
+
                             {
+                                
+                                std::vector<Solution::Policy::Resource::Association::RuleMatchedOutput> Results{};
                                 // 1. 룰 및 일관성처리 (이 메서드내 높은 우선순위)
                                 try
                                 {
                                     std::lock_guard<std::mutex> lock2(*Node->Once_TreeNode_Mutex);
                                     
                                     // 1. 룰 매칭
-                                    auto Results = Node->AssociationRuleCTX->Match_(eventNode->get_event());
-                                    Rule_to_Siem(Results);// ToSiem ( Rule )
-                                    Node->append_matched_rule(Results); //Node에 기록
-
+                                    Results = Node->AssociationRuleCTX->Match_(eventNode->get_event());
                                 }
                                 catch(const std::exception& e)
                                 {
                                     std::cerr << "_tree_postfix_processing_internal -> ERROR: " << e.what() << '\n';
                                 }
+
+                                // 룰 매칭 성공 post작업 ( 파싱 )
+                                if(!Results.empty())
+                                {
+                                    // Append Raw-Edr Event Log
+                                    for (const auto& detected_rule : Results)
+                                    {
+                                        auto matched_rule = detected_rule.RuleInfo;
+
+                                        // Severity to score + Risk_Scoring
+                                        /*
+                                            "INFO" => 0,
+                                            "LOW" => 10,
+                                            "MEDIUM" => 30,
+                                            "HIGH" => 70,
+                                            "CRITICAL" => 100
+                                        */
+                                        unsigned int score = 0;
+                                        if( matched_rule.rule_severity == "low" )
+                                            score = 10;
+                                        else if( matched_rule.rule_severity == "medium" )
+                                            score = 30;
+                                        else if( matched_rule.rule_severity == "high" )
+                                            score = 70;
+                                        else if( matched_rule.rule_severity == "critical" )
+                                            score = 100;
+
+                                        int previous_risk_score = Node->accumulated_risk_score->fetch_add(score, std::memory_order_seq_cst);
+                                        if( !Node->is_blocked->load(std::memory_order_seq_cst) && ( previous_risk_score + score ) )
+                                        {
+                                            /*
+                                                차단 진행
+                                            */
+                                           Scoring_Block_to_Siem(Node->session.Root_SessionID); // 차단 신호 전달
+
+                                           // Security-Threat로 차단 신호 전송
+                                           Node->is_blocked->store(true, std::memory_order_seq_cst);
+                                        }
+                                        
+                                        
+                                       
+
+                                        // 1. MITRE_ATTACK
+                                        auto MitreAttack_ARRAY = json::array();
+                                        for (const auto mitreattack : matched_rule.mitre_attacks)
+                                        {
+                                            MitreAttack_ARRAY.push_back(
+                                                {
+                                                    { "tactic_id", mitreattack.tactic_id },
+                                                    { "technique_id", mitreattack.technique_id },
+                                                    { "subtechnique_id", mitreattack.subtechnique_id },
+                                                    { "data_sources", mitreattack.data_sources }
+                                                }
+                                            );
+
+                                            EventLogJson["threat"]["rules"].push_back(
+                                                {
+                                                    {"id", matched_rule.rule_id},
+                                                    {"name", matched_rule.rule_name},
+                                                    {"description", matched_rule.rule_description},
+                                                    {"severity", matched_rule.rule_severity},
+                                                    {"mitreattacks", MitreAttack_ARRAY},
+                                                    {"platforms", matched_rule.platforms},
+                                                    {"operational_usage", matched_rule.operational_usage},
+                                                    {"false_positive", matched_rule.false_positive}
+                                                }
+                                            );
+                                        }
+
+
+                                    }
+                                    
+                                    Rule_to_Siem(Node->session.Root_SessionID, Results);// ToSiem ( Rule ) <Security-Threat Index>
+                                    //Node->append_matched_rule(eventNode->timestamp, Results); //Node에 기록
+                                }
                                 
                                 
                             }
 
-                            // 2. 인텔리전스 요청 ( 상당히 지연이 크기때문에 맨 나중에 진행. )
-                            eventNode->send_to_intelligence();
+                            // 3. 인텔리전스 요청 ( 상당히 지연이 크기때문에 맨 나중에 진행. )
+                            /*eventNode->send_to_intelligence();
                             auto intelligence_outputs = eventNode->output_intelligence_result_as_vector();
 
                             if(!intelligence_outputs.empty())
@@ -1260,7 +1380,16 @@ namespace EDR
                                         }
                                     }
                                 }
-                            }
+                            }*/
+
+
+                            // (Finish) 해당 로그를 SIEM->RAW에 전달
+                            /*
+                                여러 Document로 이벤트 전달하는 형식으로 변경됨
+                            */
+                            SiemClient.Send_RAW_EDR_INDEX_Event(
+                                EventLogJson
+                            );
 
                         }
                         catch ( const std::exception& e )
@@ -1277,7 +1406,7 @@ namespace EDR
                     
                 }
 
-                bool Intelligence_to_Siem( const std::string& detected_intelligence_description, const std::string& category="network"  )
+                bool Intelligence_to_Siem( const std::string& Root_Process_Id, const std::string& detected_intelligence_description, const std::string& category="network"  )
                 {
                     SiemClient.Send_Security_Event(
                             "edr",
@@ -1286,11 +1415,27 @@ namespace EDR
                             "",
                             category,
                             "intelligence",
+                            Root_Process_Id,
                             EDR::Util::timestamp::Get_Real_Timestamp()
                         );
                     return true;
                 }
-                bool Rule_to_Siem(const std::vector<Solution::Policy::Resource::Association::RuleMatchedOutput>& Rules)
+
+                void Scoring_Block_to_Siem(const std::string& Root_Process_Id)
+                {
+                    SiemClient.Send_Security_Event(
+                        "edr",
+                        "",
+                        "",
+                        "",
+                        "block",
+                        "scoring",
+                        Root_Process_Id,
+                        EDR::Util::timestamp::Get_Real_Timestamp()
+                    );
+                }
+
+                bool Rule_to_Siem(const std::string& Root_Process_Id, const std::vector<Solution::Policy::Resource::Association::RuleMatchedOutput>& Rules)
                 {
                     for(auto& rule : Rules)
                     {
@@ -1302,6 +1447,7 @@ namespace EDR
                             rule.RuleInfo.false_positive,
                             "behavior",
                             "rule",
+                            Root_Process_Id,
                             EDR::Util::timestamp::Get_Real_Timestamp()
                         );
 
@@ -1313,8 +1459,9 @@ namespace EDR
                                 "info",
                                 action.description,
                                 "",
-                                action.type == Solution::Policy::Resource::Association::Global::ActionType::notice ? "notice" : "response" ,
+                                action.type == Solution::Policy::Resource::Association::Global::ActionType::notice ? "notice" : "block" ,
                                 "rule",
+                                Root_Process_Id,
                                 EDR::Util::timestamp::Get_Real_Timestamp()
                             );
 
@@ -1468,14 +1615,19 @@ namespace EDR
                         //======================================================================
                         //  RAW-EDR ---- SIEM 전송
                         //======================================================================
-                        try
+                        /*try
                         {
                             // To Siem < Send_RAW_EDR_INDEX_Event >
                             SiemClient.Send_RAW_EDR_INDEX_Event(*Postfix_CompleteProcessNodeTree); // To Siem
                         }catch (std::exception& e)
                         {
                             std::cerr << e.what() << std::endl;
-                        }
+                        }*/
+
+                        //======================================================================
+                        //  AGGREGATION-EDR ---- SIEM 전송
+                        //
+                        //======================================================================
                         
                     }
 
