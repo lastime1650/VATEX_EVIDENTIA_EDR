@@ -12,7 +12,10 @@ namespace EDR
 		*/
 		struct log_s
 		{
+			EDR::EventLog::Enum::EventLog_LogData_Type LogDataType;
 			EDR::EventLog::Enum::EventLog_Enum Type;
+
+
 			unsigned char* logData;
 			ULONG64 logSize;
 		};

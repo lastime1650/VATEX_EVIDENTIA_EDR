@@ -61,10 +61,12 @@ namespace EDR
 			BOOLEAN CHAR_to_FILESIZE(PCHAR FIlePathBuffer, ULONG32 FIlePathBufferSize, SIZE_T* FileSize);
 			BOOLEAN CHAR_to_HASH(PCHAR FIlePathBuffer, ULONG32 FIlePathBufferSize, PCHAR out_HASHBUFFER, SIZE_T* out_FileSize);
 			BOOLEAN UNICODE_to_CHAR(PUNICODE_STRING input, CHAR* Buffer, SIZE_T BUfferSIze);
-			BOOLEAN Process_to_HASH(HANDLE ProcessId, CHAR* out_ImagePathNameBuffer, SIZE_T in_ImagePathNameBufferSIze, SIZE_T* out_ImageFileSize, CHAR* out_SHA256Buffer, SIZE_T SHA256BufferSize);
+			void Process_to_HASH_Release(PWCH ImagePathNameBuffer, PCHAR ImageSHA256Buffer);
+			BOOLEAN Process_to_HASH(HANDLE ProcessId, PWCH* out_ImagePathNameBuffer, ULONG32* out_ImagePathMaxLen, SIZE_T* out_ImageFileSize, PCHAR* out_SHA256Buffer, ULONG32* out_SHA256Size);
 			BOOLEAN FilePath_to_HASH(PUNICODE_STRING UnicodeImagePath, SIZE_T* out_ImageFileSize, CHAR* inout_SHA256Buffer, SIZE_T SHA256BufferSize);
 			BOOLEAN Process_to_CHAR(HANDLE ProcessHandle, CHAR* Buffer, SIZE_T BUfferSIze);
-			BOOLEAN SID_to_CHAR(HANDLE ProcessId, CHAR* Buffer, SIZE_T BUfferSIze);
+			void Release_SID(PWCH Buffer);
+			BOOLEAN Get_SID(HANDLE ProcessId, PWCH* Buffer, SIZE_T* BUfferSIze);
 			// ºÎ°¡Àû
 			NTSTATUS GetInterfaceNameFromIndex_Ansi(
 				_In_ ULONG InterfaceIndex,

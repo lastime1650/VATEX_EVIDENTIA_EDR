@@ -145,6 +145,7 @@
     <ClInclude Include="HASH.hpp" />
     <ClInclude Include="IOCTL.hpp" />
     <ClInclude Include="ioctl_codes.hpp" />
+    <ClInclude Include="LogBuilder.hpp" />
     <ClInclude Include="LogSender.hpp" />
     <ClInclude Include="MiniFilter.hpp" />
     <ClInclude Include="Network.hpp" />

@@ -89,6 +89,9 @@
     <Filter Include="AGENT\Event\_DLP">
       <UniqueIdentifier>{aa775e85-4a20-4741-82cd-bf5cde9b3758}</UniqueIdentifier>
     </Filter>
+    <Filter Include="util\LogBuilder">
+      <UniqueIdentifier>{4c2896c0-a9b3-4f01-ab75-95e422815283}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Inf Include="VATEX_EVIDENTIA_EDR.inf">
@@ -230,6 +233,9 @@
     </ClInclude>
     <ClInclude Include="DLP.hpp">
       <Filter>AGENT\Event\_DLP</Filter>
+    </ClInclude>
+    <ClInclude Include="LogBuilder.hpp">
+      <Filter>util\LogBuilder</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

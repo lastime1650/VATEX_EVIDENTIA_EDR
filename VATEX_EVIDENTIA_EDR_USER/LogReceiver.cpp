@@ -2,8 +2,11 @@
 #include "APC.hpp"
 
 std::string ProtocolToString(int protocol);
+std::string PwchToString(PWCH pwch);
+
 
 #include <iostream>
+#include <variant>
 namespace EDR
 {
 	namespace LogReceiver
@@ -38,7 +41,8 @@ namespace EDR
 
 			// 1. IOCTL 연결
 			if (!ioctl.INITIALIZE(
-				(HANDLE)GetCurrentProcessId()
+				(HANDLE)GetCurrentProcessId(),
+				OS_VERSION
 			))
 				return false;
 
@@ -50,102 +54,46 @@ namespace EDR
 				{
 					while (*is_threading)
 					{
-						PVOID out_UserAllocatedFileBinaryAddress = NULL;
-						ULONG64 out_BinarySize = 0;
-						ioctl.REQUEST_LOG(
-							(PVOID*)&out_UserAllocatedFileBinaryAddress,
-							&out_BinarySize
-						);
-
-						std::cout << "Log Received Size: " << out_BinarySize << std::endl;
-
-						for (ULONG64 i = 0; i < out_BinarySize; i += sizeof(PVOID))
+						try
 						{
-							/*
-								Kernel - User [ 로그 전송 ]
-								
-								PVOID(x64기준 8바이트)씩 나눠서 사전에 커널에서 유저모드에 할당한 공간에 로그 주소를 저장함
+							PVOID out_UserAllocatedFileBinaryAddress = NULL;
+							ULONG64 out_BinarySize = 0;
+							ioctl.REQUEST_LOG(
+								(PVOID*)&out_UserAllocatedFileBinaryAddress,
+								&out_BinarySize
+							);
 
-							*/
-							PVOID log = *(PVOID*)((PUCHAR)out_UserAllocatedFileBinaryAddress + i);
-
-							EDR::EventLog::Struct::EventLog_Header* header = (EDR::EventLog::Struct::EventLog_Header*)log;
-
-							ULONG64 LogSize = 0;
-							switch (header->Type)
+							//std::cout << "Log Received Size: " << out_BinarySize << std::endl;
+							if (!out_BinarySize)
 							{
-								case EDR::EventLog::Enum::Process_Create:
-								{
-									LogSize = sizeof(EDR::EventLog::Struct::Process::EventLog_Process_Create);
-									break;
-								}
-								case EDR::EventLog::Enum::Process_Terminate:
-								{
-									LogSize = sizeof(EDR::EventLog::Struct::Process::EventLog_Process_Terminate);
-									break;
-								}
-								case EDR::EventLog::Enum::ImageLoad:
-								{
-									LogSize = sizeof(EDR::EventLog::Struct::ImageLoad::EventLog_ImageLoad);
-									break;
-								}
-								case EDR::EventLog::Enum::Network:
-								{
-									LogSize = sizeof(EDR::EventLog::Struct::Network::EventLog_Process_Network);
-									break;
-								}
-								case EDR::EventLog::Enum::Filesystem:
-								{
-									LogSize = sizeof(EDR::EventLog::Struct::FileSystem::EventLog_Process_Filesystem);
-									break;
-								}
-								case EDR::EventLog::Enum::ObRegisterCallback:
-								{
-									LogSize = sizeof(EDR::EventLog::Struct::ObRegisterCallback::EventLog_Process_ObRegisterCallback);
-									break;
-								}
-								case EDR::EventLog::Enum::Registry_CompleteNameLog:
-								{
-									LogSize = sizeof(EDR::EventLog::Struct::Registry::EventLog_Process_Registry_CompleteorObjectNameLog);
-									break;
-								}
-								case EDR::EventLog::Enum::Registry_OldNewLog:
-								{
-									LogSize = sizeof(EDR::EventLog::Struct::Registry::EventLog_Process_Registry_OldNewNameLog);
-									break;
-								}
-								case EDR::EventLog::Enum::apicall:
-								{
-									LogSize = sizeof(EDR::EventLog::Struct::ApiCall::EventLog_ApiCall);
-									break;
-								}
-								default:
-								{
-									std::cout << "이해할 수 없는 로그" << std::endl;
-									break;
-								}
-
+								Sleep(10);
+								continue;
 							}
 
+							SIZE_T MaxSize = out_BinarySize;
+							PUCHAR StartAddress = (PUCHAR)out_UserAllocatedFileBinaryAddress;
 
-							if (LogSize)
-							{
-								log_s logStruct;
-								logStruct.Type = header->Type;
-								logStruct.logData = new unsigned char[LogSize];
-								memcpy(logStruct.logData, log, LogSize);
-								logStruct.logSize = LogSize;
 
-								queue->put(logStruct); // 큐로 데이터 전송
-							}
-							
+							log_s logStruct;
+							logStruct.LogDataType = EDR::EventLog::Enum::LengthBased;
+							logStruct.Type = (EDR::EventLog::Enum::EventLog_Enum)0; // 사용X 
+							logStruct.logData = StartAddress;// new unsigned char[MaxSize];
+							//memcpy(logStruct.logData, StartAddress, MaxSize);
+							logStruct.logSize = MaxSize;
 
-							VirtualFree(log, 0, MEM_RELEASE);
+							queue->put(logStruct);
+
+							//DebugBreak();
+							//VirtualFree(StartAddress, 0, MEM_RELEASE);
+
+							continue;
+						}
+						catch (const std::exception&)
+						{
+							std::cout << "[ERROR] KernelDataReceive Thread" << std::endl;
+							continue;
 						}
 
-						VirtualFree(out_UserAllocatedFileBinaryAddress, 0, MEM_RELEASE);
-
-						Sleep(1000);
 					}
 				}
 			);
@@ -154,7 +102,7 @@ namespace EDR
 
 			
 			
-			
+#define LogClosingEND "_____END"
 			// 3. 로그 처리 스레드
 			RecieveQueueThread = std::thread(
 				[this, test = &ioctl, is_threading = &is_threading, queue = &this->Queue]()
@@ -162,8 +110,903 @@ namespace EDR
 					while (*is_threading)
 					{
 						auto Log = queue->get();
+
+						auto LogDataType = Log.LogDataType;
+						auto Type = Log.Type;
+						auto LogData = Log.logData;
+						auto LogDataSize = Log.logSize;
+
 						
+						if (LogDataType == EDR::EventLog::Enum::EventLog_LogData_Type::LengthBased)
+						{
+
+							try
+							{
+								SIZE_T currentOffset = 0;
+								while (currentOffset < LogDataSize)
+								{
+									PUCHAR eventPtr = LogData + currentOffset;
+
+									if (currentOffset + sizeof(SIZE_T) > LogDataSize)
+										break;
+
+									SIZE_T eventStart = currentOffset;
+
+									// LogType 구하기
+									auto LogType = *reinterpret_cast<const EDR::EventLog::Enum::EventLog_Enum*>(eventPtr); // 8byte to 4byte
+
+									// Parameter담을 벡터 (Varient)
+									std::vector<
+										std::variant<
+										ULONG64, ULONG32, BOOLEAN, HANDLE, std::string
+										>
+									>Parameters;
+
+									// goNext
+									currentOffset += sizeof(SIZE_T);
+
+									// Parameter 들 구하기 ( _____END 찾을 떄까지 ) 
+									ULONG32 index = 0;
+									while (true)
+									{
+										if (currentOffset + 8 <= LogDataSize &&
+											RtlCompareMemory(LogData + currentOffset, LogClosingEND, 8) == 8)
+										{
+											// 이벤트 끝
+											currentOffset += 8;  // end string skip
+											break;
+										}
+
+										//
+										// 데이터 길이 읽기(Size)
+										//
+										if (currentOffset + sizeof(SIZE_T) > LogDataSize)
+											goto END_PARSE;
+
+										SIZE_T dataSize = *(SIZE_T*)(LogData + currentOffset);
+										currentOffset += sizeof(SIZE_T);
+
+										//
+										// 실제 데이터 스킵
+										//
+										if (currentOffset + dataSize > LogDataSize)
+											goto END_PARSE;
+
+										PUCHAR dataPtr = LogData + currentOffset; // RealData
+
+
+										//데이터 삽입
+
+
+
+
+									// [ 공통 ]
+
+										if (index == 0)
+											Parameters.push_back(*(HANDLE*)dataPtr);					// 1. PROCESS ID
+
+										else if (index == 1)
+											Parameters.push_back(*(ULONG64*)dataPtr);					// 2. NanoTimestamp
+
+										else
+										{
+											// [ Event별 ]
+
+											switch (LogType)
+											{
+											case EDR::EventLog::Enum::EventLog_Enum::Process_Create:
+											{
+												switch (index)
+												{
+												case 2:
+												{
+													Parameters.push_back(*(HANDLE*)dataPtr);			// 3. PARENT PROCESS ID
+													break;
+												}
+												case 3:
+												{
+													auto CommandLine = PwchToString((PWCH)dataPtr);
+													Parameters.push_back(CommandLine);					// 4. CommandLine
+													break;
+												}
+												case 4:
+												{
+													auto SID = PwchToString((PWCH)dataPtr);
+													Parameters.push_back(SID);							// 5. SID
+													break;
+												}
+												case 5:
+												{
+													auto ImagePath = PwchToString((PWCH)dataPtr);
+													Parameters.push_back(ImagePath);					// 6. ImagePath
+													break;
+												}
+												case 6:
+												{
+													Parameters.push_back(*(ULONG64*)dataPtr);			// 7. ImageSize
+													break;
+												}
+												case 7:
+												{
+													auto ImageSHA256 = std::string((PCHAR)dataPtr);
+													Parameters.push_back(ImageSHA256);					// 8. ImageSha256
+													break;
+												}
+												case 8:
+												{
+													auto ImagePath = PwchToString((PWCH)dataPtr);
+													Parameters.push_back(ImagePath);					// 9. ParentImagePath
+													break;
+												}
+												case 9:
+												{
+													Parameters.push_back(*(ULONG64*)dataPtr);			// 10. ParentImageSize
+													break;
+												}
+												case 10:
+												{
+													auto ImageSHA256 = std::string((PCHAR)dataPtr);
+													Parameters.push_back(ImageSHA256);					// 11. ParentImageSha256
+
+													//std::cout << "ImagePath: " << std::get<std::string>(Parameters[5]) << " [Parent]ImageSHA256: " << ImageSHA256 << std::endl;
+
+
+
+
+													// Process Session Create
+													std::string root_SessionID;
+													std::string SessionID;
+													std::string parent_SessionID;
+
+													ProcessSessionManager.ProcessCreate(
+														std::get<HANDLE>(Parameters[0]),	// Self PID
+														std::get<HANDLE>(Parameters[2]),	// Parent PID
+														SessionID,
+														root_SessionID,
+														parent_SessionID
+													);
+													if (SessionID.empty())
+														break;
+													//std::cout << "std::get<std::string>(Parameters[4]): " << std::get<std::string>(Parameters[4]) << std::endl;
+													std::string Username;
+													EDR::Util::Windows::SID_to_Username(
+														std::get<std::string>(Parameters[4]),
+														Username
+													);
+
+													try
+													{
+														// Log to Kafka
+														WindowsLogSender.Send_Log_Process_Create(
+															SessionID,
+															root_SessionID,
+															parent_SessionID,
+															std::get<std::string>(Parameters[4]),
+															Username,
+															OS_VERSION,
+
+															std::get<HANDLE>(Parameters[0]),
+															std::get<std::string>(Parameters[5]),
+															std::get<ULONG64>(Parameters[6]),
+															std::get<std::string>(Parameters[7]),
+															std::get<HANDLE>(Parameters[2]),
+															std::get<std::string>(Parameters[8]),
+															std::get<ULONG64>(Parameters[9]),
+															std::get<std::string>(Parameters[10]),
+															std::get<std::string>(Parameters[3]),
+															std::get<ULONG64>(Parameters[1])
+														);
+													}
+													catch (const std::exception& e)
+													{
+														std::cout << "KAFKA ERROR:" << e.what() << std::endl;
+													}
+
+
+													break;
+												}
+
+
+												}
+												break;
+											}
+
+											case EDR::EventLog::Enum::EventLog_Enum::Process_Terminate:
+											{
+
+												switch (index)
+												{
+												case 2:
+												{
+													std::string root_SessionID;
+													std::string SessionID;
+													std::string parent_SessionID;
+
+													ProcessSessionManager.ProcessRemove(
+														std::get<HANDLE>(Parameters[0]),
+														SessionID,
+														root_SessionID,
+														parent_SessionID
+													);
+													if (SessionID.empty())
+														break;
+
+													// logSend
+													WindowsLogSender.Send_Log_Process_Remove(
+														SessionID,
+														root_SessionID,
+														parent_SessionID,
+														OS_VERSION,
+
+														std::get<HANDLE>(Parameters[0]),
+														std::get<ULONG64>(Parameters[1])
+													);
+													break;
+												}
+												}
+
+												break;
+											}
+
+											case EDR::EventLog::Enum::EventLog_Enum::ImageLoad:
+											{
+												switch (index)
+												{
+												case 2:
+												{
+													auto imagePath = PwchToString((PWCH)dataPtr);
+													Parameters.push_back(imagePath);					// 3. ImagePath
+													break;
+												}
+												case 3:
+												{
+													Parameters.push_back(*(ULONG64*)dataPtr);			// 4. ImageSize
+													break;
+												}
+												case 4:
+												{
+													auto ImageSha256 = std::string((PCHAR)dataPtr);
+													Parameters.push_back(ImageSha256);					// 5. ImageSha256
+
+													{
+														std::string root_SessionID;
+														std::string SessionID;
+														std::string parent_SessionID;
+
+														ProcessSessionManager.AppendingEvent(
+															std::get<HANDLE>(Parameters[0]),
+															SessionID,
+															root_SessionID,
+															parent_SessionID
+														);
+														if (SessionID.empty())
+															break;
+
+														// logSend
+														WindowsLogSender.Send_Log_ImageLoad(
+															SessionID,
+															root_SessionID,
+															parent_SessionID,
+
+															OS_VERSION,
+															std::get<HANDLE>(Parameters[0]),
+
+															std::get<std::string>(Parameters[2]),
+															std::get<ULONG64>(Parameters[3]),
+															std::get<std::string>(Parameters[4]),
+
+															std::get<ULONG64>(Parameters[1])
+														);
+													}
+													break;
+												}
+												}
+
+												break;
+											}
+
+											
+											case EDR::EventLog::Enum::EventLog_Enum::Network:
+											{
+												switch (index)
+												{
+												case 2:
+												{
+													Parameters.push_back(*(ULONG32*)dataPtr);		// 3. Protocol Number
+													break;
+												}
+												case 3:
+												{
+													Parameters.push_back(*(BOOLEAN*)dataPtr);		// 4. is_inbound?
+													break;
+												}
+												case 4:
+												{
+													Parameters.push_back(*(ULONG32*)dataPtr);		// 5. PacketSize
+													break;
+												}
+												case 5:
+												{
+													Parameters.push_back(*(ULONG32*)dataPtr);		// 6. NetworkInterfaceIndex
+													break;
+												}
+												case 6:
+												{
+													auto SourceMacAddress = std::string((PCHAR)dataPtr);
+													Parameters.push_back(SourceMacAddress);			// 7. SourceMacAddress
+													break;
+												}
+												case 7:
+												{
+													auto DestinationMacAddress = std::string((PCHAR)dataPtr);
+													Parameters.push_back(DestinationMacAddress);	// 8. DestinationMacAddress
+													break;
+												}
+												case 8:
+												{
+													auto LOCAL_IP = std::string((PCHAR)dataPtr);
+													Parameters.push_back(LOCAL_IP);					// 9. LOCAL_IP
+													break;
+												}
+												case 9:
+												{
+													Parameters.push_back(*(ULONG32*)dataPtr);				// 10. LOCAL_PORT
+													break;
+												}
+												case 10:
+												{
+													auto REMOTE_IP = std::string((PCHAR)dataPtr);
+													Parameters.push_back(REMOTE_IP);					// 11. REMOTE_IP
+													break;
+												}
+												case 11:
+												{
+													Parameters.push_back(*(ULONG32*)dataPtr);				// 12. REMOTE_PORT
+													break;
+												}
+												case 12:
+												{
+													PUCHAR PacketFrameBaseAddress = dataPtr;
+													ULONG32 PacketFrameSize = dataSize;
+													//Parameters.push_back(*(ULONG32*)dataPtr);				// 13. RealPacketFrame
+
+
+													std::string root_SessionID;
+													std::string SessionID;
+													std::string parent_SessionID;
+
+													// [ 프로세스 세션 ]
+													ProcessSessionManager.AppendingEvent(
+														std::get<HANDLE>(Parameters[0]),
+														SessionID,
+														root_SessionID,
+														parent_SessionID
+													);
+													if (SessionID.empty())
+														break;
+
+													// [ 네트워크 세션 ]
+													bool is_new_session = false;
+													EDR::Session::Network::NetworkSessionInfo Network_SessionINFO;
+													NetworkSessionManager.Get_NetworkSessionInfo(
+														std::get<ULONG32>(Parameters[2]),
+														std::get<std::string>(Parameters[8]),
+														std::get<ULONG32>(Parameters[9]),
+														std::get<std::string>(Parameters[10]),
+														std::get<ULONG32>(Parameters[11]),
+
+														Network_SessionINFO,
+														&is_new_session
+													);
+													if (!is_new_session)
+														// 로그 과부화 방지를 위해 최초 감지된 세션말고는 전송안함,
+														break;
+
+													Network_SessionINFO.SessionID;
+													Network_SessionINFO.first_seen_nanotimestamp;
+													Network_SessionINFO.last_seen_nanotimestamp;
+
+													//std::cout << NetworkLog->body.ProtocolNumber << " || " << (NetworkLog->body.is_INBOUND ? "In" : "out") << " || " << NetworkLog->body.PacketSize << "PacketNetworkSessionID:" << Network_SessionINFO.SessionID << std::endl;
+
+													// logSend
+													WindowsLogSender.Send_Log_Network(
+														SessionID,
+														root_SessionID,
+														parent_SessionID,
+
+														OS_VERSION,
+														std::get<HANDLE>(Parameters[0]),
+
+														std::get<ULONG32>(Parameters[5]),
+														std::get<std::string>(Parameters[6]),
+														std::get<std::string>(Parameters[7]),
+														std::get<std::string>(Parameters[8]),
+														std::get<ULONG32>(Parameters[9]),
+														std::get<std::string>(Parameters[10]),
+														std::get<ULONG32>(Parameters[11]),
+														std::get<BOOLEAN>(Parameters[3]),
+														std::get<ULONG32>(Parameters[4]),
+														ProtocolToString(std::get<ULONG32>(Parameters[2])),
+
+														std::get<ULONG64>(Parameters[1]),
+
+														Network_SessionINFO.SessionID,
+														Network_SessionINFO.first_seen_nanotimestamp,
+														Network_SessionINFO.last_seen_nanotimestamp
+													);
+
+													break;
+												}
+												}
+
+												break;
+											}
+
+											case EDR::EventLog::Enum::EventLog_Enum::Filesystem:
+											{
+												switch (index)
+												{
+												case 2:
+												{
+													std::string FileAction;
+													switch (*(EDR::EventLog::Enum::FileSystem::Filesystem_enum*)dataPtr)
+													{
+														case EDR::EventLog::Enum::FileSystem::open:
+															FileAction = "open";
+															break;
+														case EDR::EventLog::Enum::FileSystem::create:
+															FileAction = "create";
+															break;
+														case EDR::EventLog::Enum::FileSystem::overwritten:
+															FileAction = "overwritten";
+															break;
+														case EDR::EventLog::Enum::FileSystem::superseded:
+															FileAction = "superseded";
+															break;
+														case EDR::EventLog::Enum::FileSystem::exists:
+															FileAction = "exists";
+															break;
+														case EDR::EventLog::Enum::FileSystem::write:
+															FileAction = "write";
+															break;
+														case EDR::EventLog::Enum::FileSystem::read:
+															FileAction = "read";
+															break;
+														case EDR::EventLog::Enum::FileSystem::remove:
+															FileAction = "remove";
+															break;
+														case EDR::EventLog::Enum::FileSystem::rename:
+															FileAction = "rename";
+															break;
+														case EDR::EventLog::Enum::FileSystem::create_directory:
+															FileAction = "create_directory";
+															break;
+														case EDR::EventLog::Enum::FileSystem::remove_directory:
+															FileAction = "remove_directory";
+															break;
+														case EDR::EventLog::Enum::FileSystem::rename_directory:
+															FileAction = "rename_directory";
+															break;
+														default:
+															throw std::runtime_error("Filesystem error");
+													}
+
+
+													Parameters.push_back(FileAction);		// 3. File Action STRING
+													break;
+												}
+												case 3:
+												{
+													auto FilePath = PwchToString((PWCH)dataPtr);
+													Parameters.push_back(FilePath);			// 4. FilePath
+													break;
+												}
+												case 4:
+												{
+													auto RenameFilePath = PwchToString((PWCH)dataPtr);
+													if (RenameFilePath == "none") RenameFilePath = "";
+													Parameters.push_back(RenameFilePath);			// 5. Rename_FilePath
+													break;
+												}
+												case 5:
+												{
+													auto FileSha256 = std::string((PCHAR)dataPtr);
+													if (FileSha256 == "none") FileSha256 = "";
+													Parameters.push_back(FileSha256);				// 6. Sha256
+													break;
+												}
+												case 6:
+												{
+													Parameters.push_back( *(ULONG64*)dataPtr);		// 7. FileSize
+
+
+													std::string root_SessionID;
+													std::string SessionID;
+													std::string parent_SessionID;
+
+													ProcessSessionManager.AppendingEvent(
+														std::get<HANDLE>(Parameters[0]),
+														SessionID,
+														root_SessionID,
+														parent_SessionID
+													);
+													if (SessionID.empty())
+														break;
+
+													// LogSend
+													WindowsLogSender.Send_Log_FileSystem(
+														SessionID,
+														root_SessionID,
+														parent_SessionID,
+
+														OS_VERSION,
+														std::get<HANDLE>(Parameters[0]),
+
+														std::get<std::string>(Parameters[2]),
+														std::get<std::string>(Parameters[3]),
+														std::get<std::string>(Parameters[5]),
+														std::get<ULONG64>(Parameters[6]),
+														std::get<std::string>(Parameters[4]),
+
+														std::get<ULONG64>(Parameters[1])
+													);
+
+
+													break;
+												}
+
+
+												}
+												break;
+											}
+
+											case EDR::EventLog::Enum::ObRegisterCallback:
+											{
+												switch (index)
+												{
+												case 2:
+												{
+													Parameters.push_back(*(ULONG32*)dataPtr);				// 3. DesiredAccess 
+													break;
+												}
+												case 3:
+												{
+													Parameters.push_back(*(BOOLEAN*)dataPtr);				// 4. is_CreateHandle 
+													break;
+												}
+												case 4:
+												{
+													Parameters.push_back(*(HANDLE*)dataPtr);				// 5. TargetProcessId 
+
+													std::string root_SessionID;
+													std::string SessionID;
+													std::string parent_SessionID;
+
+													ProcessSessionManager.AppendingEvent(
+														std::get<HANDLE>(Parameters[0]),
+														SessionID,
+														root_SessionID,
+														parent_SessionID
+													);
+													if (SessionID.empty())
+														break;
+
+													std::vector<std::string> DesiredAccessVec;
+													auto Desired = std::get<ULONG32>(Parameters[2]);
+													if (Desired & PROCESS_ALL_ACCESS)
+														DesiredAccessVec.push_back("PROCESS_ALL_ACCESS");
+
+
+													#define PROCESS_SYNCHRONIZE                0x00100000
+													if (Desired & PROCESS_CREATE_PROCESS)
+														DesiredAccessVec.push_back("PROCESS_CREATE_PROCESS");
+													if (Desired & PROCESS_CREATE_THREAD)
+														DesiredAccessVec.push_back("PROCESS_CREATE_THREAD");
+													if (Desired & PROCESS_DUP_HANDLE)
+														DesiredAccessVec.push_back("PROCESS_DUP_HANDLE");
+													if (Desired & PROCESS_QUERY_INFORMATION)
+														DesiredAccessVec.push_back("PROCESS_QUERY_INFORMATION");
+													if (Desired & PROCESS_QUERY_LIMITED_INFORMATION)
+														DesiredAccessVec.push_back("PROCESS_QUERY_LIMITED_INFORMATION");
+													if (Desired & PROCESS_SET_INFORMATION)
+														DesiredAccessVec.push_back("PROCESS_SET_INFORMATION");
+													if (Desired & PROCESS_SET_QUOTA)
+														DesiredAccessVec.push_back("PROCESS_SET_QUOTA");
+													if (Desired & PROCESS_SUSPEND_RESUME)
+														DesiredAccessVec.push_back("PROCESS_SUSPEND_RESUME");
+													if (Desired & PROCESS_TERMINATE)
+														DesiredAccessVec.push_back("PROCESS_TERMINATE");
+													if (Desired & PROCESS_VM_OPERATION)
+														DesiredAccessVec.push_back("PROCESS_VM_OPERATION");
+													if (Desired & PROCESS_VM_READ)
+														DesiredAccessVec.push_back("PROCESS_VM_READ");
+													if (Desired & PROCESS_VM_WRITE)
+														DesiredAccessVec.push_back("PROCESS_VM_WRITE");
+													if (Desired & PROCESS_SET_LIMITED_INFORMATION)
+														DesiredAccessVec.push_back("PROCESS_SET_LIMITED_INFORMATION");
+													if (Desired & PROCESS_SYNCHRONIZE)
+														DesiredAccessVec.push_back("PROCESS_SYNCHRONIZE");
+
+													// 표준 권한
+													if (Desired & DELETE)
+														DesiredAccessVec.push_back("DELETE");
+													if (Desired & READ_CONTROL)
+														DesiredAccessVec.push_back("READ_CONTROL");
+													if (Desired & WRITE_DAC)
+														DesiredAccessVec.push_back("WRITE_DAC");
+													if (Desired & WRITE_OWNER)
+														DesiredAccessVec.push_back("WRITE_OWNER");
+
+													// Generic
+													if (Desired & GENERIC_READ)
+														DesiredAccessVec.push_back("GENERIC_READ");
+													if (Desired & GENERIC_WRITE)
+														DesiredAccessVec.push_back("GENERIC_WRITE");
+													if (Desired & GENERIC_EXECUTE)
+														DesiredAccessVec.push_back("GENERIC_EXECUTE");
+													if (Desired & GENERIC_ALL)
+														DesiredAccessVec.push_back("GENERIC_ALL");
+
+
+													WindowsLogSender.Send_Log_ProcessAccess(
+														SessionID,
+														root_SessionID,
+														parent_SessionID,
+
+														OS_VERSION,
+														std::get<HANDLE>(Parameters[0]),
+
+														std::get<BOOLEAN>(Parameters[3]) ? "create" : "duplicate",
+														std::get<HANDLE>(Parameters[4]),
+														DesiredAccessVec,
+
+														std::get<ULONG64>(Parameters[1])
+													);
+
+													break;
+												}
+												}
+												break;
+											}
+
+											case EDR::EventLog::Enum::Registry_CompleteNameLog:
+											{
+												switch (index)
+												{
+												case 2:
+												{
+													auto KeyClass = std::string((PCHAR)dataPtr);
+													Parameters.push_back(KeyClass);				// 3. KeyClass 
+													break;
+												}
+												case 3:
+												{
+													
+													auto CompleteName = PwchToString((PWCH)dataPtr);
+													if (CompleteName == "none") CompleteName = "";
+													Parameters.push_back(CompleteName);				// 4. CompleteName 
+
+
+													{
+														std::string root_SessionID;
+														std::string SessionID;
+														std::string parent_SessionID;
+
+														ProcessSessionManager.AppendingEvent(
+															std::get<HANDLE>(Parameters[0]),
+															SessionID,
+															root_SessionID,
+															parent_SessionID
+														);
+														if (SessionID.empty())
+															break;
+														WindowsLogSender.Send_Log_Registry(
+															SessionID,
+															root_SessionID,
+															parent_SessionID,
+
+															OS_VERSION,
+															std::get<HANDLE>(Parameters[0]),
+
+															std::get<std::string>(Parameters[2]),
+															std::get<std::string>(Parameters[3]),
+
+															std::get<ULONG64>(Parameters[1])
+														);
+														
+													}
+
+													break;
+												}
+												}
+												break;
+											}
+
+											case EDR::EventLog::Enum::Registry_OldNewLog:
+											{
+												switch (index)
+												{
+												case 2:
+												{
+													auto KeyClass = std::string((PCHAR)dataPtr);
+													Parameters.push_back(KeyClass);				// 3. KeyClass 
+													break;
+												}
+												case 3:
+												{
+													auto Name = PwchToString((PWCH)dataPtr);
+													if (Name == "none") Name = "";
+													Parameters.push_back(Name);				// 4. Name 
+													break;
+												}
+												case 4:
+												{
+													auto New = PwchToString((PWCH)dataPtr);
+													if (New == "none") New = "";
+													Parameters.push_back(New);				// 5. New 
+													break;
+												}
+												case 5:
+												{
+													auto Old = PwchToString((PWCH)dataPtr);
+													if (Old == "none") Old = "";
+													Parameters.push_back(Old);				// 6. Old 
+
+
+													{
+														std::string root_SessionID;
+														std::string SessionID;
+														std::string parent_SessionID;
+
+														ProcessSessionManager.AppendingEvent(
+															std::get<HANDLE>(Parameters[0]),
+															SessionID,
+															root_SessionID,
+															parent_SessionID
+														);
+														if (SessionID.empty())
+															break;
+
+														WindowsLogSender.Send_Log_Registry(
+															SessionID,
+															root_SessionID,
+															parent_SessionID,
+
+															OS_VERSION,
+															std::get<HANDLE>(Parameters[0]),
+
+															std::get<std::string>(Parameters[2]),
+															std::get<std::string>(Parameters[3]),
+															std::get<std::string>(Parameters[4]),
+															std::get<std::string>(Parameters[5]),
+
+															std::get<ULONG64>(Parameters[1])
+														);
+													}
+
+
+													break;
+												}
+												}
+												break;
+											}
+
+											}
+										}
+										
+
+
+										currentOffset += dataSize;
+										++index;
+									}
+
+								}
+							}
+							catch (const std::exception& e)
+							{
+								std::cout << "ERROR: " << e.what() << std::endl;
+							}
+							
+
+							
+						}
+						else if (LogDataType == EDR::EventLog::Enum::EventLog_LogData_Type::StructBased)
+						{
+
+							switch (Log.Type)
+							{
+								case EDR::EventLog::Enum::EventLog_Enum::etw:
+								{
+
+									EDR::EventLog::Struct::ETW::ETW_Log_Struct* ETWLog =
+										reinterpret_cast<EDR::EventLog::Struct::ETW::ETW_Log_Struct*>(Log.logData);
+
+									/*
+									std::cout << "===== ETW EVENT LOG =====" << std::endl;
+
+									
+
+									std::cout << "Provider Name : " << ETWLog->ProviderName << std::endl;
+									std::cout << "Event Name    : " << ETWLog->EventName << std::endl;
+									std::cout << "Event ID      : " << ETWLog->EventId << std::endl;
+									std::cout << "Event Version : " << ETWLog->EventVersion << std::endl;
+									std::cout << "Event Flags   : " << ETWLog->EventFlags << std::endl;
+									std::cout << "Process ID    : " << ETWLog->header.ProcessId << std::endl;
+									std::cout << "Timestamp(ns) : " << ETWLog->header.NanoTimestamp << std::endl;
+
+									std::cout << "Field Count   : " << ETWLog->field.FieldCount << std::endl;
+									*/
+
+									std::string fieldsJson;
+									for (unsigned long index = 0; index < ETWLog->field.FieldCount; index++)
+									{
+										const auto& field = ETWLog->field.Fields[index];
+
+										//std::cout << "  [Field " << index << "]" << std::endl;
+										//std::cout << "    Name  : " << field.FieldName << std::endl;
+										//std::cout << "    Value : " << field.FieldValue << std::endl;
+
+										// JSON 문자열에 추가
+										fieldsJson += fmt::format("\"{}\": \"{}\"", escape_json(field.FieldName), escape_json(field.FieldValue));
+										if (index < ETWLog->field.FieldCount - 1)
+											fieldsJson += ", ";
+									}
+
+									//std::cout << "==========================" << std::endl;
+
+
+
+									std::string root_SessionID;
+									std::string SessionID;
+									std::string parent_SessionID;
+									ProcessSessionManager.AppendingEvent(
+										ETWLog->header.ProcessId,
+										SessionID,
+										root_SessionID,
+										parent_SessionID
+									);
+									if (SessionID.empty())
+										break;
+
+									//std::cout << "Process ID    : " << ETWLog->header.ProcessId << std::endl;
+
+									WindowsLogSender.Send_Log_ETW(
+										SessionID,
+										root_SessionID,
+										parent_SessionID,
+
+										ETWLog->header.ProcessId,
+
+										ETWLog->ProviderName,
+										ETWLog->EventName,
+										ETWLog->EventVersion,
+										ETWLog->EventId,
+										ETWLog->EventFlags,
+
+										fieldsJson,
+
+										ETWLog->header.NanoTimestamp
+
+									);
+								}
+								default:
+								{
+									break;
+								}
+							}
+							
+						}
 						
+
+					END_PARSE:
+						{
+							if (LogDataType == EDR::EventLog::Enum::EventLog_LogData_Type::LengthBased)
+								VirtualFree(Log.logData, 0, MEM_RELEASE);
+							else
+								delete[] Log.logData;
+						}
+						
+						/*
 						switch (Log.Type)
 						{
 						case EDR::EventLog::Enum::Process_Create:
@@ -310,6 +1153,7 @@ namespace EDR
 								break;
 
 							// [ 네트워크 세션 ]
+							bool is_new_session = false;
 							EDR::Session::Network::NetworkSessionInfo Network_SessionINFO;
 							NetworkSessionManager.Get_NetworkSessionInfo(
 								NetworkLog->body.ProtocolNumber,
@@ -318,8 +1162,13 @@ namespace EDR
 								NetworkLog->body.REMOTE_IP,
 								NetworkLog->body.REMOTE_PORT,
 
-								Network_SessionINFO
+								Network_SessionINFO,
+								& is_new_session
 							);
+							if (!is_new_session)
+								// 로그 과부화 방지를 위해 최초 감지된 세션말고는 전송안함,
+								break;
+
 							Network_SessionINFO.SessionID;
 							Network_SessionINFO.first_seen_nanotimestamp;
 							Network_SessionINFO.last_seen_nanotimestamp;
@@ -643,7 +1492,7 @@ namespace EDR
 							std::cout << "Process ID    : " << ETWLog->header.ProcessId << std::endl;
 							std::cout << "Timestamp(ns) : " << ETWLog->header.NanoTimestamp << std::endl;
 
-							std::cout << "Field Count   : " << ETWLog->field.FieldCount << std::endl;*/
+							std::cout << "Field Count   : " << ETWLog->field.FieldCount << std::endl;
 							
 							EDR::EventLog::Struct::ETW::ETW_Log_Struct* ETWLog =
 								reinterpret_cast<EDR::EventLog::Struct::ETW::ETW_Log_Struct*>(Log.logData);
@@ -666,7 +1515,7 @@ namespace EDR
 
 							//std::cout << "==========================" << std::endl;
 
-							std::cout << "Process ID    : " << ETWLog->header.ProcessId << std::endl;
+							
 
 							std::string root_SessionID;
 							std::string SessionID;
@@ -680,7 +1529,7 @@ namespace EDR
 							if (SessionID.empty())
 								break;
 
-
+							//std::cout << "Process ID    : " << ETWLog->header.ProcessId << std::endl;
 
 							WindowsLogSender.Send_Log_ETW(
 								SessionID,
@@ -708,12 +1557,11 @@ namespace EDR
 							//std::cout << "이해할 수 없는 로그" << std::endl;
 							break;
 						}
-						}
+						}*/
 						
-						delete[] Log.logData;
+						
 					}
 
-					Sleep(2111);
 					// queue clean
 					while (queue->empty() == false)
 					{
@@ -861,4 +1709,43 @@ std::string ProtocolToString(int protocol) {
 	case 255: return "reserved";
 	default:  return "unknown";
 	}
+}
+
+
+std::string PwchToString(PWCH pwch)
+{
+	if (!pwch)
+		return "";
+
+	// 먼저 필요한 버퍼 크기 계산
+	int size_needed = WideCharToMultiByte(
+		CP_UTF8,            // UTF-8로 변환
+		0,                  // 변환 옵션
+		pwch,               // 입력 WCHAR*
+		-1,                 // null-terminated
+		nullptr,            // 출력 버퍼 없음
+		0,                  // 출력 버퍼 크기
+		nullptr, nullptr    // 기본 문자 사용 X
+	);
+
+	if (size_needed <= 0)
+		return "";
+
+	std::string result(size_needed, 0);
+	WideCharToMultiByte(
+		CP_UTF8,
+		0,
+		pwch,
+		-1,
+		&result[0],
+		size_needed,
+		nullptr, nullptr
+	);
+
+	// WideCharToMultiByte는 null 문자까지 포함하므로 마지막 null 제거
+	if (!result.empty() && result.back() == '\0') {
+		result.pop_back();
+	}
+
+	return result;
 }

@@ -16,6 +16,7 @@ struct IOCTL_INIT_s
 
 	struct
 	{
+		CHAR OSVERSION[1029];
 		BOOLEAN is_success;
 	}output;
 };

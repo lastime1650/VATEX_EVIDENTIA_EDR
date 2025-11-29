@@ -79,6 +79,8 @@ namespace EDR
 			{
 				if (!Irp || !pDeviceObject) return STATUS_UNSUCCESSFUL;
 
+				HANDLE Requester_pid = PsGetCurrentProcessId(); // ¿äÃ»ÇÑ PID
+
 				NTSTATUS status = STATUS_SUCCESS;
 				PIO_STACK_LOCATION irpSp = IoGetCurrentIrpStackLocation(Irp); // Request Information
 
@@ -92,6 +94,8 @@ namespace EDR
 						if (!parameter) break;
 
 						parameter->output.is_success = IOCTL_PROCESSING::INITIALIZE(parameter);
+						
+						EDR::Util::SysVersion::GetSysVersion(parameter->output.OSVERSION, sizeof(parameter->output.OSVERSION) );
 
 						IoStatusInformation = sizeof(struct IOCTL_INIT_s);
 						break;
@@ -102,7 +106,7 @@ namespace EDR
 						struct IOCTL_REQ_LOG_s* parameter = (struct IOCTL_REQ_LOG_s*)Irp->AssociatedIrp.SystemBuffer;
 						if (!parameter) break;
 
-						parameter->output.is_success = IOCTL_PROCESSING::REQUEST_LOG(&parameter->output.BufferAddress, &parameter->output.BUfferSize);
+						parameter->output.is_success = IOCTL_PROCESSING::REQUEST_LOG(Requester_pid , &parameter->output.BufferAddress, &parameter->output.BUfferSize);
 
 						//debug_log("LOG REQ : %p , %llu", parameter->output.BufferAddress, parameter->output.BUfferSize);
 
@@ -286,9 +290,10 @@ namespace EDR
 				return is_complete_init;
 			}
 
-			BOOLEAN REQUEST_LOG(_Out_ PUCHAR* StartBUff, _Out_ ULONG64* SIze)
+			BOOLEAN REQUEST_LOG( _In_ HANDLE Requester_PID, _Out_ PUCHAR* StartBUff, _Out_ ULONG64* SIze)
 			{
-				return EDR::LogSender::resource::Consume::Consume(
+				return EDR::LogSender::resource::Consume::ConsumeV2(
+					Requester_PID,
 					(PVOID*)StartBUff, 
 					SIze
 				);

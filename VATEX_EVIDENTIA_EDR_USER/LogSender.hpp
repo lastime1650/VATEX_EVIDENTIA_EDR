@@ -15,89 +15,91 @@ namespace EDR
                 LogSender(EDR::Util::Kafka::Kafka& Kafka, std::string AgentID) : Kafka(Kafka), AgentID(AgentID) {}
                 ~LogSender() = default;
 
+                // 단순 로그 전송
+                void Send_Log(
+                    const json& log
+                );
+
                 // 프로세스 생성
                 void Send_Log_Process_Create(
 
-                    std::string SessionID,
-                    std::string root_SessionID,
-                    std::string parent_SessionID,
+                    const std::string& SessionID,
+                    const std::string& root_SessionID,
+                    const std::string& parent_SessionID,
 
-                    std::string SID,
-                    std::string Username,
-					std::string OsVersion,
+                    const std::string& SID,
+                    const std::string& Username,
+                    const std::string& OsVersion,
 
-                    HANDLE pid,
-                    std::string self_exe_path,
-                    ULONG64 self_exe_file_size,
-                    std::string self_exe_bin_sha256,
+                    const HANDLE& pid,
+                    const std::string& self_exe_path,
+                    const ULONG64& self_exe_file_size,
+                    const std::string& self_exe_bin_sha256,
 
-                    HANDLE ppid,
-                    std::string parent_exe_path,
-                    ULONG64 parent_exe_file_size,
-                    std::string parent_exe_bin_sha256,
+                    const HANDLE& ppid,
+                    const std::string& parent_exe_path,
+                    const ULONG64& parent_exe_file_size,
+                    const std::string& parent_exe_bin_sha256,
 
-                    std::string CommandLine,
+                    const std::string& CommandLine,
 
-					ULONG64 nano_timestamp
+                    const ULONG64& nano_timestamp
                 );
 
                 // 프로세스 제거
                 void Send_Log_Process_Remove(
 
-                    std::string SessionID,
-                    std::string root_SessionID,
-                    std::string parent_SessionID,
+                    const std::string& SessionID,
+                    const std::string& root_SessionID,
+                    const std::string& parent_SessionID,
 
-                    std::string OsVersion,
+                    const std::string& OsVersion,
 
-                    HANDLE pid,
+                    const HANDLE& pid,
 
-                    ULONG64 nano_timestamp
+                    const ULONG64& nano_timestamp
                 );
 
-                //네트워크
                 void Send_Log_Network(
+                    const std::string& SessionID,
+                    const std::string& root_SessionID,
+                    const std::string& parent_SessionID,
 
-                    std::string SessionID,
-                    std::string root_SessionID,
-                    std::string parent_SessionID,
+                    const std::string& OsVersion,
+                    const HANDLE pid,
+                    const ULONG32 interface_index,
+                    const std::string& macSrc,
+                    const std::string& macDest,
+                    const std::string& ipSrc,
+                    const ULONG32 portSrc,
+                    const std::string& ipDest,
+                    const ULONG32 portDest,
+                    const BOOLEAN is_INGRESS,
+                    const ULONG32 packetSize,
+                    const std::string& protocol,
+                    const ULONG64 nano_timestamp,
 
-                    std::string OsVersion,
-                    HANDLE pid,
-                    ULONG32 interface_index,
-                    std::string macSrc,
-                    std::string macDest,
-                    std::string ipSrc,
-                    ULONG32 portSrc,
-                    std::string ipDest,
-                    ULONG32 portDest,
-                    BOOLEAN is_INGRESS,
-                    ULONG32 packetSize,
-                    std::string protocol,
-                    ULONG64 nano_timestamp,
-
-                    std::string PacketSessionID,
-                    ULONG64 first_seen_nano_timestamp,
-                    ULONG64 last_seen_nano_timestamp
-
+                    const std::string& PacketSessionID,
+                    const ULONG64 first_seen_nano_timestamp,
+                    const ULONG64 last_seen_nano_timestamp
                 );
 
                 /*
                     파일시스템
                 */
                 void Send_Log_FileSystem(
+                    const std::string& SessionID,
+                    const std::string& root_SessionID,
+                    const std::string& parent_SessionID,
 
-                    std::string SessionID,
-                    std::string root_SessionID,
-                    std::string parent_SessionID,
-
-                    std::string OsVersion,
-                    HANDLE pid,
-                    std::string Action,
-                    std::string FilePath,
-                    std::string FileSHA256, // Optional
-                    ULONG64 filesize,
-                    ULONG64 nano_timestamp
+                    const std::string& OsVersion,
+                    const HANDLE pid,
+                    const std::string& Action,
+                    const std::string& FilePath,
+                    const std::string& FileSHA256, // Optional
+                    const ULONG64 filesize,
+                    const std::string& filerename,
+                    const ULONG64 nano_timestamp
                 );
 
                 /*
@@ -105,16 +107,16 @@ namespace EDR
                 */
                 void Send_Log_ImageLoad(
 
-                    std::string SessionID,
-                    std::string root_SessionID,
-                    std::string parent_SessionID,
+                    const std::string& SessionID,
+                    const std::string& root_SessionID,
+                    const std::string& parent_SessionID,
 
-                    std::string OsVersion,
-                    HANDLE pid,
-                    std::string FilePath,
-                    ULONG64 filesize,
-					std::string file_sha256,
-                    ULONG64 nano_timestamp
+                    const std::string& OsVersion,
+                    const HANDLE& pid,
+                    const std::string& FilePath,
+                    const ULONG64& filesize,
+                    const std::string& file_sha256,
+                    const ULONG64& nano_timestamp
                 );
                 
                 /*
@@ -122,18 +124,18 @@ namespace EDR
                 */
                 void Send_Log_ProcessAccess(
 
-                    std::string SessionID,
-                    std::string root_SessionID,
-                    std::string parent_SessionID,
+                    const std::string& SessionID,
+                    const std::string& root_SessionID,
+                    const std::string& parent_SessionID,
 
-                    std::string OsVersion,
-                    HANDLE pid,
+                    const std::string& OsVersion,
+                    const HANDLE& pid,
 
-                    std::string CreateHandle,
-                    HANDLE Target_ProcessId,
-                    std::string TargetProcess_Path,
-                    std::vector < std::string >& DesiredAccess,
-                    ULONG64 nano_timestamp
+                    const std::string& CreateHandle,
+                    const HANDLE& Target_ProcessId,
+
+                    const std::vector < std::string >& DesiredAccess,
+                    const ULONG64& nano_timestamp
                 );
 
                 /*

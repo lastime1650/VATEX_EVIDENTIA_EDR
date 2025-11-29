@@ -3308,6 +3308,7 @@ namespace EDR
 							}
 
 							EDR::LogReceiver::log_s logStruct;
+							logStruct.LogDataType = EDR::EventLog::Enum::StructBased;
 							logStruct.Type = EDR::EventLog::Enum::etw;
 							logStruct.logData = (unsigned char*)ELS;
 							logStruct.logSize = sizeof(EDR::EventLog::Struct::ETW::ETW_Log_Struct);

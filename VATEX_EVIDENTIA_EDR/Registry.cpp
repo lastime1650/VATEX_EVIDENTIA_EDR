@@ -172,7 +172,17 @@ namespace EDR
                     {
                         PREG_QUERY_KEY_INFORMATION pInfo = (PREG_QUERY_KEY_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
                         helper::SendRegistryEvent(
-                            "PreQueryKey",
+                            "RegNtPreQueryKey",
+                            ProcessId, Nano_Timestamp,
+                            pInfo->Object, nullptr, nullptr, nullptr, nullptr);
+                        break;
+                    }
+                    case RegNtPreDeleteKey:
+                    {
+                        
+                        PREG_DELETE_KEY_INFORMATION pInfo = (PREG_DELETE_KEY_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
+                        helper::SendRegistryEvent(
+                            "RegNtPreDeleteKey",
                             ProcessId, Nano_Timestamp,
                             pInfo->Object, nullptr, nullptr, nullptr, nullptr);
                         break;
@@ -294,14 +304,88 @@ namespace EDR
                             pInfo->Object, nullptr, nullptr, nullptr, nullptr);
                         break;
                     }
-                    case RegNtPostCreateKeyEx:
+                    case RegNtPreSetValueKey:
                     {
-                        PREG_POST_CREATE_KEY_INFORMATION pInfo = (PREG_POST_CREATE_KEY_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
-                        if (NT_SUCCESS(pInfo->Status) && pInfo->CompleteName)
-                            helper::SendRegistryEvent(
-                                "PostCreateKeyEx",
-                                ProcessId, Nano_Timestamp,
-                                nullptr, pInfo->CompleteName, nullptr, nullptr, nullptr);
+                        PREG_SET_VALUE_KEY_INFORMATION pInfo = (PREG_SET_VALUE_KEY_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
+                        helper::SendRegistryEvent(
+                            "RegNtPreSetValueKey",
+                            ProcessId, Nano_Timestamp,
+                            pInfo->Object, pInfo->ValueName, nullptr, nullptr, nullptr);
+                        break;
+                    }
+                    case RegNtPreDeleteValueKey:
+                    {
+                        PREG_DELETE_VALUE_KEY_INFORMATION pInfo = (PREG_DELETE_VALUE_KEY_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
+                        helper::SendRegistryEvent(
+                            "RegNtPreDeleteValueKey",
+                            ProcessId, Nano_Timestamp,
+                            pInfo->Object, pInfo->ValueName, nullptr, nullptr, nullptr);
+                        break;
+                    }
+                    case RegNtPreSetInformationKey:
+                    {
+                        PREG_SET_INFORMATION_KEY_INFORMATION pInfo = (PREG_SET_INFORMATION_KEY_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
+                        helper::SendRegistryEvent(
+                            "RegNtPreSetInformationKey",
+                            ProcessId, Nano_Timestamp,
+                            pInfo->Object, nullptr, nullptr, nullptr, nullptr);
+                        break;
+                    }
+                    case RegNtPreRenameKey:
+                    {
+                        PREG_RENAME_KEY_INFORMATION pInfo = (PREG_RENAME_KEY_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
+                        helper::SendRegistryEvent(
+                            "RegNtPreRenameKey",
+                            ProcessId, Nano_Timestamp,
+                            pInfo->Object, nullptr, pInfo->NewName, nullptr, nullptr);
+                        break;
+                    }
+                    case RegNtPreEnumerateKey:
+                    {
+                        PREG_ENUMERATE_KEY_INFORMATION pInfo = (PREG_ENUMERATE_KEY_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
+                        helper::SendRegistryEvent(
+                            "RegNtPreEnumerateKey",
+                            ProcessId, Nano_Timestamp,
+                            pInfo->Object, nullptr, nullptr, nullptr, nullptr);
+                        break;
+                    }
+                    case RegNtPreEnumerateValueKey:
+                    {
+                        PREG_ENUMERATE_VALUE_KEY_INFORMATION pInfo = (PREG_ENUMERATE_VALUE_KEY_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
+                        helper::SendRegistryEvent(
+                            "RegNtPreEnumerateValueKey",
+                            ProcessId, Nano_Timestamp,
+                            pInfo->Object, nullptr, nullptr, nullptr, nullptr);
+                        break;
+                    }
+                    case RegNtPreCreateKey: // Ex 없는 버전
+                    {
+                        // RegNtPreCreateKeyEx와 동일한 구조체 REG_CREATE_KEY_INFORMATION 사용
+                        PREG_CREATE_KEY_INFORMATION pInfo = (PREG_CREATE_KEY_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
+                        helper::SendRegistryEvent(
+                            "RegNtPreCreateKey",
+                            ProcessId, Nano_Timestamp,
+                            nullptr, nullptr, pInfo->CompleteName, nullptr, nullptr);
+                        break;
+                    }
+                    case RegNtPreOpenKey: // Ex 없는 버전
+                    {
+                        // REG_OPEN_KEY_INFORMATION 구조체 사용
+                        PREG_OPEN_KEY_INFORMATION pInfo = (PREG_OPEN_KEY_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
+                        helper::SendRegistryEvent(
+                            "RegNtPreOpenKey",
+                            ProcessId, Nano_Timestamp,
+                            nullptr, nullptr, pInfo->CompleteName, nullptr, nullptr);
+                        break;
+                    }
+                    case RegNtPreOpenKeyEx:
+                    {
+                        // RegNtPreOpenKey와 동일한 구조체 REG_OPEN_KEY_INFORMATION 사용
+                        PREG_OPEN_KEY_INFORMATION pInfo = (PREG_OPEN_KEY_INFORMATION)KEY_INFORMATION_STRUCT_ADDRESS;
+                        helper::SendRegistryEvent(
+                            "RegNtPreOpenKeyEx",
+                            ProcessId, Nano_Timestamp,
+                            nullptr, nullptr, pInfo->CompleteName, nullptr, nullptr);
                         break;
                     }
                     /*

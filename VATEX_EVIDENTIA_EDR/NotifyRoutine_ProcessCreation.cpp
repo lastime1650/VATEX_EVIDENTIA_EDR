@@ -23,7 +23,6 @@ namespace EDR
 					if (!EDR::Util::Shared::USER_AGENT::ProcessId)
 						return;
 
-					PAGED_CODE();
 
 					ULONG64 NanoTimestamp = EDR::Util::Timestamp::Get_LocalTimestamp_Nano();
 
@@ -44,21 +43,6 @@ namespace EDR
 							CreateInfo->ParentProcessId,
 							CreateInfo->CommandLine
 						);
-
-						/*
-						// API Hook
-						HANDLE Thread = NULL;
-						PsCreateSystemThread(
-							&Thread,
-							THREAD_ALL_ACCESS,
-							NULL,
-							NULL,
-							NULL,
-							EDR::APIHooking::Handler::API_Hooking_HANDLER,
-							ProcessId
-						);
-						if (Thread)
-							ZwClose(Thread); // ¼º°ø ½Ã, Detach */
 					}
 					else
 					{

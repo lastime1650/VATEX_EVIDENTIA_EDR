@@ -10,6 +10,11 @@ namespace EDR
 	{
 		namespace Enum
 		{
+			enum EventLog_LogData_Type
+			{
+				LengthBased =1,
+				StructBased
+			};
 			enum EventLog_Enum
 			{
 				Process_Create = 1,
@@ -26,6 +31,9 @@ namespace EDR
 				ObRegisterCallback,
 
 				apicall,
+
+
+
 
 				etw
 

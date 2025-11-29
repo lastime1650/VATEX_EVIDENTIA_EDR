@@ -186,7 +186,14 @@ namespace EDR
 				return TRUE;
 			}
 
-			BOOLEAN Process_to_HASH(HANDLE ProcessId, CHAR* out_ImagePathNameBuffer, SIZE_T in_ImagePathNameBufferSIze, SIZE_T* out_ImageFileSize, CHAR* out_SHA256Buffer, SIZE_T SHA256BufferSize)
+			void Process_to_HASH_Release(PWCH ImagePathNameBuffer, PCHAR ImageSHA256Buffer)
+			{
+				if(ImagePathNameBuffer)
+					ExFreePoolWithTag(ImagePathNameBuffer, 'Help');
+				if (ImageSHA256Buffer)
+					ExFreePoolWithTag(ImageSHA256Buffer, 'Help');
+			}
+			BOOLEAN Process_to_HASH(HANDLE ProcessId, PWCH* out_ImagePathNameBuffer, ULONG32* out_ImagePathMaxLen, SIZE_T* out_ImageFileSize, PCHAR* out_SHA256Buffer, ULONG32* out_SHA256Size)
 			{
 				// 1. 프로세스 핸들 얻기
 				HANDLE ProcessHandle = NULL;
@@ -204,20 +211,38 @@ namespace EDR
 				}
 
 				// 3. 프로세스 이미지 해시와 파일크기 얻기
+				*out_SHA256Size = SHA256_String_Byte_Length;
+				*out_SHA256Buffer = (PCHAR)ExAllocatePool2(POOL_FLAG_NON_PAGED, SHA256_String_Byte_Length, 'Help');
+				if (!*out_SHA256Buffer)
+				{
+					EDR::Util::Process::Handle::ReleaseLookupProcessHandlebyProcessId(ProcessHandle);
+					return FALSE;
+				}
+
 				if (!FilePath_to_HASH(
 					Process_ImagePath,
 					out_ImageFileSize,
-					out_SHA256Buffer,
-					SHA256BufferSize
+					*out_SHA256Buffer,
+					*out_SHA256Size
 				))
 				{
+					ExFreePoolWithTag(*out_SHA256Buffer, 'Help');
 					EDR::Util::Process::ImagePath::ReleaseLookupProcessAbsoluteImagePathbyProcessHandle(Process_ImagePath);
 					EDR::Util::Process::Handle::ReleaseLookupProcessHandlebyProcessId(ProcessHandle);
 					return FALSE;
 				}
 
 				// Final
-				UNICODE_to_CHAR(Process_ImagePath, out_ImagePathNameBuffer, in_ImagePathNameBufferSIze);
+				*out_ImagePathNameBuffer = (PWCH)ExAllocatePool2(POOL_FLAG_NON_PAGED, Process_ImagePath->MaximumLength, 'Help');
+				if (!*out_ImagePathNameBuffer)
+				{
+					ExFreePoolWithTag(*out_SHA256Buffer, 'Help');
+					EDR::Util::Process::ImagePath::ReleaseLookupProcessAbsoluteImagePathbyProcessHandle(Process_ImagePath);
+					EDR::Util::Process::Handle::ReleaseLookupProcessHandlebyProcessId(ProcessHandle);
+					return FALSE;
+				}
+				RtlCopyMemory((PUCHAR)*out_ImagePathNameBuffer, (PUCHAR)Process_ImagePath->Buffer, Process_ImagePath->MaximumLength);
+				*out_ImagePathMaxLen = Process_ImagePath->MaximumLength;
 
 				EDR::Util::Process::ImagePath::ReleaseLookupProcessAbsoluteImagePathbyProcessHandle(Process_ImagePath);
 				EDR::Util::Process::Handle::ReleaseLookupProcessHandlebyProcessId(ProcessHandle);
@@ -265,7 +290,15 @@ namespace EDR
 				return TRUE;
 			}
 
-			BOOLEAN SID_to_CHAR(HANDLE ProcessId, CHAR* Buffer, SIZE_T BUfferSIze)
+			void Release_SID(PWCH Buffer)
+			{
+				if (Buffer)
+					ExFreePoolWithTag(
+						Buffer,
+						'SID_'
+					);
+			}
+			BOOLEAN Get_SID(HANDLE ProcessId, PWCH* Buffer, SIZE_T* BUfferSIze)
 			{
 				/*
 								SID 추출
@@ -278,12 +311,25 @@ namespace EDR
 				if (!NT_SUCCESS(status))
 					return FALSE;
 
-				// Unicode -> Char
-				if (!UNICODE_to_CHAR(&sid, Buffer, BUfferSIze))
+
+				*Buffer = (PWCH)ExAllocatePool2(POOL_FLAG_NON_PAGED, sid.MaximumLength, 'SID_');
+				if (!*Buffer)
 				{
 					EDR::Util::Account::SID::Release_PROCESS_SID(&sid);
 					return FALSE;
 				}
+				RtlCopyMemory(
+					*Buffer,
+					sid.Buffer,
+					sid.MaximumLength
+				);
+				*BUfferSIze = sid.MaximumLength;
+				/*// Unicode -> Char
+				if (!UNICODE_to_CHAR(&sid, Buffer, BUfferSIze))
+				{
+					EDR::Util::Account::SID::Release_PROCESS_SID(&sid);
+					return FALSE;
+				}*/
 
 				EDR::Util::Account::SID::Release_PROCESS_SID(&sid);
 

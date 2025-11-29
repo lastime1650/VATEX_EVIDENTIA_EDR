@@ -4,7 +4,7 @@ namespace EDR
 {
 	namespace IOCTL
 	{
-		BOOLEAN Log_IOCTL::INITIALIZE(HANDLE ProcessId)
+		BOOLEAN Log_IOCTL::INITIALIZE(HANDLE ProcessId, std::string& OSVERSION)
 		{
 			if (!ConnectIOCTL() || !hDevice)
 				return false;
@@ -23,6 +23,9 @@ namespace EDR
 				DisconnectIOCTL();
 				return false;
 			}
+
+
+			OSVERSION = std::string( init_req_data.output.OSVERSION );
 
 			return true;
 		}

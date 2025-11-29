@@ -87,6 +87,17 @@ namespace EDR
 			};
 			namespace Process
 			{
+				struct EventLog_Process_Create_for_KernelContext
+				{
+					struct EventLog_Header header;
+
+					HANDLE Parent_ProcessId;
+
+					PWCH CommandLine;
+					SIZE_T CommandLine_max_SIZE;
+
+				};
+
 				// Process_Create
 				struct EventLog_Process_Create
 				{
@@ -129,6 +140,13 @@ namespace EDR
 			
 			namespace ImageLoad
 			{
+
+				struct EventLog_ImageLoad_for_Kernel_Context
+				{
+					struct EventLog_Header header;
+					PWCH ImagePath;
+				};
+
 				// ImageLoad
 				struct EventLog_ImageLoad
 				{

@@ -44,6 +44,7 @@ namespace EDR
 				EDR::IOCTL::Log_IOCTL ioctl;
 
 				std::string AGENT_ID;
+				std::string OS_VERSION;
 				EDR::Util::Kafka::Kafka& kafka;
 
 				

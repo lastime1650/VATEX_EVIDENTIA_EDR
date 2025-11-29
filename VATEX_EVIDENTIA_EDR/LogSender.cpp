@@ -6,11 +6,20 @@ namespace EDR
 	{
 		ERESOURCE g_Resource;
 
+		PUCHAR CollapseProducedLogs_StartAddress = nullptr;
+		PUCHAR CollapseProducedLogs_CurrentAddress = nullptr;
+		SIZE_T CollapseProducedLogs_Size = 0;
+		FAST_MUTEX CollapseProduceLogs_Mtx;
+
 		BOOLEAN INITIALIZE()
 		{
 			PAGED_CODE();
 
 			LogPost::is_LogPostWorking = TRUE;
+
+			ExInitializeFastMutex(
+				&CollapseProduceLogs_Mtx
+			);
 
 			// 로그 큐 스레드 실행
 			HANDLE THREAD = NULL;
@@ -39,6 +48,8 @@ namespace EDR
 
 		namespace resource
 		{
+			
+
 			SLIST_HEADER g_ListHead;
 
 			namespace Produce
@@ -63,9 +74,137 @@ namespace EDR
 
 					return  TRUE;
 				}
+
+				BOOLEAN ProduceOnBatch(EDR::LogBuilder::PLOG_BUILDER_CTX context)
+				{
+					ExAcquireFastMutex(&CollapseProduceLogs_Mtx);
+
+					if (CollapseProducedLogs_StartAddress == nullptr)
+					{
+						// 처음부터..
+						CollapseProducedLogs_StartAddress = (PUCHAR)ExAllocatePool2(POOL_FLAG_PAGED, context->Size, 'Prod'); //context->Buffer;
+						RtlCopyMemory(CollapseProducedLogs_StartAddress, context->Buffer, context->Size);
+						CollapseProducedLogs_Size = context->Size;
+
+						CollapseProducedLogs_CurrentAddress = CollapseProducedLogs_StartAddress;
+					}
+					else
+					{
+						// 이어하기
+						// 기존 버퍼 뒤에 새로운 로그 데이터를 이어붙이기
+						SIZE_T NewSize = CollapseProducedLogs_Size + context->Size;
+
+						// 새로운 크기의 버퍼 할당
+						PUCHAR NewBuffer = (PUCHAR)ExAllocatePool2(POOL_FLAG_PAGED, NewSize, 'Prod');
+						if (!NewBuffer)
+						{
+							// 할당 실패 시 기존 버퍼 그대로 반환
+							ExReleaseFastMutex(&CollapseProduceLogs_Mtx);
+							return FALSE;
+						}
+
+						// 기존 데이터 복사
+						RtlCopyMemory(NewBuffer, CollapseProducedLogs_StartAddress, CollapseProducedLogs_Size);
+						// 새 로그 데이터 복사
+						RtlCopyMemory(NewBuffer + CollapseProducedLogs_Size, context->Buffer, context->Size);
+
+						// 기존 버퍼 해제
+						ExFreePoolWithTag(CollapseProducedLogs_StartAddress, 'Prod');
+
+						// 포인터와 크기 갱신
+						CollapseProducedLogs_StartAddress = NewBuffer;
+						CollapseProducedLogs_CurrentAddress = CollapseProducedLogs_StartAddress + CollapseProducedLogs_Size;
+						CollapseProducedLogs_Size = NewSize;
+					}
+
+					ExReleaseFastMutex(&CollapseProduceLogs_Mtx);
+					return TRUE;
+				}
 			}
 			namespace Consume
 			{
+				BOOLEAN ConsumeV2(_In_ HANDLE RequestProcessId, _Out_ PVOID* AllocatedUser, _Out_ ULONG64* Size)
+				{
+					//debug_break();
+
+					if (!AllocatedUser || !Size)
+						return FALSE;
+
+					HANDLE RequesterProcessHandle = NULL;
+					if (!NT_SUCCESS(EDR::Util::Process::Handle::LookupProcessHandlebyProcessId(RequestProcessId, &RequesterProcessHandle)))
+						return FALSE;
+
+					BOOLEAN ReturnBool = FALSE;
+
+					
+
+					PVOID AllocatedUserSpace = NULL;
+					SIZE_T AllocatedUserSpaceSize = CollapseProducedLogs_Size;
+					if (!AllocatedUserSpaceSize)
+					{
+						EDR::Util::Process::Handle::ReleaseLookupProcessHandlebyProcessId(RequesterProcessHandle);
+						return FALSE;
+					}
+					
+
+					// 유저공간에 할당
+					EDR::Util::UserSpace::Memory::AllocateMemory(
+						RequesterProcessHandle,
+						&AllocatedUserSpace,
+						&AllocatedUserSpaceSize
+					);
+					if (!AllocatedUserSpace)
+					{
+						EDR::Util::Process::Handle::ReleaseLookupProcessHandlebyProcessId(RequesterProcessHandle);
+						return FALSE;
+					}
+
+					ExAcquireFastMutex(&CollapseProduceLogs_Mtx);
+
+					if (!EDR::Util::UserSpace::Memory::Copy(RequestProcessId, AllocatedUserSpace, CollapseProducedLogs_StartAddress, CollapseProducedLogs_Size))
+					{
+						EDR::Util::UserSpace::Memory::FreeMemory(
+							RequesterProcessHandle,
+							AllocatedUserSpace,
+							AllocatedUserSpaceSize
+						);
+
+						*AllocatedUser = NULL;
+						*Size = 0;
+
+						goto IS_FAILED;
+					}
+
+
+
+					*AllocatedUser = AllocatedUserSpace;
+					*Size = CollapseProducedLogs_Size;
+
+
+					goto IS_SUCCESS;
+				IS_SUCCESS:
+					{
+						// 할당해제 [ Collaps ]
+						ExFreePoolWithTag(CollapseProducedLogs_StartAddress, 'Prod');
+						CollapseProducedLogs_StartAddress = nullptr;
+						CollapseProducedLogs_CurrentAddress = nullptr;
+
+						ReturnBool = TRUE;
+						goto RETURN;
+					}
+				IS_FAILED:
+					{
+						ReturnBool = FALSE;
+					}
+				RETURN:
+					{
+						ExReleaseFastMutex(&CollapseProduceLogs_Mtx);
+						EDR::Util::Process::Handle::ReleaseLookupProcessHandlebyProcessId(RequesterProcessHandle);
+						return ReturnBool;
+					}
+					
+					
+				}
 				BOOLEAN Consume(_Out_ PVOID* AllocatedUser, _Out_ ULONG64* Size)
 				{
 					if (!AllocatedUser || !Size)
@@ -215,42 +354,7 @@ namespace EDR
 
 		namespace LogPost
 		{
-			/*
-			namespace WorkItem_method
-			{
-				extern "C" VOID POST_Workitem_method(PVOID ctx)
-				{
-					
-
-					if (!ctx)
-						return;
-
-					PWORK_CONTEXT workitem_ctx = (PWORK_CONTEXT)ctx;
-					if (!workitem_ctx->LogEvent)
-					{
-						ExFreePoolWithTag(workitem_ctx, WorkItem_LogALLOC);
-						return;
-					}
-
-
-					HANDLE thread = NULL;
-					PsCreateSystemThread(
-						&thread,
-						THREAD_ALL_ACCESS,
-						NULL,
-						NULL,
-						NULL,
-						(PKSTART_ROUTINE)LogPost::SystemThread_method::POST_SystemThread_method,
-						workitem_ctx->LogEvent
-					);
-					if (thread)
-					{
-						ZwClose(thread); // Detach
-					}
-
-					ExFreePoolWithTag(workitem_ctx, WorkItem_LogALLOC);
-				}
-			}*/
+			
 
 			BOOLEAN is_LogPostWorking = false;
 			SLIST_HEADER g_LogPostListHead;
@@ -339,309 +443,531 @@ namespace EDR
 							continue;
 						}
 
+						BOOLEAN IS_SUCCESS = FALSE;
 
-						NTSTATUS status = STATUS_UNSUCCESSFUL;
-						EDR::EventLog::Struct::EventLog_Header* logHeader = (EDR::EventLog::Struct::EventLog_Header*)CTX;
+						auto* Context = (EDR::LogBuilder::PLOG_BUILDER_CTX)CTX;
 
-						PVOID AllocatedUserSpace = NULL;
-						SIZE_T AllocatedUserSpaceSize = 0;
-						SIZE_T logSize = 0;
-
-						// APC타겟 유저(USER AGENT 프로세스) PID 유효체크
-						HANDLE UserAGENT_ProcessHandle = EDR::Util::Shared::USER_AGENT::ProcessHandle;
-						if (!UserAGENT_ProcessHandle)
-							goto CleanUp;
-						HANDLE UserAGENT_ProcessId = EDR::Util::Shared::USER_AGENT::ProcessId;
-						if (!UserAGENT_ProcessId)
-							goto CleanUp;
-
-
-
-						switch (logHeader->Type)
+						switch (Context->LogType)
 						{
-						case  EDR::EventLog::Enum::Filesystem:
-						{
-
-
-							EDR::EventLog::Struct::FileSystem::EventLog_Process_Filesystem* log = (EDR::EventLog::Struct::FileSystem::EventLog_Process_Filesystem*)CTX;
-							logSize = sizeof(EDR::EventLog::Struct::FileSystem::EventLog_Process_Filesystem);
-
-							EDR::Util::helper::CHAR_to_FILESIZE(
-								log->body.FilePath,
-								sizeof(log->body.FilePath),
-								&log->body.post.FileSize
-							);
-
-							AllocatedUserSpaceSize = logSize;
-							// User 공간 Allocate
-							EDR::Util::UserSpace::Memory::AllocateMemory(
-								UserAGENT_ProcessHandle,
-								&AllocatedUserSpace,
-								&AllocatedUserSpaceSize
-							);
-
-							if (!AllocatedUserSpace)
-								goto CleanUp;
-
-							break;
-						}
-						case EDR::EventLog::Enum::Network:
-						{
-							EDR::EventLog::Struct::Network::EventLog_Process_Network* log = (EDR::EventLog::Struct::Network::EventLog_Process_Network*)CTX;
-							logSize = sizeof(EDR::EventLog::Struct::Network::EventLog_Process_Network);
-
-
-							// ifindex -> InterfaceName(ansi)
-							EDR::Util::helper::GetInterfaceNameFromIndex_Ansi(
-								(ULONG)log->body.ifindex,
-								log->body.post.InterfaceName,
-								sizeof(log->body.post.InterfaceName)
-							);
-
-
-							AllocatedUserSpaceSize = logSize;
-							// User 공간 Allocate
-							EDR::Util::UserSpace::Memory::AllocateMemory(
-								UserAGENT_ProcessHandle,
-								&AllocatedUserSpace,
-								&AllocatedUserSpaceSize
-							);
-
-							if (!AllocatedUserSpace)
-								goto CleanUp;
-
-							break;
-						}
-						case EDR::EventLog::Enum::Process_Terminate:
-						{
-							logSize = sizeof(EDR::EventLog::Struct::Process::EventLog_Process_Terminate);
-							AllocatedUserSpaceSize = logSize;
-							// User 공간 Allocate
-							EDR::Util::UserSpace::Memory::AllocateMemory(
-								UserAGENT_ProcessHandle,
-								&AllocatedUserSpace,
-								&AllocatedUserSpaceSize
-							);
-
-							if (!AllocatedUserSpace)
-								goto CleanUp;
-							break;
-						}
-						case EDR::EventLog::Enum::ImageLoad:
-						{
-							EDR::EventLog::Struct::ImageLoad::EventLog_ImageLoad* log = (EDR::EventLog::Struct::ImageLoad::EventLog_ImageLoad*)CTX;
-							logSize = sizeof(EDR::EventLog::Struct::ImageLoad::EventLog_ImageLoad);
-
-							UNICODE_STRING ImagePath;
-							EDR::Util::String::Ansi2Unicode::ANSI_to_UnicodeString((PCHAR)log->body.ImagePathAnsi, (ULONG32)(strlen(log->body.ImagePathAnsi) + 1), &ImagePath);
-
-							EDR::Util::helper::FilePath_to_HASH(
-								&ImagePath,
-								&log->body.post.Parent_Process_exe_size,
-								log->body.post.Parent_Process_exe_SHA256,
-								sizeof(log->body.post.Parent_Process_exe_SHA256)
-							);
-
-							EDR::Util::String::Ansi2Unicode::Release_ANSI_to_UnicodeString(&ImagePath);
-
-
-							AllocatedUserSpaceSize = logSize;
-							// User 공간 Allocate
-							EDR::Util::UserSpace::Memory::AllocateMemory(
-								UserAGENT_ProcessHandle,
-								&AllocatedUserSpace,
-								&AllocatedUserSpaceSize
-							);
-
-							if (!AllocatedUserSpace)
-								goto CleanUp;
-
-							break;
-						}
 						case EDR::EventLog::Enum::Process_Create:
 						{
-							EDR::EventLog::Struct::Process::EventLog_Process_Create* log = (EDR::EventLog::Struct::Process::EventLog_Process_Create*)CTX;
-							logSize = sizeof(EDR::EventLog::Struct::Process::EventLog_Process_Create);
+							{
+								// Processid 가져오기
+								PUCHAR ProcessId_ptr = nullptr;
+								PUCHAR Parent_ProcessId_ptr = nullptr;
+								SIZE_T Got_SIze;
+								
 
-							/*
-								SID 추출
-							*/
-							if (!EDR::Util::helper::SID_to_CHAR(log->header.ProcessId, (PCHAR)log->body.post.SID, sizeof(log->body.post.SID)))
-								goto CleanUp;
+								if (!EDR::LogBuilder::helper::GetDataByIndex(	// 자신 Processid 가져오기
+									Context,
+									0,
+									&ProcessId_ptr,
+									&Got_SIze
+								))
+									goto CleanUp;
 
-							/*
-								Self 프로세스 이미지경로/파일사이즈/해시값 경로구하기
-							*/
-							EDR::Util::helper::Process_to_HASH(
-								log->header.ProcessId,
+								if (!EDR::LogBuilder::helper::GetDataByIndex(	// ParentProcessId가져오기
+									Context,
+									2,
+									&Parent_ProcessId_ptr,
+									&Got_SIze
+								))
+									goto CleanUp;
 
-								// Self Process EXE ImagePath
-								log->body.post.Self_Process_exe_path,
-								sizeof(log->body.post.Self_Process_exe_path),
+								
+								*(HANDLE*)ProcessId_ptr;
+								*(HANDLE*)Parent_ProcessId_ptr;
 
-								// Self Process EXE ImageSize
-								&log->body.post.Self_Process_exe_size,
+								{
+									// File Hashing
+									PWCH ImagePathNameBuffer = nullptr;
+									ULONG32 ImagePathNameBufferMaxLen = 0;
+									SIZE_T ImageSize = 0;
+									PCHAR ImageSha256Buffer = nullptr;
+									ULONG32 ImageSha256Size = 0;
 
-								// Self Process EXE SHA256
-								log->body.post.Self_Process_exe_SHA256,
-								sizeof(log->body.post.Self_Process_exe_SHA256)
-							);
+									PWCH Parent_ImagePathNameBuffer = nullptr;
+									ULONG32 Parent_ImagePathNameBufferMaxLen = 0;
+									SIZE_T Parent_ImageSize = 0;
+									PCHAR Parent_ImageSha256Buffer = nullptr;
+									ULONG32 Parent_ImageSha256Size = 0;
 
-							/*
-								Parent 프로세스 이미지경로/파일사이즈/해시값 경로구하기
-							*/
-							EDR::Util::helper::Process_to_HASH(
-								log->body.Parent_ProcessId,
 
-								// Parent Process EXE ImagePath
-								log->body.post.Parent_Process_exe_path,
-								sizeof(log->body.post.Parent_Process_exe_path),
+									if( !EDR::Util::helper::Process_to_HASH(
+										*(HANDLE*)ProcessId_ptr,
+										&ImagePathNameBuffer,
+										&ImagePathNameBufferMaxLen,
+										&ImageSize,
+										&ImageSha256Buffer,
+										&ImageSha256Size
+									) )
+										goto CleanUp;
 
-								// Parent Process EXE ImageSize
-								&log->body.post.Parent_Process_exe_size,
+									if (!EDR::Util::helper::Process_to_HASH(
+										*(HANDLE*)Parent_ProcessId_ptr,
+										&Parent_ImagePathNameBuffer,
+										&Parent_ImagePathNameBufferMaxLen,
+										&Parent_ImageSize,
+										&Parent_ImageSha256Buffer,
+										&Parent_ImageSha256Size
+									))
+										goto CleanUp;
 
-								// Parent Process EXE SHA256
-								log->body.post.Parent_Process_exe_SHA256,
-								sizeof(log->body.post.Parent_Process_exe_SHA256)
-							);
+									PWCH SID_Buff;
+									SIZE_T SID_Buff_Size;
+									if (!EDR::Util::helper::Get_SID(*(HANDLE*)ProcessId_ptr, &SID_Buff, &SID_Buff_Size))
+										goto CleanUp;
 
-							/*
-								Parent 프로세스 실행파일(1) 및 SHA256(2) 구하기
-							*/
+									{
+										// Append
+										// SID
+										EDR::LogBuilder::LogBuilder_Append(
+											Context,
+											(PUCHAR)SID_Buff,
+											SID_Buff_Size
+										);
+										
+										
+										// 1) 경로 , 2) 사이즈 , 3) 해시
 
-							AllocatedUserSpaceSize = logSize;
-							// User 공간 Allocate
-							EDR::Util::UserSpace::Memory::AllocateMemory(
-								UserAGENT_ProcessHandle,
-								&AllocatedUserSpace,
-								&AllocatedUserSpaceSize
-							);
+										// 자신 프로세스
+										EDR::LogBuilder::LogBuilder_Append(
+											Context,
+											(PUCHAR)ImagePathNameBuffer,
+											ImagePathNameBufferMaxLen
+										);
+										EDR::LogBuilder::LogBuilder_Append(
+											Context,
+											(PUCHAR)&ImageSize,
+											sizeof(ImageSize)
+										);
+										EDR::LogBuilder::LogBuilder_Append(
+											Context,
+											(PUCHAR)ImageSha256Buffer,
+											ImageSha256Size
+										);
 
-							if (!AllocatedUserSpace)
-								goto CleanUp;
+										// 부모 프로세스
+										EDR::LogBuilder::LogBuilder_Append(
+											Context,
+											(PUCHAR)Parent_ImagePathNameBuffer,
+											Parent_ImagePathNameBufferMaxLen
+										);
+										EDR::LogBuilder::LogBuilder_Append(
+											Context,
+											(PUCHAR)&Parent_ImageSize,
+											sizeof(Parent_ImageSize)
+										);
+										EDR::LogBuilder::LogBuilder_Append(
+											Context,
+											(PUCHAR)Parent_ImageSha256Buffer,
+											Parent_ImageSha256Size
+										);
+									}
 
+
+									EDR::Util::helper::Release_SID(SID_Buff);
+									EDR::Util::helper::Process_to_HASH_Release(ImagePathNameBuffer, ImageSha256Buffer);
+									EDR::Util::helper::Process_to_HASH_Release(Parent_ImagePathNameBuffer, Parent_ImageSha256Buffer);
+
+									IS_SUCCESS = TRUE;
+								}
+
+							}
 							break;
 						}
-						case EDR::EventLog::Enum::Registry_CompleteNameLog:
+						
+						case EDR::EventLog::Enum::ImageLoad:
 						{
-							EDR::EventLog::Struct::Registry::EventLog_Process_Registry_CompleteorObjectNameLog* log = (EDR::EventLog::Struct::Registry::EventLog_Process_Registry_CompleteorObjectNameLog*)CTX;
-							logSize = sizeof(EDR::EventLog::Struct::Registry::EventLog_Process_Registry_CompleteorObjectNameLog);
+							PWCH ImagePathBuffer;
+							SIZE_T ImagePathBufferMaxLen;
 
-							// 1. Name(wcs) -> Char
-							UNICODE_STRING NAME_UNICODE;
-							RtlInitUnicodeString(&NAME_UNICODE, log->body.post.Name);
-							if (!EDR::Util::helper::UNICODE_to_CHAR(&NAME_UNICODE, log->body.Name, sizeof(log->body.Name)))
-							{
-								ExFreePoolWithTag(log->body.post.Name, LogALLOC); // PWCH 동적할당 해제
+							if (!EDR::LogBuilder::helper::GetDataByIndex(	// Loaded Image PWCH 가져오기
+								Context,
+								2,
+								((PUCHAR*)&ImagePathBuffer ),
+								&ImagePathBufferMaxLen
+							))
 								goto CleanUp;
+
+							UNICODE_STRING ImagePath;
+							RtlInitUnicodeString(&ImagePath, ImagePathBuffer);
+							ULONG64 ImageSize = 0;
+
+							CHAR TempSha256[65];
+							EDR::Util::helper::FilePath_to_HASH(
+								&ImagePath,
+								&ImageSize,
+								TempSha256,
+								65
+							);
+
+							//debug_log("ImagePath: %wZ / ImageSIze: %llu / SHA: %s \n", ImagePath, ImageSize, TempSha256);
+
+							{
+								// append
+								EDR::LogBuilder::LogBuilder_Append(
+									Context,
+									(PUCHAR)&ImageSize,
+									sizeof(ImageSize)
+								);
+								EDR::LogBuilder::LogBuilder_Append(
+									Context,
+									(PUCHAR)TempSha256,
+									sizeof(TempSha256)
+								);
 							}
 
-
-							ExFreePoolWithTag(log->body.post.Name, LogALLOC); // PWCH 동적할당 해제
-
-							AllocatedUserSpaceSize = logSize;
-							// User 공간 Allocate
-							EDR::Util::UserSpace::Memory::AllocateMemory(
-								UserAGENT_ProcessHandle,
-								&AllocatedUserSpace,
-								&AllocatedUserSpaceSize
-							);
-
-							if (!AllocatedUserSpace)
-								goto CleanUp;
-
+							IS_SUCCESS = TRUE;
 							break;
 						}
+						case EDR::EventLog::Enum::Filesystem:
+						{
+							PWCH FilePathBuffer;
+							SIZE_T FilePathBufferMaxLen;
+
+							if (!EDR::LogBuilder::helper::GetDataByIndex(	// Loaded Image PWCH 가져오기
+								Context,
+								3,
+								((PUCHAR*)&FilePathBuffer),
+								&FilePathBufferMaxLen
+							))
+								goto CleanUp;
+
+							UNICODE_STRING FilePath;
+							RtlInitUnicodeString(&FilePath, FilePathBuffer);
+							ULONG64 FileSize = 0;
+
+							EDR::Util::File::Read::Get_FIleSIze(
+								&FilePath,
+								&FileSize
+							);
+
+
+							{
+								// Append
+								EDR::LogBuilder::LogBuilder_Append(
+									Context,
+									(PUCHAR)&FileSize,
+									sizeof(FileSize)
+								);
+							}
+							IS_SUCCESS = TRUE;
+							break;
+						}
+
+						case EDR::EventLog::Enum::Network:
+						case EDR::EventLog::Enum::ObRegisterCallback:
 						case EDR::EventLog::Enum::Registry_OldNewLog:
+						case EDR::EventLog::Enum::Registry_CompleteNameLog:
+						case EDR::EventLog::Enum::Process_Terminate:
 						{
-							EDR::EventLog::Struct::Registry::EventLog_Process_Registry_OldNewNameLog* log = (EDR::EventLog::Struct::Registry::EventLog_Process_Registry_OldNewNameLog*)CTX;
-							logSize = sizeof(EDR::EventLog::Struct::Registry::EventLog_Process_Registry_OldNewNameLog);
-
-							// 1. Name(wcs) -> Char
-							UNICODE_STRING NAME_UNICODE;
-							RtlInitUnicodeString(&NAME_UNICODE, log->body.post.Name);
-							if (!EDR::Util::helper::UNICODE_to_CHAR(&NAME_UNICODE, log->body.Name, sizeof(log->body.Name)))
-							{
-								ExFreePoolWithTag(log->body.post.Name, LogALLOC); // PWCH 동적할당 해제
-								goto CleanUp;
-							}
-							ExFreePoolWithTag(log->body.post.Name, LogALLOC); // PWCH 동적할당 해제
-
-							// 2. OldName(wcs) -> Char
-							UNICODE_STRING OldNAME_UNICODE;
-							RtlInitUnicodeString(&OldNAME_UNICODE, log->body.post.OldName);
-							if (!EDR::Util::helper::UNICODE_to_CHAR(&OldNAME_UNICODE, log->body.OldName, sizeof(log->body.OldName)))
-							{
-								ExFreePoolWithTag(log->body.post.OldName, LogALLOC); // PWCH 동적할당 해제
-								goto CleanUp;
-							}
-							ExFreePoolWithTag(log->body.post.OldName, LogALLOC); // PWCH 동적할당 해제
-
-							// 3. NewName(wcs) -> Char
-							UNICODE_STRING NewNAME_UNICODE;
-							RtlInitUnicodeString(&NewNAME_UNICODE, log->body.post.NewName);
-							if (!EDR::Util::helper::UNICODE_to_CHAR(&NewNAME_UNICODE, log->body.NewName, sizeof(log->body.NewName)))
-							{
-								ExFreePoolWithTag(log->body.post.NewName, LogALLOC); // PWCH 동적할당 해제
-								goto CleanUp;
-							}
-							ExFreePoolWithTag(log->body.post.NewName, LogALLOC); // PWCH 동적할당 해제
-
-
-
-							AllocatedUserSpaceSize = logSize;
-							// User 공간 Allocate
-							EDR::Util::UserSpace::Memory::AllocateMemory(
-								UserAGENT_ProcessHandle,
-								&AllocatedUserSpace,
-								&AllocatedUserSpaceSize
-							);
-
-							if (!AllocatedUserSpace)
-								goto CleanUp;
-
+							IS_SUCCESS = TRUE;
 							break;
 						}
-						case EDR::EventLog::Enum::apicall:
-						{
-							EDR::EventLog::Struct::ApiCall::EventLog_ApiCall* log = (EDR::EventLog::Struct::ApiCall::EventLog_ApiCall*)CTX;
-							logSize = sizeof(EDR::EventLog::Struct::ApiCall::EventLog_ApiCall);
-
-							AllocatedUserSpaceSize = logSize;
-							// User 공간 Allocate
-							EDR::Util::UserSpace::Memory::AllocateMemory(
-								UserAGENT_ProcessHandle,
-								&AllocatedUserSpace,
-								&AllocatedUserSpaceSize
-							);
-
-							if (!AllocatedUserSpace)
-								goto CleanUp;
-
-							break;
-						}
-
 						default:
-						{
+							break;
+						}
+
+						if (!IS_SUCCESS)
 							goto CleanUp;
-						}
-						}
 
 
-						// Copy to User 공간s
-						EDR::Util::UserSpace::Memory::Copy(UserAGENT_ProcessId, AllocatedUserSpace, CTX, logSize);
+						// Closing
+						EDR::LogBuilder::LogBuilder_Closing(
+							Context
+						);
 
-
-						// Producing Log
-						EDR::LogSender::resource::Produce::ProducdeLogData((ULONG64)logHeader->Type, AllocatedUserSpace, logSize);
+						// Produce
+						EDR::LogSender::resource::Produce::ProduceOnBatch(Context);
 
 					CleanUp:
 						{
-							if (CTX)
-								ExFreePoolWithTag(CTX, LogALLOC);
+							EDR::LogBuilder::LogBuilder_Remove(Context);
+							EDR::LogBuilder::Terminate_LOG_BUILDER_CTX(Context);
+							Context = NULL;
 						}
-					}
 
+							/*
+							NTSTATUS status = STATUS_UNSUCCESSFUL;
+							EDR::EventLog::Struct::EventLog_Header* logHeader = (EDR::EventLog::Struct::EventLog_Header*)CTX;
+
+							PVOID AllocatedUserSpace = NULL;
+							SIZE_T AllocatedUserSpaceSize = 0;
+							SIZE_T logSize = 0;
+
+							// APC타겟 유저(USER AGENT 프로세스) PID 유효체크
+
+							HANDLE UserAGENT_ProcessHandle = EDR::Util::Shared::USER_AGENT::ProcessHandle;
+							if (!UserAGENT_ProcessHandle)
+								goto CleanUp;
+							HANDLE UserAGENT_ProcessId = EDR::Util::Shared::USER_AGENT::ProcessId;
+							if (!UserAGENT_ProcessId)
+								goto CleanUp;
+
+
+
+							switch (logHeader->Type)
+							{
+							case  EDR::EventLog::Enum::Filesystem:
+							{
+
+
+								EDR::EventLog::Struct::FileSystem::EventLog_Process_Filesystem* log = (EDR::EventLog::Struct::FileSystem::EventLog_Process_Filesystem*)CTX;
+								logSize = sizeof(EDR::EventLog::Struct::FileSystem::EventLog_Process_Filesystem);
+
+								EDR::Util::helper::CHAR_to_FILESIZE(
+									log->body.FilePath,
+									sizeof(log->body.FilePath),
+									&log->body.post.FileSize
+								);
+
+								AllocatedUserSpaceSize = logSize;
+								// User 공간 Allocate
+								EDR::Util::UserSpace::Memory::AllocateMemory(
+									UserAGENT_ProcessHandle,
+									&AllocatedUserSpace,
+									&AllocatedUserSpaceSize
+								);
+
+								if (!AllocatedUserSpace)
+									goto CleanUp;
+
+								break;
+							}
+							case EDR::EventLog::Enum::Network:
+							{
+								EDR::EventLog::Struct::Network::EventLog_Process_Network* log = (EDR::EventLog::Struct::Network::EventLog_Process_Network*)CTX;
+								logSize = sizeof(EDR::EventLog::Struct::Network::EventLog_Process_Network);
+
+
+								// ifindex -> InterfaceName(ansi)
+								EDR::Util::helper::GetInterfaceNameFromIndex_Ansi(
+									(ULONG)log->body.ifindex,
+									log->body.post.InterfaceName,
+									sizeof(log->body.post.InterfaceName)
+								);
+
+
+								AllocatedUserSpaceSize = logSize;
+								// User 공간 Allocate
+								EDR::Util::UserSpace::Memory::AllocateMemory(
+									UserAGENT_ProcessHandle,
+									&AllocatedUserSpace,
+									&AllocatedUserSpaceSize
+								);
+
+								if (!AllocatedUserSpace)
+									goto CleanUp;
+
+								break;
+							}
+							case EDR::EventLog::Enum::Process_Terminate:
+							{
+								logSize = sizeof(EDR::EventLog::Struct::Process::EventLog_Process_Terminate);
+								AllocatedUserSpaceSize = logSize;
+								// User 공간 Allocate
+								EDR::Util::UserSpace::Memory::AllocateMemory(
+									UserAGENT_ProcessHandle,
+									&AllocatedUserSpace,
+									&AllocatedUserSpaceSize
+								);
+
+								if (!AllocatedUserSpace)
+									goto CleanUp;
+								break;
+							}
+							case EDR::EventLog::Enum::Process_Create:
+							{
+								EDR::EventLog::Struct::Process::EventLog_Process_Create* log = (EDR::EventLog::Struct::Process::EventLog_Process_Create*)CTX;
+								logSize = sizeof(EDR::EventLog::Struct::Process::EventLog_Process_Create);
+
+
+									SID 추출
+
+								if (!EDR::Util::helper::SID_to_CHAR(log->header.ProcessId, (PCHAR)log->body.post.SID, sizeof(log->body.post.SID)))
+									goto CleanUp;
+
+
+									lf 프로세스 이미지경로/파일사이즈/해시값 경로구하기
+
+								EDR::Util::helper::Process_to_HASH(
+									log->header.ProcessId,
+
+									// Self Process EXE ImagePath
+									log->body.post.Self_Process_exe_path,
+									sizeof(log->body.post.Self_Process_exe_path),
+
+									// Self Process EXE ImageSize
+									&log->body.post.Self_Process_exe_size,
+
+									// Self Process EXE SHA256
+									log->body.post.Self_Process_exe_SHA256,
+									sizeof(log->body.post.Self_Process_exe_SHA256)
+								);
+
+
+									Parent 프로세스 이미지경로/파일사이즈/해시값 경로구하기
+
+								EDR::Util::helper::Process_to_HASH(
+									log->body.Parent_ProcessId,
+
+									// Parent Process EXE ImagePath
+									log->body.post.Parent_Process_exe_path,
+									sizeof(log->body.post.Parent_Process_exe_path),
+
+									// Parent Process EXE ImageSize
+									&log->body.post.Parent_Process_exe_size,
+
+									// Parent Process EXE SHA256
+									log->body.post.Parent_Process_exe_SHA256,
+									sizeof(log->body.post.Parent_Process_exe_SHA256)
+								);
+
+
+									Parent 프로세스 실행파일(1) 및 SHA256(2) 구하기
+
+
+								AllocatedUserSpaceSize = logSize;
+								// User 공간 Allocate
+								EDR::Util::UserSpace::Memory::AllocateMemory(
+									UserAGENT_ProcessHandle,
+									&AllocatedUserSpace,
+									&AllocatedUserSpaceSize
+								);
+
+								if (!AllocatedUserSpace)
+									goto CleanUp;
+
+								break;
+							}
+							case EDR::EventLog::Enum::Registry_CompleteNameLog:
+							{
+								EDR::EventLog::Struct::Registry::EventLog_Process_Registry_CompleteorObjectNameLog* log = (EDR::EventLog::Struct::Registry::EventLog_Process_Registry_CompleteorObjectNameLog*)CTX;
+								logSize = sizeof(EDR::EventLog::Struct::Registry::EventLog_Process_Registry_CompleteorObjectNameLog);
+
+								// 1. Name(wcs) -> Char
+								UNICODE_STRING NAME_UNICODE;
+								RtlInitUnicodeString(&NAME_UNICODE, log->body.post.Name);
+								if (!EDR::Util::helper::UNICODE_to_CHAR(&NAME_UNICODE, log->body.Name, sizeof(log->body.Name)))
+								{
+									ExFreePoolWithTag(log->body.post.Name, LogALLOC); // PWCH 동적할당 해제
+									goto CleanUp;
+								}
+
+
+								ExFreePoolWithTag(log->body.post.Name, LogALLOC); // PWCH 동적할당 해제
+
+								AllocatedUserSpaceSize = logSize;
+								// User 공간 Allocate
+								EDR::Util::UserSpace::Memory::AllocateMemory(
+									UserAGENT_ProcessHandle,
+									&AllocatedUserSpace,
+									&AllocatedUserSpaceSize
+								);
+
+								if (!AllocatedUserSpace)
+									goto CleanUp;
+
+								break;
+							}
+							case EDR::EventLog::Enum::Registry_OldNewLog:
+							{
+								EDR::EventLog::Struct::Registry::EventLog_Process_Registry_OldNewNameLog* log = (EDR::EventLog::Struct::Registry::EventLog_Process_Registry_OldNewNameLog*)CTX;
+								logSize = sizeof(EDR::EventLog::Struct::Registry::EventLog_Process_Registry_OldNewNameLog);
+
+								// 1. Name 처리
+								UNICODE_STRING NAME_UNICODE;
+								RtlInitUnicodeString(&NAME_UNICODE, log->body.post.Name);
+								if (!EDR::Util::helper::UNICODE_to_CHAR(&NAME_UNICODE, log->body.Name, sizeof(log->body.Name)))
+								{
+									// 실패 시: Name 해제 및 나머지(Old, New)도 해제 필요
+									ExFreePoolWithTag(log->body.post.Name, LogALLOC);
+									if (log->body.post.OldName) ExFreePoolWithTag(log->body.post.OldName, LogALLOC);
+									if (log->body.post.NewName) ExFreePoolWithTag(log->body.post.NewName, LogALLOC);
+									goto CleanUp;
+								}
+								ExFreePoolWithTag(log->body.post.Name, LogALLOC);
+								log->body.post.Name = NULL; // 해제 후 NULL 처리 권장
+
+								// 2. OldName 처리
+								UNICODE_STRING OldNAME_UNICODE;
+								RtlInitUnicodeString(&OldNAME_UNICODE, log->body.post.OldName);
+								if (!EDR::Util::helper::UNICODE_to_CHAR(&OldNAME_UNICODE, log->body.OldName, sizeof(log->body.OldName)))
+								{
+									// 실패 시: OldName 해제 및 나머지(New)도 해제 필요 (Name은 위에서 이미 해제됨)
+									ExFreePoolWithTag(log->body.post.OldName, LogALLOC);
+									if (log->body.post.NewName) ExFreePoolWithTag(log->body.post.NewName, LogALLOC);
+									goto CleanUp;
+								}
+								ExFreePoolWithTag(log->body.post.OldName, LogALLOC);
+								log->body.post.OldName = NULL;
+
+								// 3. NewName 처리
+								UNICODE_STRING NewNAME_UNICODE;
+								RtlInitUnicodeString(&NewNAME_UNICODE, log->body.post.NewName);
+								if (!EDR::Util::helper::UNICODE_to_CHAR(&NewNAME_UNICODE, log->body.NewName, sizeof(log->body.NewName)))
+								{
+									ExFreePoolWithTag(log->body.post.NewName, LogALLOC);
+									goto CleanUp;
+								}
+								ExFreePoolWithTag(log->body.post.NewName, LogALLOC);
+
+
+
+								AllocatedUserSpaceSize = logSize;
+								// User 공간 Allocate
+								EDR::Util::UserSpace::Memory::AllocateMemory(
+									UserAGENT_ProcessHandle,
+									&AllocatedUserSpace,
+									&AllocatedUserSpaceSize
+								);
+
+								if (!AllocatedUserSpace)
+									goto CleanUp;
+
+								break;
+							}
+							case EDR::EventLog::Enum::apicall:
+							{
+								EDR::EventLog::Struct::ApiCall::EventLog_ApiCall* log = (EDR::EventLog::Struct::ApiCall::EventLog_ApiCall*)CTX;
+								logSize = sizeof(EDR::EventLog::Struct::ApiCall::EventLog_ApiCall);
+
+								AllocatedUserSpaceSize = logSize;
+								// User 공간 Allocate
+								EDR::Util::UserSpace::Memory::AllocateMemory(
+									UserAGENT_ProcessHandle,
+									&AllocatedUserSpace,
+									&AllocatedUserSpaceSize
+								);
+
+								if (!AllocatedUserSpace)
+									goto CleanUp;
+
+								break;
+							}
+
+							default:
+							{
+								goto CleanUp;
+							}
+							}
+
+
+							// Copy to User 공간s
+							EDR::Util::UserSpace::Memory::Copy(UserAGENT_ProcessId, AllocatedUserSpace, CTX, logSize);
+
+
+							// Producing Log
+							EDR::LogSender::resource::Produce::ProducdeLogData((ULONG64)logHeader->Type, AllocatedUserSpace, logSize);
+
+						CleanUp:
+							{
+								if (CTX)
+									ExFreePoolWithTag(CTX, LogALLOC);
+							}
+						}*/
+					}
 					
 				}
 
@@ -661,33 +987,33 @@ namespace EDR
 			) {
 				PAGED_CODE();
 
-
-
-
-
-				EDR::EventLog::Struct::Process::EventLog_Process_Create* log = (EDR::EventLog::Struct::Process::EventLog_Process_Create*)ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(EDR::EventLog::Struct::Process::EventLog_Process_Create), LogALLOC);
-				if (!log)
+				auto* Context = EDR::LogBuilder::helper::CreateEventLog(EDR::EventLog::Enum::Process_Create, ProcessId, NanoTimestamp);
+				if (!Context)
 					return FALSE;
-				RtlZeroMemory(log, sizeof(EDR::EventLog::Struct::Process::EventLog_Process_Create));
-				log->header.Type = EDR::EventLog::Enum::Process_Create;
-				log->header.ProcessId = ProcessId;
-				log->header.NanoTimestamp = NanoTimestamp;
-				EDR::Util::SysVersion::GetSysVersion(log->header.Version, sizeof(log->header.Version));
 
-
-				log->body.Parent_ProcessId = Parent_ProcessId;
-				EDR::Util::helper::UNICODE_to_CHAR(
-					(PUNICODE_STRING)CommandLine,
-					log->body.CommandLine,
-					sizeof(log->body.CommandLine)
+				// Parameters
+				EDR::LogBuilder::LogBuilder_Append(
+					Context,
+					(PUCHAR) & Parent_ProcessId,
+					sizeof(Parent_ProcessId)
 				);
 
+				EDR::LogBuilder::LogBuilder_Append(
+					Context,
+					(PUCHAR)CommandLine->Buffer,
+					CommandLine->MaximumLength
+				);
 
-				// 큐
-				LogPost::LogPut(log);
+				if (!LogPost::LogPut(Context))
+				{
+					EDR::LogBuilder::LogBuilder_Remove(Context);
+					EDR::LogBuilder::Terminate_LOG_BUILDER_CTX(Context);
+					Context = NULL;
+					return FALSE;
+				}
 
 				return TRUE;
-					
+				
 			}
 
 			BOOLEAN ProcessTerminateLog(
@@ -696,16 +1022,20 @@ namespace EDR
 			) {
 				PAGED_CODE();
 
-				EDR::EventLog::Struct::Process::EventLog_Process_Terminate* log = (EDR::EventLog::Struct::Process::EventLog_Process_Terminate*)ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(EDR::EventLog::Struct::Process::EventLog_Process_Terminate), LogALLOC);
-				if (!log)
+				auto* Context = EDR::LogBuilder::helper::CreateEventLog(EDR::EventLog::Enum::Process_Terminate, ProcessId, NanoTimestamp);
+				if (!Context)
 					return FALSE;
-				RtlZeroMemory(log, sizeof(EDR::EventLog::Struct::Process::EventLog_Process_Terminate));
-				log->header.Type = EDR::EventLog::Enum::Process_Terminate;
-				log->header.ProcessId = ProcessId;
-				log->header.NanoTimestamp = NanoTimestamp;
-				EDR::Util::SysVersion::GetSysVersion(log->header.Version, sizeof(log->header.Version));
 
-				LogPost::SystemThread_method::POST_SystemThread_method((PVOID)log); // Terminate 작업은 헤더만 포함하므로 바로 호출작업 (블로킹 작업(FileI/O) 따로 없음)
+				// Parameters
+				// X
+
+				if (!LogPost::LogPut(Context))
+				{
+					EDR::LogBuilder::LogBuilder_Remove(Context);
+					EDR::LogBuilder::Terminate_LOG_BUILDER_CTX(Context);
+					Context = NULL;
+					return FALSE;
+				}
 
 				return TRUE;
 			}
@@ -717,25 +1047,26 @@ namespace EDR
 				PCUNICODE_STRING ImagePath
 			) {
 
-				EDR::EventLog::Struct::ImageLoad::EventLog_ImageLoad* log = (EDR::EventLog::Struct::ImageLoad::EventLog_ImageLoad*)ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(EDR::EventLog::Struct::ImageLoad::EventLog_ImageLoad), LogALLOC);
-				if (!log)
+				PAGED_CODE();
+
+				auto* Context = EDR::LogBuilder::helper::CreateEventLog(EDR::EventLog::Enum::ImageLoad, ProcessId, NanoTimestamp);
+				if (!Context)
 					return FALSE;
-				RtlZeroMemory(log, sizeof(EDR::EventLog::Struct::ImageLoad::EventLog_ImageLoad));
-				log->header.Type = EDR::EventLog::Enum::ImageLoad;
-				log->header.ProcessId = ProcessId;
-				log->header.NanoTimestamp = NanoTimestamp;
-				EDR::Util::SysVersion::GetSysVersion(log->header.Version, sizeof(log->header.Version));
 
-
-				EDR::Util::helper::UNICODE_to_CHAR(
-					(PUNICODE_STRING)ImagePath,
-					log->body.ImagePathAnsi,
-					sizeof(log->body.ImagePathAnsi)
+				// Parameters
+				EDR::LogBuilder::LogBuilder_Append(
+					Context,
+					(PUCHAR)ImagePath->Buffer,
+					ImagePath->MaximumLength
 				);
-				
 
-				// 큐
-				LogPost::LogPut(log);
+				if (!LogPost::LogPut(Context))
+				{
+					EDR::LogBuilder::LogBuilder_Remove(Context);
+					EDR::LogBuilder::Terminate_LOG_BUILDER_CTX(Context);
+					Context = NULL;
+					return FALSE;
+				}
 
 				return TRUE;
 			}
@@ -764,6 +1095,91 @@ namespace EDR
 				PUCHAR PacketFrameBuffer
 			)
 			{
+
+				auto* Context = EDR::LogBuilder::helper::CreateEventLog(EDR::EventLog::Enum::Network, ProcessId, NanoTimestamp);
+				if (!Context)
+					return FALSE;
+
+				// 각 필드 하나하나 append
+				EDR::LogBuilder::LogBuilder_Append(
+					Context,
+					(PUCHAR)&ProtocolNumber,
+					sizeof(ProtocolNumber)
+				);
+
+				EDR::LogBuilder::LogBuilder_Append(
+					Context,
+					(PUCHAR)&is_INBOUND,
+					sizeof(is_INBOUND)
+				);
+
+				EDR::LogBuilder::LogBuilder_Append(
+					Context,
+					(PUCHAR)&PacketSize,
+					sizeof(PacketSize)
+				);
+
+				EDR::LogBuilder::LogBuilder_Append(
+					Context,
+					(PUCHAR)&NetworkInterfaceIndex,
+					sizeof(NetworkInterfaceIndex)
+				);
+
+				EDR::LogBuilder::LogBuilder_Append(
+					Context,
+					SourceMacAddress,
+					18
+				);
+
+				EDR::LogBuilder::LogBuilder_Append(
+					Context,
+					DestinationMacAddress,
+					18
+				);
+
+				EDR::LogBuilder::LogBuilder_Append(
+					Context,
+					LOCAL_IP,
+					LOCAL_IP_StrSIze+1
+				);
+
+				EDR::LogBuilder::LogBuilder_Append(
+					Context,
+					(PUCHAR)&LOCAL_PORT,
+					sizeof(LOCAL_PORT)
+				);
+
+				EDR::LogBuilder::LogBuilder_Append(
+					Context,
+					REMOTE_IP,
+					REMOTE_IP_StrSIze + 1
+				);
+
+				EDR::LogBuilder::LogBuilder_Append(
+					Context,
+					(PUCHAR)&REMOTE_PORT,
+					sizeof(REMOTE_PORT)
+				);
+
+				// 패킷 전체 append
+				EDR::LogBuilder::LogBuilder_Append(
+					Context,
+					PacketFrameBuffer,
+					PacketSize
+				);
+
+				if (!LogPost::LogPut(Context))
+				{
+					EDR::LogBuilder::LogBuilder_Remove(Context);
+					EDR::LogBuilder::Terminate_LOG_BUILDER_CTX(Context);
+					Context = NULL;
+					return FALSE;
+				}
+
+				return TRUE;
+
+				/*
+
 				// ~ DISPATCH LEVEL
 				// work-item 필수
 				EDR::EventLog::Struct::Network::EventLog_Process_Network* log = (EDR::EventLog::Struct::Network::EventLog_Process_Network*)ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(EDR::EventLog::Struct::Network::EventLog_Process_Network), LogALLOC);
@@ -819,10 +1235,14 @@ namespace EDR
 				);
 
 				// 큐
-				LogPost::LogPut(log);
+				if (!LogPost::LogPut(log))
+				{
+					ExFreePoolWithTag(log, LogALLOC);
+					return FALSE;
+				}
 					
 
-				return TRUE;
+				return TRUE;*/
 			}
 
 			BOOLEAN FilesystemLog(
@@ -836,43 +1256,64 @@ namespace EDR
 				PCHAR SHA256
 
 			) {
-				// < = APC_LEVEL
-				// work-item 필수
-				EDR::EventLog::Struct::FileSystem::EventLog_Process_Filesystem* log = (EDR::EventLog::Struct::FileSystem::EventLog_Process_Filesystem*)ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(EDR::EventLog::Struct::FileSystem::EventLog_Process_Filesystem), LogALLOC);
-				if (!log)
+
+				auto* Context = EDR::LogBuilder::helper::CreateEventLog(EDR::EventLog::Enum::Filesystem, ProcessId, NanoTimestamp);
+				if (!Context)
 					return FALSE;
-				RtlZeroMemory(log, sizeof(EDR::EventLog::Struct::FileSystem::EventLog_Process_Filesystem));
-				log->header.Type = EDR::EventLog::Enum::Filesystem;
-				log->header.ProcessId = ProcessId;
-				log->header.NanoTimestamp = NanoTimestamp;
-				EDR::Util::SysVersion::GetSysVersion(log->header.Version, sizeof(log->header.Version));
 
-				// Body
-				log->body.Action = FsEnum;
-				EDR::Util::helper::UNICODE_to_CHAR(Normalized_FilePath, log->body.FilePath, sizeof(log->body.FilePath));
-				//RtlCopyMemory(log->body.SHA256, SHA256, SHA256_STRING_LENGTH); // SHA256
+				// Parameters
+				EDR::LogBuilder::LogBuilder_Append(
+					Context,
+					(PUCHAR)&FsEnum,
+					sizeof(FsEnum)
 
-				//if rename
+				);
+
+				EDR::LogBuilder::LogBuilder_Append(
+					Context,
+					(PUCHAR)Normalized_FilePath->Buffer,
+					Normalized_FilePath->MaximumLength
+				);
+
 				if (To_Renmae_FilePath)
 				{
-					log->body.rename.is_valid = TRUE;
-					EDR::Util::helper::UNICODE_to_CHAR(To_Renmae_FilePath, log->body.rename.RenameFilePath, sizeof(log->body.rename.RenameFilePath));
-					
+					EDR::LogBuilder::LogBuilder_Append(
+						Context,
+						(PUCHAR)To_Renmae_FilePath->Buffer,
+						To_Renmae_FilePath->MaximumLength
+					);
 				}
 				else
-					log->body.rename.is_valid = FALSE;
+					EDR::LogBuilder::LogBuilder_Append(
+						Context,
+						(PUCHAR)L"none",
+						sizeof(L"none")
+					);
 				
-				// if SHA256
+
 				if (SHA256)
 				{
-					log->body.sha256.is_valid = TRUE;
-					RtlCopyMemory(log->body.sha256.SHA256, SHA256, SHA256_STRING_LENGTH); // SHA256
+					EDR::LogBuilder::LogBuilder_Append(
+						Context,
+						(PUCHAR)SHA256,
+						SHA256_String_Byte_Length
+					);
 				}
 				else
-					log->body.sha256.is_valid = FALSE;
+					EDR::LogBuilder::LogBuilder_Append(
+						Context,
+						(PUCHAR)"none",
+						sizeof("none")
+					);
 
-				// 큐
-				LogPost::LogPut(log);
+
+				if (!LogPost::LogPut(Context))
+				{
+					EDR::LogBuilder::LogBuilder_Remove(Context);
+					EDR::LogBuilder::Terminate_LOG_BUILDER_CTX(Context);
+					Context = NULL;
+					return FALSE;
+				}
 
 				return TRUE;
 			}
@@ -883,107 +1324,132 @@ namespace EDR
 				PUNICODE_STRING CompleteName
 			)
 			{
-				// ~ APC_LEVEL
-					// work-item 필수
-				EDR::EventLog::Struct::Registry::EventLog_Process_Registry_CompleteorObjectNameLog* log = (EDR::EventLog::Struct::Registry::EventLog_Process_Registry_CompleteorObjectNameLog*)ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(EDR::EventLog::Struct::Registry::EventLog_Process_Registry_CompleteorObjectNameLog), LogALLOC);
-				if (!log)
-					return FALSE;
-				RtlZeroMemory(log, sizeof(EDR::EventLog::Struct::Registry::EventLog_Process_Registry_CompleteorObjectNameLog));
-				log->header.Type = EDR::EventLog::Enum::Registry_CompleteNameLog;
-				log->header.ProcessId = ProcessId;
-				log->header.NanoTimestamp = NanoTimestamp;
-				EDR::Util::SysVersion::GetSysVersion(log->header.Version, sizeof(log->header.Version));
 
-				if (CompleteName == NULL || CompleteName->Buffer == NULL) {
-					ExFreePoolWithTag(log, LogALLOC);
+				auto* Context = EDR::LogBuilder::helper::CreateEventLog(EDR::EventLog::Enum::Registry_CompleteNameLog, ProcessId, NanoTimestamp);
+				if (!Context)
 					return FALSE;
+
+				// Parameters
+
+				EDR::LogBuilder::LogBuilder_Append(
+					Context,
+					(PUCHAR)KeyClass,
+					(ULONG32)strlen(KeyClass)+1
+
+				);
+
+				/*
+					[특이사항]
+						CmRegistryCallbacks에서 얻은 { CompleteName의 Maximum 값은 널이상의 바이트 수가 책정될 수 있음. }
+				*/
+				USHORT validDataSize = CompleteName->Length;
+				ULONG totalSizeWithNull = validDataSize + sizeof(WCHAR);
+				PVOID tempBuffer = ExAllocatePoolWithTag(NonPagedPool, totalSizeWithNull, 'Tag1');
+				if (tempBuffer) {
+					// 4. 메모리 0으로 초기화 (이러면 맨 끝은 자동으로 NULL이 됨)
+					RtlZeroMemory(tempBuffer, totalSizeWithNull);
+
+					// 5. 실제 문자열 데이터 복사 (NULL 자리 직전까지만)
+					RtlCopyMemory(tempBuffer, CompleteName->Buffer, validDataSize);
+
+					// 6. LogBuilder에 '널이 포함된 완성된 버퍼'를 전달
+					EDR::LogBuilder::LogBuilder_Append(
+						Context,
+						(PUCHAR)tempBuffer,
+						totalSizeWithNull // 실제 데이터 길이 + 널(2바이트)
+					);
+
+					// 7. 임시 버퍼 해제
+					ExFreePoolWithTag(tempBuffer, 'Tag1');
 				}
-				//
-				memcpy(log->body.FunctionName, KeyClass, strlen(KeyClass));
 
-
-				//
-				log->body.post.Name = (PWCH)ExAllocatePool2(POOL_FLAG_NON_PAGED, CompleteName->Length + sizeof(WCHAR), LogALLOC);
-				if (!log->body.post.Name)
+				if (!LogPost::LogPut(Context))
 				{
-					ExFreePoolWithTag(log, LogALLOC);
+					EDR::LogBuilder::LogBuilder_Remove(Context);
+					EDR::LogBuilder::Terminate_LOG_BUILDER_CTX(Context);
+					Context = NULL;
 					return FALSE;
 				}
-
-				// RtlCopyMemory를 사용하여 UNICODE_STRING의 Length만큼만 안전하게 복사
-				RtlCopyMemory(log->body.post.Name, CompleteName->Buffer, CompleteName->Length);
-
-				// 수동으로 NULL 종료 문자 추가
-				// CompleteName->Length가 바이트 단위이므로 WCHAR 크기로 나누어 인덱스 계산
-				log->body.post.Name[CompleteName->Length / sizeof(WCHAR)] = L'\0';
-				
-
-				// 큐
-				LogPost::LogPut(log);
 
 				return TRUE;
 			}
+
 			BOOLEAN Registry_by_OldNewNameLog(
 				PCHAR KeyClass, HANDLE ProcessId, ULONG64 NanoTimestamp,
 				PUNICODE_STRING Name, PUNICODE_STRING Old, PUNICODE_STRING New
 			)
 			{
-				// ~ APC_LEVEL
-					// work-item 필수
-				EDR::EventLog::Struct::Registry::EventLog_Process_Registry_OldNewNameLog* log = (EDR::EventLog::Struct::Registry::EventLog_Process_Registry_OldNewNameLog*)ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(EDR::EventLog::Struct::Registry::EventLog_Process_Registry_OldNewNameLog), LogALLOC);
-				if (!log)
-					return FALSE;
-				RtlZeroMemory(log, sizeof(EDR::EventLog::Struct::Registry::EventLog_Process_Registry_OldNewNameLog));
-				log->header.Type = EDR::EventLog::Enum::Registry_OldNewLog;
-				log->header.ProcessId = ProcessId;
-				log->header.NanoTimestamp = NanoTimestamp;
-				EDR::Util::SysVersion::GetSysVersion(log->header.Version, sizeof(log->header.Version));
-
-				// 1.
-				memcpy(log->body.FunctionName, KeyClass, strlen(KeyClass));
-
-				// 2.
 				if (Name == NULL || Name->Buffer == NULL) {
-					ExFreePoolWithTag(log, LogALLOC);
 					return FALSE;
 				}
 
+				auto* Context = EDR::LogBuilder::helper::CreateEventLog(EDR::EventLog::Enum::Registry_OldNewLog, ProcessId, NanoTimestamp);
+				if (!Context)
+					return FALSE;
 
-				log->body.post.Name = (PWCH)ExAllocatePool2(POOL_FLAG_NON_PAGED, Name->MaximumLength + sizeof(WCHAR), LogALLOC);
-				if (!log->body.post.Name)
+				// Parameters
+
+				EDR::LogBuilder::LogBuilder_Append(
+					Context,
+					(PUCHAR)KeyClass,
+					(ULONG32)strlen(KeyClass)+1
+
+				);
+
+				if (Name)
 				{
-					ExFreePoolWithTag(log, LogALLOC);
-					return FALSE;
+					EDR::LogBuilder::LogBuilder_Append(
+						Context,
+						(PUCHAR)Name->Buffer,
+						Name->MaximumLength
+					);
 				}
-
-				log->body.post.OldName = (PWCH)ExAllocatePool2(POOL_FLAG_NON_PAGED, Old->MaximumLength + sizeof(WCHAR), LogALLOC);
-				if (!log->body.post.OldName)
+				else
+					EDR::LogBuilder::LogBuilder_Append(
+						Context,
+						(PUCHAR)L"none",
+						sizeof(L"none")
+					);
+				
+				if (Old)
 				{
-					ExFreePoolWithTag(log->body.post.Name, LogALLOC);
-					ExFreePoolWithTag(log, LogALLOC);
-					return FALSE;
+					EDR::LogBuilder::LogBuilder_Append(
+						Context,
+						(PUCHAR)Old->Buffer,
+						Old->MaximumLength
+					);
 				}
+				else
+					EDR::LogBuilder::LogBuilder_Append(
+						Context,
+						(PUCHAR)L"none",
+						sizeof(L"none")
+					);
 
-				log->body.post.NewName = (PWCH)ExAllocatePool2(POOL_FLAG_NON_PAGED, New->MaximumLength + sizeof(WCHAR), LogALLOC);
-				if (!log->body.post.NewName)
+				if (New)
 				{
-					ExFreePoolWithTag(log->body.post.OldName, LogALLOC);
-					ExFreePoolWithTag(log->body.post.Name, LogALLOC);
-					ExFreePoolWithTag(log, LogALLOC);
+					EDR::LogBuilder::LogBuilder_Append(
+						Context,
+						(PUCHAR)New->Buffer,
+						New->MaximumLength
+					);
+				}
+				else
+					EDR::LogBuilder::LogBuilder_Append(
+						Context,
+						(PUCHAR)L"none",
+						sizeof(L"none")
+					);
+
+
+
+				if (!LogPost::LogPut(Context))
+				{
+					EDR::LogBuilder::LogBuilder_Remove(Context);
+					EDR::LogBuilder::Terminate_LOG_BUILDER_CTX(Context);
+					Context = NULL;
 					return FALSE;
 				}
-
-				RtlZeroMemory(log->body.post.Name, (Name->MaximumLength + sizeof(WCHAR)));
-				RtlZeroMemory(log->body.post.OldName, (Old->MaximumLength + sizeof(WCHAR)));
-				RtlZeroMemory(log->body.post.NewName, (New->MaximumLength + sizeof(WCHAR)));
-
-				wcscpy(log->body.post.Name, Name->Buffer);
-				wcscpy(log->body.post.OldName, Old->Buffer);
-				wcscpy(log->body.post.NewName, New->Buffer);
-
-
-				// 큐
-				LogPost::LogPut(log);
 
 				return TRUE;
 			}
@@ -998,6 +1464,44 @@ namespace EDR
 				HANDLE Target_ProcessId
 			)
 			{
+
+				auto* Context = EDR::LogBuilder::helper::CreateEventLog(EDR::EventLog::Enum::ObRegisterCallback, ProcessId, NanoTimestamp);
+				if (!Context)
+					return FALSE;
+
+				// Parameters
+
+				EDR::LogBuilder::LogBuilder_Append(
+					Context,
+					(PUCHAR)&DesiredAccess,
+					sizeof(DesiredAccess)
+				);
+
+				EDR::LogBuilder::LogBuilder_Append(
+					Context,
+					(PUCHAR)&is_CreateHandleInformation,
+					sizeof(is_CreateHandleInformation)
+				);
+
+				EDR::LogBuilder::LogBuilder_Append(
+					Context,
+					(PUCHAR)&Target_ProcessId,
+					sizeof(Target_ProcessId)
+				);
+
+
+
+				if (!LogPost::LogPut(Context))
+				{
+					EDR::LogBuilder::LogBuilder_Remove(Context);
+					EDR::LogBuilder::Terminate_LOG_BUILDER_CTX(Context);
+					Context = NULL;
+					return FALSE;
+				}
+
+				return TRUE;
+
+				/*
 				// ~ APC_LEVEL
 					// work-item 필수
 				EDR::EventLog::Struct::ObRegisterCallback::EventLog_Process_ObRegisterCallback* log = (EDR::EventLog::Struct::ObRegisterCallback::EventLog_Process_ObRegisterCallback*)ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(EDR::EventLog::Struct::ObRegisterCallback::EventLog_Process_ObRegisterCallback), LogALLOC);
@@ -1026,9 +1530,13 @@ namespace EDR
 
 
 				// 큐
-				LogPost::LogPut(log);
+				if (!LogPost::LogPut(log))
+				{
+					ExFreePoolWithTag(log, LogALLOC);
+					return FALSE;
+				}
 
-				return TRUE;
+				return TRUE;*/
 			}
 
 			// api call
@@ -1056,7 +1564,11 @@ namespace EDR
 				memcpy(log->body.Json, JsonStr, JsonStrStrLen+1 > (8192) ? 8192 : JsonStrStrLen);
 
 				// 큐
-				LogPost::LogPut(log);
+				if (!LogPost::LogPut(log))
+				{
+					ExFreePoolWithTag(log, LogALLOC);
+					return FALSE;
+				}
 
 				return TRUE;
 			}

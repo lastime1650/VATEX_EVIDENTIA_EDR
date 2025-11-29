@@ -446,6 +446,15 @@ namespace EDR
                             goto CleanUp;
                         }
 
+                        // 파일을 열었거나 는 것 제외는 PASS시킨다.
+                        ACCESS_MASK desiredAccess = Data->Iopb->Parameters.Create.SecurityContext->DesiredAccess;
+
+                        BOOLEAN isWrite = (BOOLEAN)(desiredAccess & (FILE_WRITE_DATA | FILE_APPEND_DATA | GENERIC_WRITE));
+                        BOOLEAN isExec = (BOOLEAN)(desiredAccess & (FILE_EXECUTE | GENERIC_EXECUTE));
+                        BOOLEAN isDelete = (BOOLEAN)(desiredAccess & DELETE);
+                        if (!isWrite && !isExec && !isDelete) {
+                            goto CleanUp;
+                        }
                         /*
                             0. Action
                         */

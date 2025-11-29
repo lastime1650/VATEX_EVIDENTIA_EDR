@@ -16,7 +16,8 @@ namespace EDR
 				std::string Remote_IP, // 세션 생성 당시 목적 IP 
 				ULONG32 Remote_PORT,  // 세션 생성 당시 목적 PORT
 
-				NetworkSessionInfo& output
+				NetworkSessionInfo& output,
+				bool* is_new
 			)
 			{
 
@@ -60,6 +61,8 @@ namespace EDR
 
 					Session.emplace(SessionKey_A, info);
 					output = info;  // 출력용
+					if (is_new)
+						*is_new = true;
 					return TRUE;
 				}
 				else {
@@ -67,9 +70,12 @@ namespace EDR
 					NetworkSessionInfo& sess = (it_A != Session.end()) ? it_A->second : it_B->second; // 둘 중에 하나 존재한가?
 					sess.last_seen_nanotimestamp = nano_timestamp;
 					output = sess;
+					if (is_new)
+						*is_new = false;
 					return TRUE;
 				}
-
+				if (is_new)
+					*is_new = false;
 				return FALSE;
 			}
 

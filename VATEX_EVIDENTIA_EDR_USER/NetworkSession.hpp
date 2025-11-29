@@ -91,7 +91,8 @@ namespace EDR
 					ULONG32 Remote_PORT,  // 技记 积己 寸矫 格利 PORT
 
 
-					NetworkSessionInfo& output
+					NetworkSessionInfo& output,
+					bool* is_new = nullptr
 				);
 
 

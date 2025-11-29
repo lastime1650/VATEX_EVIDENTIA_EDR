@@ -41,7 +41,7 @@ namespace EDR
 			Log_IOCTL() = default;
 			~Log_IOCTL() = default; // 부모 소멸자가 자동 호출됨
 
-			BOOLEAN INITIALIZE(HANDLE ProcessId);
+			BOOLEAN INITIALIZE(HANDLE ProcessId, std::string& OSVERSION);
 
 
 			BOOLEAN REQUEST_LOG(PVOID* out_UserAllocatedFileBinaryAddress, ULONG64* out_BinarySize);

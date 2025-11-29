@@ -4,12 +4,17 @@
 #include "util.hpp"
 #include "EventLog.hpp"
 #include "APC.hpp"
-
+#include "LogBuilder.hpp"
 namespace EDR
 {
 
 	namespace LogSender
 	{
+		extern PUCHAR CollapseProducedLogs_StartAddress;
+		extern PUCHAR CollapseProducedLogs_CurrentAddress;
+		extern SIZE_T CollapseProducedLogs_Size;
+		extern FAST_MUTEX CollapseProduceLogs_Mtx;
+
 		#define MAXIMUM_SLIST_NODE_SIZE 65535
 
 		BOOLEAN INITIALIZE();
@@ -18,7 +23,6 @@ namespace EDR
 
 		namespace resource
 		{
-			
 			extern SLIST_HEADER g_ListHead;
 			extern BOOLEAN is_consume_working;
 
@@ -32,11 +36,15 @@ namespace EDR
 			namespace Produce
 			{
 				BOOLEAN ProducdeLogData(ULONG64 Type, PVOID UserSpace, SIZE_T UserSpaceSize);
+
+				BOOLEAN ProduceOnBatch(EDR::LogBuilder::PLOG_BUILDER_CTX context);
 			}
 			namespace Consume
 			{
 				extern BOOLEAN Consume(_Out_ PVOID* AllocatedUser, _Out_ ULONG64* Size);
 				void CleanUpNodes();
+
+				BOOLEAN ConsumeV2(_In_ HANDLE RequestProcessId, _Out_ PVOID* AllocatedUser, _Out_ ULONG64* Size);
 			}
 
 		}

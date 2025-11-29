@@ -9,7 +9,8 @@
 
 int main()
 {
-	
+	//SetConsoleOutputCP(CP_UTF8); // utf8 표기 콘솔로 전환 ( PWCH -> string시 보여야함 )
+
 	std::string SMBIOS = EDR::Util::Windows::ReadSMBIOSType1And2();
 	std::string AGENT_ID = // SHA256( SMBIOS Type 1+2 )
 		EDR::Util::hash::sha256FromString(
