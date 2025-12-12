@@ -41,6 +41,7 @@
     <ClInclude Include="ETW_DotNet_Runtime.hpp" />
     <ClInclude Include="ETW_Management.hpp" />
     <ClInclude Include="EventLog.hpp" />
+    <ClInclude Include="GetHostNICs.hpp" />
     <ClInclude Include="Hash.hpp" />
     <ClInclude Include="httplib.hpp" />
     <ClInclude Include="IAMClient.hpp" />
@@ -114,6 +115,9 @@
     <ExternalIncludePath>C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\shared;$(WindowsSDK_IncludePath);$(ExternalIncludePath)</ExternalIncludePath>
     <IncludePath>$(VC_IncludePath);C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\shared;$(WindowsSDK_IncludePath);</IncludePath>
   </PropertyGroup>
+  <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <VcpkgUseStatic>false</VcpkgUseStatic>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -164,6 +168,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>C:\Users\Administrator\vcpkg\installed\x64-windows\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

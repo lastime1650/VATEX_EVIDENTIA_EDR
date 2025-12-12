@@ -51,6 +51,7 @@ namespace EDR
 			// map:value 
 			struct NetworkSessionInfo
 			{
+				std::map<HANDLE, bool> ReleatedPids; // 비연결형의 경우, (e.g. PING.EXE) 동일한 RemoteIp에 여러 프로세스가 요청한다면, 이전 연결이력으로 이벤트가 무시되기 때문에 추가.
 				std::string SessionID;
 				ULONG64 first_seen_nanotimestamp;
 				ULONG64 last_seen_nanotimestamp;
@@ -82,6 +83,9 @@ namespace EDR
 
 				*/
 				BOOLEAN Get_NetworkSessionInfo(
+					const HANDLE& ProcessId,
+
+
 					ULONG32 ProtocolNumber,
 
 					std::string Local_IP, // 세션 생성 당시 소스 IP 

@@ -30,7 +30,16 @@ int main()
 		에이전트
 	*/
 	EDR::LogReceiver::LogManager logman(kafkaInstance, AGENT_ID);
-	logman.Run("192.168.1.205", 6100);
+	try
+	{
+		logman.Run("192.168.1.205", 6100);
+	}
+	catch (const std::exception& e)
+	{
+		std::cout << "MAIN ERROR: " << e.what() << std::endl; 
+	}
+	
+	
 
 	while(1){
 		Sleep(INFINITE);

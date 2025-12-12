@@ -47,7 +47,7 @@ namespace EDR
             constexpr size_t CHUNK_SIZE = 1024ULL * 1024ULL * 1024ULL; // 1GB
 
             std::string sha256FromU64(ULONG64& value);
-            std::string sha256FromString(std::string& input);
+            std::string sha256FromString(const std::string& input);
             std::string sha256FromVector(const std::vector<char>& data);
 
 

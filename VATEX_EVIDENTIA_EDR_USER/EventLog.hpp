@@ -10,6 +10,22 @@ namespace EDR
 	{
 		namespace Enum
 		{
+			enum QueueTypes
+			{
+				// Kernel
+				Queue_ProcessCreation = 0,
+				Queue_ImageLoad,
+				Queue_Registry,
+				Queue_Minifilter,
+				Queue_WFP,
+
+				// User
+				Queue_ETW,
+
+				// 항상 마지막에 위치 (개수 카운트용)
+				MaxCount
+			};
+
 			enum EventLog_LogData_Type
 			{
 				LengthBased =1,
@@ -49,6 +65,7 @@ namespace EDR
 					overwritten,
 					superseded,
 					exists,
+					execute,
 
 					remove,
 					rename,
@@ -320,7 +337,7 @@ namespace EDR
 				struct ETW_Field_Struct
 				{
 					CHAR FieldName[256];
-					CHAR FieldValue[4096];
+					CHAR FieldValue[1024];
 				};
 
 				struct ETW_Log_Struct

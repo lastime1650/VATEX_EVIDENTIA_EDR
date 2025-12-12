@@ -8,7 +8,7 @@
 
 #include "ETW_DotNet_Runtime.hpp"
 
-
+#include "LogReceiverShareStruct.hpp" // struct log_s
 
 namespace EDR
 {
@@ -17,15 +17,27 @@ namespace EDR
 		class ETWManager
 		{
 		public:
-			ETWManager(EDR::Util::Queue::IQueue& Queue, std::wstring TraceNameArg = L"Vatex_TRACER")
-				: TraceName(TraceNameArg), ETW_tracer(TraceName),dotnet_manager(Queue)
-			{}
 			~ETWManager() {}
+			//bool _init(std::shared_ptr< EDR::Util::Queue::Queue<log_s> > Queue, std::wstring TraceNameArg = L"Vatex_TRACER")
 
-			bool SetupETWTraceByProviders()
+
+			bool SetupETWTraceByProviders(std::shared_ptr< EDR::Util::Queue::Queue<EDR::LogReceiver::log_s> > Queue)
 			{
+				this->ETW_tracer = std::make_shared <  krabs::user_trace >(TraceName);
+				if (!ETW_tracer)
+					return false;
+
+
+				// .NET ETW등록
+				this->dotnet_manager = std::make_unique< EDR::ETW::DOTNET::DotNetManager >(Queue);
+				if (!dotnet_manager)
+					return false;
+
+				
+
+
 				// 1. .NET RUntime Event Trace
-				if (!dotnet_manager.AddProviderToTrace(ETW_tracer))
+				if (!dotnet_manager->AddProviderToTrace(ETW_tracer))
 				{
 					std::wcerr << L"Failed to add .NET provider to ETW trace." << std::endl;
 					return false;
@@ -46,7 +58,8 @@ namespace EDR
 						try
 						{
 							std::cout << "Starting..." << std::endl;
-							this->ETW_tracer.start();
+							this->ETW_tracer->stop();
+							this->ETW_tracer->start();
 							std::cout << "ETW Shutdown" << std::endl;
 						}
 						catch (const std::exception& e)
@@ -72,7 +85,7 @@ namespace EDR
 				try
 				{
 					// ETW_tracer.stop()가 내부적으로 스레드 루프를 종료하도록 구현되어 있어야 함
-					ETW_tracer.stop();
+					ETW_tracer->stop();
 
 					// 스레드 종료를 기다리는 대신 플래그를 false로 바꿔 스레드 안에서 종료하게 유도
 					ETW_is_running = false;
@@ -91,14 +104,14 @@ namespace EDR
 
 
 			bool ETW_is_running = false;
-			std::wstring TraceName;
-			krabs::user_trace ETW_tracer;
+			std::wstring TraceName = L"Vatex_TRACER";
+			std::shared_ptr <  krabs::user_trace > ETW_tracer;
 
 		private:
 			std::thread ETW_Running_Thread;
 
 			// 1. Dotnet 기반
-			EDR::ETW::DOTNET::DotNetManager dotnet_manager;
+			std::unique_ptr< EDR::ETW::DOTNET::DotNetManager > dotnet_manager;
 		};
 	}
 }

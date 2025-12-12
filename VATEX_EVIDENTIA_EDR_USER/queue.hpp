@@ -22,6 +22,7 @@ namespace EDR
             template <typename T>
             class Queue : public IQueue {
             public:
+
                 Queue() = default;
                 ~Queue() = default;
 

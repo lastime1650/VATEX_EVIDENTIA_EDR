@@ -83,6 +83,11 @@ struct IOCTL_REQ_LOG_s
 {
 	struct
 	{
+		ULONG32 QueueType;
+	}input;
+	struct
+	{
+
 		// NULL이면 실패
 		PUCHAR BufferAddress; // EDR::LogSender::resource::UserData의 START 전역변수로부터 할당된 가상주소값
 		SIZE_T BUfferSize;

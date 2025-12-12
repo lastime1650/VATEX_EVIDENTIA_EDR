@@ -59,7 +59,7 @@ namespace EDR
 			class DotNetManager
 			{
 			public:
-				DotNetManager(EDR::Util::Queue::IQueue& Queue)
+				DotNetManager(std::shared_ptr< EDR::Util::Queue::Queue<EDR::LogReceiver::log_s> > Queue)
 					: Queue(Queue),
 					dotnet_provider(EDR::ETW::DOTNET::Providers::dotnet_runtime_t_provider_guid)
 				{
@@ -72,8 +72,18 @@ namespace EDR
 							krabs::schema schema(record, context.schema_locator);
 							krabs::parser parser(schema);
 
-							auto* ELS = new EDR::EventLog::Struct::ETW::ETW_Log_Struct();
-							RtlZeroMemory(ELS, sizeof(EDR::EventLog::Struct::ETW::ETW_Log_Struct));
+							//auto* ELS = new EDR::EventLog::Struct::ETW::ETW_Log_Struct();
+							//RtlZeroMemory(ELS, sizeof(EDR::EventLog::Struct::ETW::ETW_Log_Struct));
+							auto* ELS = (EDR::EventLog::Struct::ETW::ETW_Log_Struct*)VirtualAlloc(
+								nullptr,
+								sizeof(EDR::EventLog::Struct::ETW::ETW_Log_Struct),
+								MEM_COMMIT | MEM_RESERVE,
+								PAGE_READWRITE
+							);
+
+							if (ELS != nullptr) {
+								RtlZeroMemory(ELS, sizeof(EDR::EventLog::Struct::ETW::ETW_Log_Struct));
+							}
 
 							ELS->header.Type = EDR::EventLog::Enum::etw;
 							ELS->header.ProcessId = (HANDLE)((ULONG64)schema.process_id());
@@ -3313,17 +3323,17 @@ namespace EDR
 							logStruct.logData = (unsigned char*)ELS;
 							logStruct.logSize = sizeof(EDR::EventLog::Struct::ETW::ETW_Log_Struct);
 
-							this->Queue.putRaw(&logStruct);
+							this->Queue->putRaw(&logStruct);
 						}
 					);
 				}
 				~DotNetManager() {}
 
-				bool AddProviderToTrace(krabs::user_trace& ETW_tracer)
+				bool AddProviderToTrace(std::shared_ptr <  krabs::user_trace > ETW_tracer)
 				{
 					try
 					{
-						ETW_tracer.enable(dotnet_provider);
+						ETW_tracer->enable(dotnet_provider);
 						return true;
 					}
 					catch (const std::exception& e)
@@ -3333,7 +3343,7 @@ namespace EDR
 					}
 				}
 
-				EDR::Util::Queue::IQueue& Queue;
+				std::shared_ptr< EDR::Util::Queue::Queue<EDR::LogReceiver::log_s> > Queue;
 			private:
 				krabs::provider<> dotnet_provider;
 				

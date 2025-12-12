@@ -6,7 +6,7 @@
 #define IOCTL_Device_SymbolicName L"\\??\\VATEX_EVIDENTIA_EDR_AGENT"
 
 #include "ioctlcodes.hpp"
-
+#include "EventLog.hpp"
 
 
 namespace EDR
@@ -43,8 +43,8 @@ namespace EDR
 
 			BOOLEAN INITIALIZE(HANDLE ProcessId, std::string& OSVERSION);
 
-
-			BOOLEAN REQUEST_LOG(PVOID* out_UserAllocatedFileBinaryAddress, ULONG64* out_BinarySize);
+			
+			BOOLEAN REQUEST_LOG(EDR::EventLog::Enum::QueueTypes KernelEventType, ::PVOID* out_UserAllocatedFileBinaryAddress, ::ULONG64* out_BinarySize);
 
 		};
 

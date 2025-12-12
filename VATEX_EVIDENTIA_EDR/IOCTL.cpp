@@ -106,9 +106,11 @@ namespace EDR
 						struct IOCTL_REQ_LOG_s* parameter = (struct IOCTL_REQ_LOG_s*)Irp->AssociatedIrp.SystemBuffer;
 						if (!parameter) break;
 
-						parameter->output.is_success = IOCTL_PROCESSING::REQUEST_LOG(Requester_pid , &parameter->output.BufferAddress, &parameter->output.BUfferSize);
+						parameter->output.is_success = IOCTL_PROCESSING::REQUEST_LOG((EDR::LogSender::resource::QueueTypes)parameter->input.QueueType,Requester_pid , &parameter->output.BufferAddress, &parameter->output.BUfferSize);
 
-						//debug_log("LOG REQ : %p , %llu", parameter->output.BufferAddress, parameter->output.BUfferSize);
+						//if(parameter->input.QueueType == EDR::LogSender::resource::QueueTypes::WFP)
+							//debug_log("[EDR::LogSender::resource::QueueTypes::WFP] OutputBuffer: %p \n", parameter->output.BufferAddress);
+						
 
 						IoStatusInformation = sizeof(struct IOCTL_REQ_LOG_s);
 						break;
@@ -290,9 +292,10 @@ namespace EDR
 				return is_complete_init;
 			}
 
-			BOOLEAN REQUEST_LOG( _In_ HANDLE Requester_PID, _Out_ PUCHAR* StartBUff, _Out_ ULONG64* SIze)
+			BOOLEAN REQUEST_LOG( _In_ EDR::LogSender::resource::QueueTypes Type, _In_ HANDLE Requester_PID, _Out_ PUCHAR* StartBUff, _Out_ ULONG64* SIze)
 			{
 				return EDR::LogSender::resource::Consume::ConsumeV2(
+					Type,
 					Requester_PID,
 					(PVOID*)StartBUff, 
 					SIze

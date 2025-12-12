@@ -1,4 +1,5 @@
 #include "LogSender.hpp"
+#include "GetHostNICs.hpp"
 #include <regex>
 namespace EDR
 {
@@ -67,6 +68,7 @@ namespace EDR
                 const ULONG64& nano_timestamp
             )
             {
+
                 Kafka.InsertMessage(
                     fmt::format(
                         R"(
@@ -82,7 +84,8 @@ namespace EDR
                                     }},
                                     "pid": {},
                                     "nano_timestamp": {},
-                                    "timestamp_nano_iso8601": "{}"
+                                    "timestamp_nano_iso8601": "{}",
+                                    "nic": {}
                                 }},
                                 "body": {{
                                     "process" : {{
@@ -90,7 +93,7 @@ namespace EDR
                                     }}
                                 }}
                             }}
-                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp, EDR::Util::timestamp::To_Nano_Iso8601(nano_timestamp),
+                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp, EDR::Util::timestamp::To_Nano_Iso8601(nano_timestamp), EDR::Util::Host::GetActiveNICs_to_Json().dump(),
                         "remove"
                     )
                 );
@@ -137,7 +140,8 @@ namespace EDR
                                     }},
                                     "pid": {},
 									"nano_timestamp": {},
-                                    "timestamp_nano_iso8601": "{}"
+                                    "timestamp_nano_iso8601": "{}",
+                                    "nic": {}
                                 }},
                                 "body": {{
 
@@ -161,7 +165,7 @@ namespace EDR
                                     }}
                                 }}
                             }}
-                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp, EDR::Util::timestamp::To_Nano_Iso8601(nano_timestamp),
+                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp, EDR::Util::timestamp::To_Nano_Iso8601(nano_timestamp), EDR::Util::Host::GetActiveNICs_to_Json().dump(),
                         double_slash(SID), double_slash(Username),
                         "create", double_slash(self_exe_path), self_exe_file_size, self_exe_bin_sha256, std::regex_replace(double_slash(CommandLine), std::regex("\""), "\\\""),
                         (ULONG64)ppid, double_slash(parent_exe_path), parent_exe_file_size, parent_exe_bin_sha256
@@ -207,7 +211,8 @@ namespace EDR
                                 }},
                                 "pid": {},
                                 "nano_timestamp": {},
-                                "timestamp_nano_iso8601": "{}"
+                                "timestamp_nano_iso8601": "{}",
+                                "nic": {}
                             }},
                             "body": {{
                                 "network" : {{
@@ -231,7 +236,7 @@ namespace EDR
                             }}
                             
                         }}
-                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp, EDR::Util::timestamp::To_Nano_Iso8601(nano_timestamp),
+                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp, EDR::Util::timestamp::To_Nano_Iso8601(nano_timestamp), EDR::Util::Host::GetActiveNICs_to_Json().dump(),
                         interface_index, protocol, packetSize, macSrc, macDest, ipSrc, portSrc, ipDest, portDest, is_INGRESS ? "in" : "out",
                         PacketSessionID, first_seen_nano_timestamp, last_seen_nano_timestamp)
                 );
@@ -267,7 +272,8 @@ namespace EDR
                                 }},
                                 "pid": {},
                                 "nano_timestamp": {},
-                                "timestamp_nano_iso8601": "{}"
+                                "timestamp_nano_iso8601": "{}",
+                                "nic": {}
                             }},
                             "body": {{
                                 "filesystem" : {{
@@ -280,7 +286,7 @@ namespace EDR
                             }}
                             
                         }}
-                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp, EDR::Util::timestamp::To_Nano_Iso8601(nano_timestamp),
+                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp, EDR::Util::timestamp::To_Nano_Iso8601(nano_timestamp), EDR::Util::Host::GetActiveNICs_to_Json().dump(),
                         Action, double_slash(FilePath), filesize, FileSHA256, filerename)
                 );
             }
@@ -313,7 +319,8 @@ namespace EDR
                                 }},
                                 "pid": {},
                                 "nano_timestamp": {},
-                                "timestamp_nano_iso8601": "{}"
+                                "timestamp_nano_iso8601": "{}",
+                                "nic": {}
                             }},
                             "body": {{
                                 "imageload" : {{
@@ -324,7 +331,7 @@ namespace EDR
                             }}
                             
                         }}
-                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp, EDR::Util::timestamp::To_Nano_Iso8601(nano_timestamp),
+                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp, EDR::Util::timestamp::To_Nano_Iso8601(nano_timestamp), EDR::Util::Host::GetActiveNICs_to_Json().dump(),
                         double_slash(FilePath), filesize, file_sha256)
                 );
             }
@@ -367,7 +374,8 @@ namespace EDR
                                 }},
                                 "pid": {},
                                 "nano_timestamp": {},
-                                "timestamp_nano_iso8601": "{}"
+                                "timestamp_nano_iso8601": "{}",
+                                "nic": {}
                             }},
                             "body": {{
                                 "processaccess" : {{
@@ -378,7 +386,7 @@ namespace EDR
                             }}
                             
                         }}
-                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp, EDR::Util::timestamp::To_Nano_Iso8601(nano_timestamp),
+                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp, EDR::Util::timestamp::To_Nano_Iso8601(nano_timestamp), EDR::Util::Host::GetActiveNICs_to_Json().dump(),
                         CreateHandle, (ULONG64)Target_ProcessId,  DesiredAccessJsonArrayString)
                 );
             }
@@ -414,14 +422,15 @@ namespace EDR
                                 }},
                                 "pid": {},
                                 "nano_timestamp": {},
-                                "timestamp_nano_iso8601": "{}"
+                                "timestamp_nano_iso8601": "{}",
+                                "nic": {}
                             }},
                             "body": {{
                                 "apicall" : "{}"
                             }}
                             
                         }}
-                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp, EDR::Util::timestamp::To_Nano_Iso8601(nano_timestamp),
+                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp, EDR::Util::timestamp::To_Nano_Iso8601(nano_timestamp), EDR::Util::Host::GetActiveNICs_to_Json().dump(),
                         API_Json)
                 );
             }
@@ -459,7 +468,8 @@ namespace EDR
                                 }},
                                 "pid": {},
                                 "nano_timestamp": {},
-                                "timestamp_nano_iso8601": "{}"
+                                "timestamp_nano_iso8601": "{}",
+                                "nic": {}
                             }},
                             "body": {{
                                 "etw" : {{
@@ -475,7 +485,7 @@ namespace EDR
                             }}
                             
                         }}
-                    )", AgentID, root_SessionID, parent_SessionID, SessionID, "Windows", (ULONG64)pid, nano_timestamp, EDR::Util::timestamp::To_Nano_Iso8601(nano_timestamp),
+                    )", AgentID, root_SessionID, parent_SessionID, SessionID, "Windows", (ULONG64)pid, nano_timestamp, EDR::Util::timestamp::To_Nano_Iso8601(nano_timestamp), EDR::Util::Host::GetActiveNICs_to_Json().dump(),
                         ProviderName, EventName, EventId, EventFlags, EventVersion, fieldsJson)
                 );
             }
@@ -509,7 +519,8 @@ namespace EDR
                                 }},
                                 "pid": {},
                                 "nano_timestamp": {},
-                                "timestamp_nano_iso8601": "{}"
+                                "timestamp_nano_iso8601": "{}",
+                                "nic": {}
                             }},
                             "body": {{
                                 "registry" : {{
@@ -519,7 +530,7 @@ namespace EDR
                             }}
                             
                         }}
-                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp, EDR::Util::timestamp::To_Nano_Iso8601(nano_timestamp),
+                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp, EDR::Util::timestamp::To_Nano_Iso8601(nano_timestamp), EDR::Util::Host::GetActiveNICs_to_Json().dump(),
                         double_slash(RegistryKeyClass), double_slash(FilterValidBytes(Target_Name)))
                 );
                 /*
@@ -642,7 +653,8 @@ namespace EDR
                                 }},
                                 "pid": {},
                                 "nano_timestamp": {},
-                                "timestamp_nano_iso8601": "{}"
+                                "timestamp_nano_iso8601": "{}",
+                                "nic": {}
                             }},
                             "body": {{
                                 "registry" : {{
@@ -656,7 +668,7 @@ namespace EDR
                             }}
                             
                         }}
-                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp, EDR::Util::timestamp::To_Nano_Iso8601(nano_timestamp),
+                    )", AgentID, root_SessionID, parent_SessionID, SessionID, OsVersion, "Windows", (ULONG64)pid, nano_timestamp, EDR::Util::timestamp::To_Nano_Iso8601(nano_timestamp), EDR::Util::Host::GetActiveNICs_to_Json().dump(),
                         RegistryKeyClass, double_slash(Target_Name), double_slash(OldName), double_slash(NewName) )
                 );
             }

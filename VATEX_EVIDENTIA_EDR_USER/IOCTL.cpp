@@ -30,7 +30,7 @@ namespace EDR
 			return true;
 		}
 
-		BOOLEAN Log_IOCTL::REQUEST_LOG(PVOID* out_UserAllocatedFileBinaryAddress, ULONG64* out_BinarySize)
+		BOOLEAN Log_IOCTL::REQUEST_LOG(EDR::EventLog::Enum::QueueTypes KernelEventType, PVOID* out_UserAllocatedFileBinaryAddress, ULONG64* out_BinarySize)
 		{
 
 			if (!ConnectIOCTL() || !hDevice)
@@ -39,6 +39,8 @@ namespace EDR
 
 			struct IOCTL_REQ_LOG_s log_req_data;
 			RtlZeroMemory(&log_req_data, sizeof(log_req_data));
+			
+			log_req_data.input.QueueType = KernelEventType;
 
 			if (!DataToKernel(
 				IOCTL_REQ_LOG,

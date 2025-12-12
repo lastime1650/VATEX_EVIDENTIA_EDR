@@ -19,15 +19,46 @@ namespace EDR
 	{
 		class LogManager
 		{
+			private:
+				//#parallel_RecieveQueueThread;
+				#define parallel_RecieveQueueThread_Count 6
+				#define parallel_Kernel_RecieveQueueThread_Count 5
+				std::vector<std::thread> parallel_RecieveLogDataThread; // by kernel
+				std::vector<std::thread> parallel_RecieveQueueThread; // by kernel + user (ETW)
+				std::vector< std::shared_ptr<EDR::Util::Queue::Queue<log_s>> > parallel_RecieveQueues;
+
 			public:
 				LogManager(EDR::Util::Kafka::Kafka& kafka, std::string arg_AGENT_ID) 
 				: 
 					kafka(kafka), 
 					AGENT_ID(arg_AGENT_ID),
 					WindowsLogSender(kafka, AGENT_ID),
-					EDR_TCP(AGENT_ID, ioctl),
-					ETW_Manager(this->Queue)
-				{}
+					EDR_TCP(AGENT_ID, ioctl)
+				{
+					parallel_RecieveQueues.reserve(parallel_RecieveQueueThread_Count);
+					for (int i = 0; i < parallel_RecieveQueueThread_Count; i++)
+					{
+						// emplace_back 대신 push_back과 make_unique 사용
+						
+
+						switch ((EDR::EventLog::Enum::QueueTypes)i)
+						{
+							case EDR::EventLog::Enum::QueueTypes::Queue_ProcessCreation:
+							case EDR::EventLog::Enum::QueueTypes::Queue_ImageLoad:
+							case EDR::EventLog::Enum::QueueTypes::Queue_Minifilter:
+							case EDR::EventLog::Enum::QueueTypes::Queue_Registry:
+							case EDR::EventLog::Enum::QueueTypes::Queue_WFP:
+							case EDR::EventLog::Enum::QueueTypes::Queue_ETW:
+							{
+								parallel_RecieveQueues.push_back(std::make_shared<EDR::Util::Queue::Queue<log_s>>());
+								break;
+							}
+						default:
+							continue;
+						}
+
+					}
+				}
 				~LogManager() {
 					Stop();
 				}
@@ -50,6 +81,9 @@ namespace EDR
 				
 				std::thread RecieveLogDataThread;
 				std::thread RecieveQueueThread;
+
+				
+
 				BOOLEAN is_threading = false;
 
 				/*
@@ -63,6 +97,7 @@ namespace EDR
 				
 				// queue 
 				EDR::Util::Queue::Queue<log_s> Queue;
+
 
 				// EDR TCP C2C
 				EDR::C2C::EDRC2C EDR_TCP;

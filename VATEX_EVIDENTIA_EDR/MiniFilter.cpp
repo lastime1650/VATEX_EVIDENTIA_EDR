@@ -21,12 +21,14 @@ namespace EDR
 
         const FLT_OPERATION_REGISTRATION Callback_s[] = {
             { IRP_MJ_CREATE, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
+            { IRP_MJ_SET_INFORMATION, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
+            /*
             { IRP_MJ_CREATE_NAMED_PIPE, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
             { IRP_MJ_CLOSE, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
             { IRP_MJ_READ, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
             { IRP_MJ_WRITE, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
             { IRP_MJ_QUERY_INFORMATION, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
-            { IRP_MJ_SET_INFORMATION, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
+            ,
             { IRP_MJ_QUERY_EA, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler,(PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
             { IRP_MJ_SET_EA, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
             { IRP_MJ_FLUSH_BUFFERS, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
@@ -47,7 +49,7 @@ namespace EDR
             { IRP_MJ_DEVICE_CHANGE, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
             { IRP_MJ_QUERY_QUOTA, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
             { IRP_MJ_SET_QUOTA, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
-            { IRP_MJ_PNP, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },
+            { IRP_MJ_PNP, 0, (PFLT_PRE_OPERATION_CALLBACK)Handler::PRE::PRE_filter_Handler, (PFLT_POST_OPERATION_CALLBACK)Handler::POST::POST_filter_Handler },*/
             { IRP_MJ_OPERATION_END } // Array termination
         };
 
@@ -446,19 +448,55 @@ namespace EDR
                             goto CleanUp;
                         }
 
-                        // 파일을 열었거나 는 것 제외는 PASS시킨다.
+                        // ---------------------------------------------------------------------------
+    // 2. 권한 확인 및 Action 결정 (우선순위 적용)
+    // ---------------------------------------------------------------------------
                         ACCESS_MASK desiredAccess = Data->Iopb->Parameters.Create.SecurityContext->DesiredAccess;
 
+                        // 비트 연산으로 각 권한 확인
                         BOOLEAN isWrite = (BOOLEAN)(desiredAccess & (FILE_WRITE_DATA | FILE_APPEND_DATA | GENERIC_WRITE));
+                        BOOLEAN isRead = (BOOLEAN)(desiredAccess & (FILE_READ_DATA | GENERIC_READ));
                         BOOLEAN isExec = (BOOLEAN)(desiredAccess & (FILE_EXECUTE | GENERIC_EXECUTE));
-                        BOOLEAN isDelete = (BOOLEAN)(desiredAccess & DELETE);
-                        if (!isWrite && !isExec && !isDelete) {
+                        BOOLEAN isDelete = (BOOLEAN)(desiredAccess & (DELETE | FILE_DELETE_CHILD)); // DELETE_CHILD 추가 권장
+
+                        // 관심 없는 권한(단순 속성 읽기 등)은 무시
+                        if (!isWrite && !isRead && !isExec && !isDelete) {
                             goto CleanUp;
                         }
-                        /*
-                            0. Action
-                        */
-                        /* 알 수 없음 => POST에서 확인 */
+
+                        // [핵심 수정] if-else if 구조로 변경하여 단일 로그 전송 (우선순위: 실행 > 삭제 > 쓰기 > 읽기)
+                        EDR::EventLog::Enum::FileSystem::Filesystem_enum TargetAction = (EDR::EventLog::Enum::FileSystem::Filesystem_enum)0;
+
+                        if (isExec) {
+                            // 실행 권한이 가장 위험도가 높으므로 최우선 처리
+                            TargetAction = EDR::EventLog::Enum::FileSystem::execute; // 혹은 open으로 처리하되 속성 표기
+                        }
+                        else if (isDelete) {
+                            TargetAction = EDR::EventLog::Enum::FileSystem::remove;
+                        }
+                        else if (isWrite) {
+                            // 쓰기 권한이 있으면 읽기 권한이 있어도 '쓰기'로 간주 (변조 위험이 더 큼)
+                            TargetAction = EDR::EventLog::Enum::FileSystem::write;
+                        }
+                        else if (isRead) {
+                            // 순수 읽기 권한
+                            TargetAction = EDR::EventLog::Enum::FileSystem::read;
+                        }
+
+                        // ---------------------------------------------------------------------------
+                        // 3. Pre-Op 로그 전송 (단 1회 호출)
+                        // ---------------------------------------------------------------------------
+                        if (TargetAction != 0)
+                        {
+                            EDR::LogSender::function::FilesystemLog(
+                                ProcessId,
+                                Nano_Timestamp,
+                                TargetAction,
+                                NormalizedFilePath,
+                                NULL,
+                                NULL
+                            );
+                        }
 
                         /*
                         * 
@@ -497,7 +535,7 @@ namespace EDR
                     
 
                     goto CleanUp; // 바로 리턴 ( POST에서 후속작업 ) 
-                }
+                }/*
                 case IRP_MJ_READ:
                 {
                     Action = EDR::EventLog::Enum::FileSystem::read;
@@ -507,7 +545,7 @@ namespace EDR
                 {
                     Action = EDR::EventLog::Enum::FileSystem::write;
                     break;
-                }
+                }*/
                 case IRP_MJ_SET_INFORMATION:
                 {
                     // 1. 파일 이름 변경 필터링

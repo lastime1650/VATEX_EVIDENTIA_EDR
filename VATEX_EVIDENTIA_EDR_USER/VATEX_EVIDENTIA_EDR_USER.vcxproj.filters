@@ -171,5 +171,8 @@
     <ClInclude Include="LogReceiverShareStruct.hpp">
       <Filter>LogReceiver</Filter>
     </ClInclude>
+    <ClInclude Include="GetHostNICs.hpp">
+      <Filter>Util</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -38,7 +38,7 @@ namespace EDR
 			);
 
 			// IOCTL_LOG 요청
-			BOOLEAN REQUEST_LOG(_In_ HANDLE Requester_PID, _Out_ PUCHAR* StartBUff, _Out_ ULONG64* SIze);
+			BOOLEAN REQUEST_LOG(_In_ EDR::LogSender::resource::QueueTypes Type, _In_ HANDLE Requester_PID, _Out_ PUCHAR* StartBUff, _Out_ ULONG64* SIze);
 
 			// 파일 요청
 			// 파일 이 클 수 있기 때문에, 연결리스트로 유저모드에 전달. 

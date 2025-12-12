@@ -8,6 +8,8 @@ namespace EDR
 		{
 
 			BOOLEAN NetworkSession::Get_NetworkSessionInfo(
+				const HANDLE& ProcessId,
+
 				ULONG32 ProtocolNumber,
 
 				std::string Local_IP, // 세션 생성 당시 소스 IP 
@@ -58,6 +60,7 @@ namespace EDR
 					info.SessionID = EDR::Util::hash::sha256FromString(SessionSource);
 					info.first_seen_nanotimestamp = nano_timestamp;
 					info.last_seen_nanotimestamp = nano_timestamp;
+					info.ReleatedPids[ProcessId] = true;
 
 					Session.emplace(SessionKey_A, info);
 					output = info;  // 출력용
@@ -70,8 +73,26 @@ namespace EDR
 					NetworkSessionInfo& sess = (it_A != Session.end()) ? it_A->second : it_B->second; // 둘 중에 하나 존재한가?
 					sess.last_seen_nanotimestamp = nano_timestamp;
 					output = sess;
-					if (is_new)
-						*is_new = false;
+
+					if (sess.ReleatedPids.find(ProcessId) == sess.ReleatedPids.end())
+					{
+						// 다른 녀석임 -> 연결 세션은 이미 이전 Process와 다르다는 의미.
+						// 주로 비연결형에서 나타난다.
+
+						// 등록한다
+						sess.ReleatedPids[ProcessId] = true;
+
+						if (is_new)
+							*is_new = true;
+					}
+					else
+					{
+						// 같음. (기대하는 것)
+						if (is_new)
+							*is_new = false;
+					}
+
+					
 					return TRUE;
 				}
 				if (is_new)

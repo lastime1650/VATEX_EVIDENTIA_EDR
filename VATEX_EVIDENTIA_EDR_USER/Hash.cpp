@@ -56,7 +56,7 @@ namespace EDR
                 return oss.str();
             }
 
-            std::string sha256FromString(std::string& input) {
+            std::string sha256FromString(const std::string& input) {
                 unsigned char hash[SHA256_DIGEST_LENGTH];
 
                 // SHA-256 °è»ê
