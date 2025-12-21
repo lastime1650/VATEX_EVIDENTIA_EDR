@@ -85,9 +85,6 @@
     <ClCompile Include="Timestamp.cpp">
       <Filter>Util\Timestamp</Filter>
     </ClCompile>
-    <ClCompile Include="ProcessSession.cpp">
-      <Filter>SessionManager\ProcessSession</Filter>
-    </ClCompile>
     <ClCompile Include="Hash.cpp">
       <Filter>Util\Hash</Filter>
     </ClCompile>

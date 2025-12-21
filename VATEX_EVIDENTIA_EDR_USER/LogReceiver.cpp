@@ -39,6 +39,101 @@ namespace EDR
 			ETW_Manager.SetupETWTraceByProviders(parallel_RecieveQueues[EDR::EventLog::Enum::QueueTypes::Queue_ETW]); // 프로바이더 연결
 			ETW_Manager.StartETWTrace();
 
+			while (1)
+			{
+				auto Log = parallel_RecieveQueues[EDR::EventLog::Enum::QueueTypes::Queue_ETW]->get();
+
+				auto LogDataType = Log.LogDataType;
+				auto Type = Log.Type;
+				auto LogData = Log.logData;
+				auto LogDataSize = Log.logSize;
+
+				switch (Log.Type)
+				{
+				case EDR::EventLog::Enum::EventLog_Enum::etw:
+				{
+
+					EDR::EventLog::Struct::ETW::ETW_Log_Struct* ETWLog =
+						reinterpret_cast<EDR::EventLog::Struct::ETW::ETW_Log_Struct*>(Log.logData);
+
+					
+					std::cout << "===== ETW EVENT LOG =====" << std::endl;
+
+
+
+					std::cout << "Provider Name : " << ETWLog->ProviderName << std::endl;
+					std::cout << "Event Name    : " << ETWLog->EventName << std::endl;
+					std::cout << "Event ID      : " << ETWLog->EventId << std::endl;
+					std::cout << "Event Version : " << ETWLog->EventVersion << std::endl;
+					std::cout << "Event Flags   : " << ETWLog->EventFlags << std::endl;
+					std::cout << "Process ID    : " << ETWLog->header.ProcessId << std::endl;
+					std::cout << "Timestamp(ns) : " << ETWLog->header.NanoTimestamp << std::endl;
+
+					std::cout << "Field Count   : " << ETWLog->field.FieldCount << std::endl;
+					
+
+					std::string fieldsJson;
+					for (unsigned long index = 0; index < ETWLog->field.FieldCount; index++)
+					{
+						const auto& field = ETWLog->field.Fields[index];
+
+						//std::cout << "  [Field " << index << "]" << std::endl;
+						//std::cout << "    Name  : " << field.FieldName << std::endl;
+						//std::cout << "    Value : " << field.FieldValue << std::endl;
+
+						// JSON 문자열에 추가
+						fieldsJson += fmt::format("\"{}\": \"{}\"", escape_json(field.FieldName), escape_json(field.FieldValue));
+						if (index < ETWLog->field.FieldCount - 1)
+							fieldsJson += ", ";
+					}
+
+					//std::cout << "==========================" << std::endl;
+
+
+
+					std::string root_SessionID;
+					std::string SessionID;
+					std::string parent_SessionID;
+					ProcessSessionManager.AppendingEvent(
+											ETWLog->header.ProcessId,
+											SessionID,
+											root_SessionID,
+											parent_SessionID
+										);
+										if (SessionID.empty())
+											break;
+
+											//std::cout << "Process ID    : " << ETWLog->header.ProcessId << std::endl;
+
+					WindowsLogSender.Send_Log_ETW(
+						SessionID,
+						root_SessionID,
+						parent_SessionID,
+
+						ETWLog->header.ProcessId,
+
+						ETWLog->ProviderName,
+						ETWLog->EventName,
+						ETWLog->EventVersion,
+						ETWLog->EventId,
+						ETWLog->EventFlags,
+
+						fieldsJson,
+
+						ETWLog->header.NanoTimestamp
+
+					);
+				}
+				default:
+				{
+					break;
+				}
+				}
+
+				VirtualFree(Log.logData, 0, MEM_RELEASE);
+			}
+
+
 			// 1. IOCTL 연결
 			if (!ioctl.INITIALIZE(
 				(HANDLE)GetCurrentProcessId(),
