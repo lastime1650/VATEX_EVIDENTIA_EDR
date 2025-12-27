@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include <iostream>
 
 #include "Util.hpp"
@@ -7,43 +8,59 @@
 
 #include "EventLog.hpp"
 
+
+#include <cstdlib>
+
 int main()
 {
-	//SetConsoleOutputCP(CP_UTF8); // utf8 표기 콘솔로 전환 ( PWCH -> string시 보여야함 )
+    /* ===== 환경변수 로딩 (main 바로 아래) ===== */
 
-	std::string SMBIOS = EDR::Util::Windows::ReadSMBIOSType1And2();
-	std::string AGENT_ID = // SHA256( SMBIOS Type 1+2 )
-		EDR::Util::hash::sha256FromString(
-			SMBIOS
-		); 
-	std::cout << "AGENT_ID: " << AGENT_ID << std::endl;
-	
-	EDR::Util::Kafka::Kafka kafkaInstance("192.168.1.205", 29092, "raw-edr-agent-windows");
-	if (!kafkaInstance.Initialize() )
-	{
-		std::runtime_error("Kafka Initialize Fail");
-		return -1;
-	}
+    const char* envKafkaIp = std::getenv("EDR_KAFKA_IP");
+    const char* envKafkaPort = std::getenv("EDR_KAFKA_PORT");
+    const char* envKafkaTopic = std::getenv("EDR_KAFKA_TOPIC");
+    const char* envAgentIp = std::getenv("EDR_AGENT_IP");
+    const char* envAgentPort = std::getenv("EDR_AGENT_PORT");
 
+    std::string kafkaIp = envKafkaIp ? envKafkaIp : "192.168.1.200";
+    int         kafkaPort = envKafkaPort ? std::atoi(envKafkaPort) : 29092;
+    std::string kafkaTopic = envKafkaTopic ? envKafkaTopic : "raw-edr-agent-windows";
 
-	/*
-		에이전트
-	*/
-	EDR::LogReceiver::LogManager logman(kafkaInstance, AGENT_ID);
-	try
-	{
-		logman.Run("192.168.1.205", 6100);
-	}
-	catch (const std::exception& e)
-	{
-		std::cout << "MAIN ERROR: " << e.what() << std::endl; 
-	}
-	
-	
+    std::string agentIp = envAgentIp ? envAgentIp : "192.168.1.200";
+    int         agentPort = envAgentPort ? std::atoi(envAgentPort) : 6100;
 
-	while(1){
-		Sleep(INFINITE);
-	}
+    /* ===== 기존 로직 ===== */
 
-	return 0;
+    std::cout << kafkaIp << std::endl;
+
+    std::string SMBIOS = EDR::Util::Windows::ReadSMBIOSType1And2();
+    std::string AGENT_ID =
+        EDR::Util::hash::sha256FromString(SMBIOS);
+
+    std::cout << "AGENT_ID: " << AGENT_ID << std::endl;
+
+    try {
+
+        EDR::Util::Kafka::Kafka kafkaInstance(
+            kafkaIp,
+            kafkaPort,
+            kafkaTopic
+        );
+        if (!kafkaInstance.Initialize())
+        {
+            std::runtime_error("Kafka Initialize Fail");
+            return -1;
+        }
+
+        EDR::LogReceiver::LogManager logman(kafkaInstance, AGENT_ID);
+        
+        logman.Run(agentIp, agentPort);
+
+    }
+    catch (const std::exception& e) {
+        std::cout << e.what() << std::endl;
+        return -1;
+    }
+    
+
+    return 0;
 }
